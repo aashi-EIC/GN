@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Cloud, KeyRound, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -7,8 +6,8 @@ import type { CloudBiLoginCredentials } from "../../types/app";
 import { BrandMark, MicrosoftMark } from "../../components/common/Brand";
 
 const cloudBiSchema = z.object({
-  cloudBiId: z.string().trim().min(4, "Enter a valid Cloud BI ID."),
-  accessCode: z.string().trim().min(6, "Enter a Cloud BI access code with at least 6 characters."),
+  cloudBiId: z.string().trim().min(4, "Enter a valid username."),
+  accessCode: z.string().trim().min(6, "Enter a password with at least 6 characters."),
   name: z.string().trim().optional(),
 });
 
@@ -72,7 +71,7 @@ export function LoginPage({
       });
     } catch (caught) {
       setProviderError(
-        caught instanceof Error ? caught.message : "Cloud BI ID sign-in was not completed.",
+        caught instanceof Error ? caught.message : "Sign-in was not completed.",
       );
     } finally {
       setCloudBiBusy(false);
@@ -82,103 +81,102 @@ export function LoginPage({
   const formError =
     providerError ||
     errors.cloudBiId?.message ||
-    errors.accessCode?.message ||
-    errors.name?.message;
+    errors.accessCode?.message;
 
   return (
-    <main className="login">
-      <section className="login-art">
-        <BrandMark light />
-        <div className="login-visual" aria-hidden="true">
-          <div className="signal-ring one" />
-          <div className="signal-ring two" />
-          <div className="signal-panel panel-a">
-            <span>Schedule</span>
-            <strong>97.2%</strong>
-            <small>Complete</small>
+    <main className="login-page-container">
+      <div className="login-modal-card">
+        {/* Header dark blue banner */}
+        <header className="login-card-header">
+          <div className="header-brand-wrap">
+            <div className="header-text-brand">
+              <span className="brand-name">gracenote</span>
+              <span className="brand-sub">a nielsen company</span>
+            </div>
           </div>
-          <div className="signal-panel panel-b">
-            <span>Mapping</span>
-            <strong>95.1%</strong>
-            <small>Matched</small>
-          </div>
-        </div>
-        <div className="login-copy">
-          <span>Conversational intelligence</span>
-          <h1>Ask governed data. Act on the answer.</h1>
-          <p>
-            Explore Gracenote semantic models for imagery, linear grading, mapping, metadata,
-            program gaps, schedule completeness and BIA usage.
+          <h1 className="header-title">Gracenote Video</h1>
+          <p className="header-subtitle">
+            Gracenote/Nielsen users, continue with Microsoft.<br />
+            All others, sign in with username &amp; password.
           </p>
-        </div>
-        <div className="trust">
-          <ShieldCheck />
-          <span>Protected by Microsoft Entra ID and Cloud BI ID</span>
-        </div>
-      </section>
+        </header>
 
-      <section className="login-panel">
-        <div className="mobile-brand">
-          <BrandMark />
-        </div>
-        <div className="login-card">
-          <span>Welcome</span>
-          <h2>Gracenote Intelligence</h2>
-          <p>Choose your identity provider to open the workspace.</p>
-
-          <div className="auth-methods">
+        {/* Body 2-column layout */}
+        <div className="login-card-body">
+          {/* Left Column: Microsoft Entra ID */}
+          <div className="login-col social-col">
+            <h3 className="col-heading">Sign in with your social account</h3>
+            
             <button
-              className={`auth-option entra-option ${entraAvailable ? "" : "needs-config"}`}
+              className={`microsoft-login-btn ${entraAvailable ? "" : "needs-config"}`}
               onClick={signInWithEntra}
               disabled={entraBusy}
               type="button"
             >
-              <span className="auth-icon">
+              <span className="btn-icon-sq">
                 <MicrosoftMark />
               </span>
-              <span>
-                <b>{entraBusy ? "Opening Entra ID" : "Continue with Entra ID"}</b>
-                <small>
-                  {entraAvailable ? "Microsoft identity platform" : "Entra configuration required"}
-                </small>
+              <span className="btn-label">
+                {entraBusy ? "Opening Microsoft..." : "Continue with Microsoft"}
               </span>
             </button>
 
-            <form onSubmit={submitCloudBi} className="cloud-bi-login">
-              <div className="cloud-bi-title">
-                <Cloud />
-                <span>
-                  <b>Cloud BI ID</b>
-                  <small>Direct workspace identity</small>
-                </span>
-              </div>
-              <label>
-                Cloud BI ID
-                <input {...register("cloudBiId")} aria-label="Cloud BI ID" disabled={cloudBiBusy} />
-              </label>
-              <label>
-                Access code
+            <p className="col-footnote">
+              We won't post to any of your accounts without asking first
+            </p>
+          </div>
+
+          {/* Divider */}
+          <div className="login-divider">
+            <span className="divider-text">or</span>
+          </div>
+
+          {/* Right Column: Username & Password */}
+          <div className="login-col form-col">
+            <h3 className="col-heading">Sign in with your username and password</h3>
+
+            <form onSubmit={submitCloudBi} className="credentials-form">
+              <label className="form-label">
+                Username
                 <input
-                  type="password"
-                  {...register("accessCode")}
-                  aria-label="Cloud BI access code"
+                  type="text"
+                  placeholder="Username"
+                  {...register("cloudBiId")}
                   disabled={cloudBiBusy}
+                  className="form-input"
                 />
               </label>
-              <label>
-                Display name
-                <input {...register("name")} aria-label="Display name" disabled={cloudBiBusy} />
+
+              <label className="form-label">
+                Password
+                <input
+                  type="password"
+                  placeholder="Password"
+                  {...register("accessCode")}
+                  disabled={cloudBiBusy}
+                  className="form-input"
+                />
               </label>
-              <button className="primary-action" type="submit" disabled={cloudBiBusy}>
-                <KeyRound />
-                <span>{cloudBiBusy ? "Opening Cloud BI" : "Continue with Cloud BI ID"}</span>
+
+              <div className="forgot-pass-wrap">
+                <button
+                  type="button"
+                  className="forgot-pass-link"
+                  onClick={() => setProviderError("Please contact your administrator to reset your password.")}
+                >
+                  Forgot your password?
+                </button>
+              </div>
+
+              <button className="submit-signin-btn" type="submit" disabled={cloudBiBusy}>
+                {cloudBiBusy ? "Signing in..." : "Sign in"}
               </button>
             </form>
           </div>
-
-          {formError && <strong className="form-error">{formError}</strong>}
         </div>
-      </section>
+
+        {formError && <div className="card-error-banner">{formError}</div>}
+      </div>
     </main>
   );
 }

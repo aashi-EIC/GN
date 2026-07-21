@@ -65,12 +65,20 @@ function MsalBackedShell() {
   const ssoAttempted = useRef(false);
 
   useEffect(() => {
+    let active = true;
+    const fallbackTimer = setTimeout(() => {
+      if (active) {
+        setSsoReady(true);
+      }
+    }, 2500);
+
     if (ssoAttempted.current || inProgress !== InteractionStatus.None) {
-      return undefined;
+      return () => {
+        clearTimeout(fallbackTimer);
+      };
     }
 
     ssoAttempted.current = true;
-    let active = true;
 
     const complete = () => {
       if (active) {
@@ -105,24 +113,6 @@ function MsalBackedShell() {
         return;
       }
 
-      try {
-        const result = await instance.ssoSilent({
-          scopes: ["openid", "profile", "email", apiScope],
-        });
-        if (result.account) {
-          instance.setActiveAccount(result.account);
-          localStorage.setItem(storageKeys.ssoProvider, "entra");
-          localStorage.removeItem(storageKeys.user);
-          if (active) {
-            setCloudBiUser(null);
-          }
-          complete();
-          return;
-        }
-      } catch {
-        // Silent SSO is opportunistic; interactive login remains available.
-      }
-
       const restoredCloudBi = await tryRestoreCloudBiSession();
       if (restoredCloudBi && active) {
         saveToStorage(storageKeys.user, restoredCloudBi);
@@ -135,38 +125,60 @@ function MsalBackedShell() {
 
     return () => {
       active = false;
+      clearTimeout(fallbackTimer);
     };
   }, [accounts, inProgress, instance]);
 
+  const [authStatus, setAuthStatus] = useState<"signing-in" | "signing-out" | null>(null);
+
   const signIn = async () => {
-    const result = await instance.loginPopup({
-      scopes: ["openid", "profile", "email", apiScope],
-    });
-    if (result.account) {
-      instance.setActiveAccount(result.account);
+    try {
+      setAuthStatus("signing-in");
+      const result = await instance.loginPopup({
+        scopes: ["openid", "profile", "email", apiScope],
+      });
+      if (result.account) {
+        instance.setActiveAccount(result.account);
+      }
+      localStorage.setItem(storageKeys.ssoProvider, "entra");
+      localStorage.removeItem(storageKeys.user);
+      setCloudBiUser(null);
+    } finally {
+      setAuthStatus(null);
     }
-    localStorage.setItem(storageKeys.ssoProvider, "entra");
-    localStorage.removeItem(storageKeys.user);
-    setCloudBiUser(null);
   };
 
   const signOut = async () => {
-    if (!cloudBiUser && isAuthenticated && account) {
+    try {
+      setAuthStatus("signing-out");
       localStorage.removeItem(storageKeys.ssoProvider);
-      instance.logoutRedirect({ account });
-      return;
+      localStorage.removeItem(storageKeys.user);
+
+      if (!cloudBiUser && isAuthenticated && account) {
+        try {
+          await instance.logoutPopup({ account });
+        } catch {
+          instance.setActiveAccount(null);
+        }
+      } else {
+        await logoutCloudBiSession().catch(() => undefined);
+      }
+      setCloudBiUser(null);
+    } finally {
+      setAuthStatus(null);
     }
-    await logoutCloudBiSession().catch(() => undefined);
-    localStorage.removeItem(storageKeys.ssoProvider);
-    localStorage.removeItem(storageKeys.user);
-    setCloudBiUser(null);
   };
 
   const signInWithCloudBi = async (credentials: CloudBiLoginCredentials) => {
-    const profile = await loginWithCloudBi(credentials);
-    saveToStorage(storageKeys.user, profile);
-    localStorage.setItem(storageKeys.ssoProvider, "cloud-bi");
-    setCloudBiUser(profile);
+    try {
+      setAuthStatus("signing-in");
+      const profile = await loginWithCloudBi(credentials);
+      saveToStorage(storageKeys.user, profile);
+      localStorage.setItem(storageKeys.ssoProvider, "cloud-bi");
+      setCloudBiUser(profile);
+    } finally {
+      setAuthStatus(null);
+    }
   };
 
   const acquireToken = async () => {
@@ -196,8 +208,12 @@ function MsalBackedShell() {
     }
   };
 
-  if (!ssoReady || inProgress === "startup" || inProgress === "handleRedirect") {
-    return <LoadingScreen />;
+  if (authStatus === "signing-in") {
+    return <LoadingScreen text="Signing in..." />;
+  }
+
+  if (authStatus === "signing-out") {
+    return <LoadingScreen text="Signing out..." />;
   }
 
   return (
@@ -216,7 +232,7 @@ function CloudBiOnlyShell() {
   const [user, setUser] = useState<UserProfile | null>(() =>
     usableCloudBiProfile(loadFromStorage<UserProfile | null>(storageKeys.user, null)),
   );
-  const [ssoReady, setSsoReady] = useState(false);
+  const [authStatus, setAuthStatus] = useState<"signing-in" | "signing-out" | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -230,12 +246,7 @@ function CloudBiOnlyShell() {
         localStorage.setItem(storageKeys.ssoProvider, "cloud-bi");
         setUser(profile);
       })
-      .catch(() => undefined)
-      .finally(() => {
-        if (active) {
-          setSsoReady(true);
-        }
-      });
+      .catch(() => undefined);
 
     return () => {
       active = false;
@@ -243,21 +254,35 @@ function CloudBiOnlyShell() {
   }, []);
 
   const signIn = async (credentials: CloudBiLoginCredentials) => {
-    const profile = await loginWithCloudBi(credentials);
-    saveToStorage(storageKeys.user, profile);
-    localStorage.setItem(storageKeys.ssoProvider, "cloud-bi");
-    setUser(profile);
+    try {
+      setAuthStatus("signing-in");
+      const profile = await loginWithCloudBi(credentials);
+      saveToStorage(storageKeys.user, profile);
+      localStorage.setItem(storageKeys.ssoProvider, "cloud-bi");
+      setUser(profile);
+    } finally {
+      setAuthStatus(null);
+    }
   };
 
   const signOut = async () => {
-    await logoutCloudBiSession().catch(() => undefined);
-    localStorage.removeItem(storageKeys.ssoProvider);
-    localStorage.removeItem(storageKeys.user);
-    setUser(null);
+    try {
+      setAuthStatus("signing-out");
+      await logoutCloudBiSession().catch(() => undefined);
+      localStorage.removeItem(storageKeys.ssoProvider);
+      localStorage.removeItem(storageKeys.user);
+      setUser(null);
+    } finally {
+      setAuthStatus(null);
+    }
   };
 
-  if (!ssoReady) {
-    return <LoadingScreen />;
+  if (authStatus === "signing-in") {
+    return <LoadingScreen text="Signing in..." />;
+  }
+
+  if (authStatus === "signing-out") {
+    return <LoadingScreen text="Signing out..." />;
   }
 
   return (

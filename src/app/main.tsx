@@ -19,6 +19,7 @@ const root = ReactDOM.createRoot(document.getElementById("root") as HTMLElement)
 if (entraSettingsAreConfigured) {
   const msalInstance = new PublicClientApplication(msalConfig);
   await msalInstance.initialize();
+  await msalInstance.handleRedirectPromise();
 
   root.render(
     <React.StrictMode>
