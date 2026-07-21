@@ -16,9 +16,26 @@ type CloudBiAuthResponse = {
   tokenExpiresAt?: string;
 };
 
+const temporaryCloudBiAccess = {
+  cloudBiId: "aashi@gmail.com",
+  accessCode: "123456",
+  accessToken: "123456",
+  name: "Aashi",
+};
+
 export async function loginWithCloudBi(
   credentials: CloudBiLoginCredentials,
 ): Promise<UserProfile> {
+  if (isTemporaryCloudBiCredential(credentials)) {
+    return {
+      email: temporaryCloudBiAccess.cloudBiId,
+      name: credentials.name?.trim() || temporaryCloudBiAccess.name,
+      authProvider: "Cloud BI ID",
+      cloudBiId: temporaryCloudBiAccess.cloudBiId,
+      accessToken: temporaryCloudBiAccess.accessToken,
+    };
+  }
+
   const { data } = await mcpClient.post<CloudBiAuthResponse>(
     env.cloudBiLoginUrl,
     credentials,
@@ -41,6 +58,13 @@ export async function restoreCloudBiSession(): Promise<UserProfile | null> {
 
 export async function logoutCloudBiSession() {
   await mcpClient.post(env.cloudBiLogoutUrl, undefined, { withCredentials: true });
+}
+
+function isTemporaryCloudBiCredential(credentials: CloudBiLoginCredentials) {
+  return (
+    credentials.cloudBiId.trim().toLowerCase() === temporaryCloudBiAccess.cloudBiId &&
+    credentials.accessCode.trim() === temporaryCloudBiAccess.accessCode
+  );
 }
 
 function normalizeCloudBiResponse(

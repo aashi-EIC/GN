@@ -70,7 +70,7 @@ export function Sidebar({
           </label>
 
           <div className="history-label">
-            <span>Last 10 sessions/chats</span>
+            <span>Previous chats</span>
             <strong>{conversations.length}</strong>
           </div>
 

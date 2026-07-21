@@ -451,6 +451,47 @@ function Workspace({
     return () => window.clearTimeout(timeoutId);
   }, [toast]);
 
+  useEffect(() => {
+    const closeOpenNavigation = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      if (modelsOpen && !target.closest(".model-picker")) {
+        setModelsOpen(false);
+      }
+      if (profileOpen && !target.closest(".profile-wrap")) {
+        setProfileOpen(false);
+      }
+      if (
+        sidebarOpen &&
+        !target.closest(".sidebar") &&
+        !target.closest(".brand-trigger, .mobile-menu")
+      ) {
+        dispatch(uiActions.setSidebarOpen(false));
+      }
+    };
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      setModelsOpen(false);
+      setProfileOpen(false);
+      if (sidebarOpen) {
+        dispatch(uiActions.setSidebarOpen(false));
+      }
+    };
+
+    document.addEventListener("pointerdown", closeOpenNavigation);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOpenNavigation);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [dispatch, modelsOpen, profileOpen, sidebarOpen]);
+
   const showToast = (message: string, tone: ToastState["tone"] = "success") => {
     setToast({ message, tone });
   };
@@ -703,6 +744,12 @@ function Workspace({
     showToast("Conversation exported");
   };
 
+  const openSelectedModelGuide = () => {
+    setModelsOpen(false);
+    setProfileOpen(false);
+    setGuideOpen(true);
+  };
+
   return (
     <div className={`app-shell density-${settings.density} theme-${themeMode}`}>
       <Sidebar
@@ -730,7 +777,7 @@ function Workspace({
           themeMode={themeMode}
           toggleTheme={() => dispatch(uiActions.toggleThemeMode())}
           setSidebarOpen={(open) => dispatch(uiActions.setSidebarOpen(open))}
-          setGuideOpen={setGuideOpen}
+          openGuide={openSelectedModelGuide}
           setTourOpen={setTourOpen}
           setIssueOpen={setIssueOpen}
           setSettingsOpen={setSettingsOpen}

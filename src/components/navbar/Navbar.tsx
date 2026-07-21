@@ -25,7 +25,7 @@ export function Navbar({
   themeMode,
   toggleTheme,
   setSidebarOpen,
-  setGuideOpen,
+  openGuide,
   setTourOpen,
   setIssueOpen,
   setSettingsOpen,
@@ -42,7 +42,7 @@ export function Navbar({
   themeMode: "light" | "dark";
   toggleTheme: () => void;
   setSidebarOpen: (open: boolean) => void;
-  setGuideOpen: (open: boolean) => void;
+  openGuide: () => void;
   setTourOpen: (open: boolean) => void;
   setIssueOpen: (open: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
@@ -75,9 +75,13 @@ export function Navbar({
           <i />
           {statusLabel}
         </span>
-        <IconTextButton label="Guide" onClick={() => setGuideOpen(true)}>
+        <IconButton
+          label="Open guide for the selected model"
+          className="model-guide-button"
+          onClick={openGuide}
+        >
           <HelpCircle />
-        </IconTextButton>
+        </IconButton>
         <IconTextButton label="Tour" onClick={() => setTourOpen(true)}>
           <BookOpen />
         </IconTextButton>

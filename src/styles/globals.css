@@ -2565,6 +2565,42 @@ body {
   gap: 12px;
 }
 
+.header-actions .model-guide-button {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid rgba(47, 63, 79, 0.2);
+  border-radius: 999px;
+  color: #445669;
+}
+
+.header-actions .model-guide-button:hover {
+  background: rgba(232, 231, 226, 0.9);
+}
+
+.header-actions .model-guide-button svg {
+  width: 19px;
+  height: 19px;
+}
+
+.guide-prompts {
+  margin-top: 18px;
+}
+
+.guide-prompts ul {
+  margin: 10px 0 0;
+  padding-left: 22px;
+  color: var(--muted);
+}
+
+.guide-prompts li + li {
+  margin-top: 8px;
+}
+
 .debug-toggle {
   display: grid;
   place-items: center;
@@ -3340,4 +3376,40 @@ body {
   .chat .composer textarea {
     min-height: 52px;
   }
+}
+
+/* Keep the application pinned to the viewport and let the message thread own
+   vertical scrolling. This also avoids mobile browser chrome making a 100vh
+   calculation taller than the visible page. */
+.app-shell {
+  height: 100dvh;
+  min-height: 0;
+}
+
+.workspace {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.workspace > .topbar {
+  flex: 0 0 48px;
+}
+
+.workspace > .chat {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+}
+
+.chat > .messages {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+  touch-action: pan-y;
 }

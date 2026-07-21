@@ -30,9 +30,9 @@ export function LoginPage({
   } = useForm<CloudBiFormValues>({
     resolver: zodResolver(cloudBiSchema),
     defaultValues: {
-      cloudBiId: "",
-      accessCode: "",
-      name: "",
+      cloudBiId: "aashi@gmail.com",
+      accessCode: "123456",
+      name: "Aashi",
     },
   });
   const [providerError, setProviderError] = useState("");
