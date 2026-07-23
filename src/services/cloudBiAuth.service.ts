@@ -17,10 +17,10 @@ type CloudBiAuthResponse = {
 };
 
 const temporaryCloudBiAccess = {
-  cloudBiId: "aashi@gmail.com",
+  cloudBiId: "aditya@gmail.com",
   accessCode: "123456",
   accessToken: "123456",
-  name: "Aashi",
+  name: "Aditya",
 };
 
 export async function loginWithCloudBi(
