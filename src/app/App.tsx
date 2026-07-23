@@ -386,13 +386,11 @@ function Workspace({
   const [conversations, setConversations] = useState<Conversation[]>(() =>
     loadFromStorage<Conversation[]>(storageKeys.conversations, []),
   );
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(
-    conversations[0]?.id ?? null,
-  );
-  const [selectedModelId, setSelectedModelId] = useState<ModelId>(
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [selectedModelId, setSelectedModelId] = useState<ModelId>(() =>
     normalizeModelId(conversations[0]?.modelId),
   );
-  const [selectedCountryCode, setSelectedCountryCode] = useState<CountryCode>(
+  const [selectedCountryCode, setSelectedCountryCode] = useState<CountryCode>(() =>
     normalizeCountryCode(conversations[0]?.countryCode),
   );
   const [prompt, setPrompt] = useState("");
@@ -794,6 +792,7 @@ function Workspace({
       <section className="workspace">
         <Navbar
           user={user}
+          modelId={selectedModelId}
           sidebarOpen={sidebarOpen}
           profileOpen={profileOpen}
           setProfileOpen={setProfileOpen}

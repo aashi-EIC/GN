@@ -101,10 +101,6 @@ export function Sidebar({
           </nav>
 
           <div className="side-bottom">
-            <button onClick={() => setGuideOpen(true)}>
-              <BookOpen />
-              <span>Model guide</span>
-            </button>
             <button onClick={() => setIssueOpen(true)}>
               <AlertTriangle />
               <span>Report an issue</span>

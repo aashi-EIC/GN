@@ -66,14 +66,9 @@ export function ModelPicker({
                 setModelId(model.id);
                 setOpen(false);
               }}
+              type="button"
             >
-              <span className="model-chip" style={{ backgroundColor: model.color }}>
-                {model.short}
-              </span>
-              <div>
-                <b>{model.name}</b>
-                <small>{model.description}</small>
-              </div>
+              <span className="model-menu-text">{model.name}</span>
             </button>
           ))}
         </div>

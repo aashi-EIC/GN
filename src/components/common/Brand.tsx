@@ -4,7 +4,7 @@ export function BrandMark({ light = false, compact = false }: { light?: boolean;
       <img
         src={compact ? "/gracenote-favicon.svg" : "/gracenote-logo.svg"}
         alt={compact ? "Gracenote" : "gracenote, a nielsen company"}
-        style={light ? { filter: "brightness(0) invert(1)" } : undefined}
+        className="brand-logo-img"
       />
     </div>
   );

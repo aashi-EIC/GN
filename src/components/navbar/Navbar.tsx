@@ -10,13 +10,17 @@ import {
   Settings,
   Sun,
 } from "lucide-react";
+import { useState } from "react";
 import type { UserProfile } from "../../types/app";
+import type { ModelId } from "../../types/semantic";
 import { initials } from "../../utils/identity";
+import { getModel } from "../../utils/semantic";
 import { AskBrandMark } from "../common/Brand";
 import { IconButton, IconTextButton } from "../ui/IconButton";
 
 export function Navbar({
   user,
+  modelId,
   sidebarOpen,
   profileOpen,
   setProfileOpen,
@@ -34,6 +38,7 @@ export function Navbar({
   statusLabel,
 }: {
   user: UserProfile;
+  modelId?: ModelId;
   sidebarOpen: boolean;
   profileOpen: boolean;
   setProfileOpen: (open: boolean) => void;
@@ -50,6 +55,9 @@ export function Navbar({
   onSignOut: () => void;
   statusLabel: string;
 }) {
+  const [guideHovered, setGuideHovered] = useState(false);
+  const activeModel = getModel(modelId ?? "metadata_stats_linear");
+
   return (
     <header className="topbar">
       <div className="topbar-left">
@@ -75,13 +83,44 @@ export function Navbar({
           <i />
           {statusLabel}
         </span>
-        <IconButton
-          label="Open guide for the selected model"
-          className="model-guide-button"
-          onClick={openGuide}
+        <div
+          className="guide-button-wrap"
+          onMouseEnter={() => setGuideHovered(true)}
+          onMouseLeave={() => setGuideHovered(false)}
         >
-          <HelpCircle />
-        </IconButton>
+          <IconButton
+            label={`Guide for ${activeModel.name}`}
+            className="model-guide-button"
+            onClick={() => {
+              setGuideHovered(!guideHovered);
+              openGuide();
+            }}
+          >
+            <HelpCircle />
+          </IconButton>
+          {guideHovered && (
+            <div className="header-guide-popover">
+              <div className="guide-popover-head">
+                <span className="model-chip" style={{ backgroundColor: activeModel.color }}>
+                  {activeModel.short}
+                </span>
+                <div>
+                  <strong>{activeModel.name}</strong>
+                  {activeModel.nickname && <small>{activeModel.nickname}</small>}
+                </div>
+              </div>
+              <p className="guide-popover-desc">{activeModel.guide ?? activeModel.description}</p>
+              <div className="guide-popover-prompts">
+                <b>Try asking:</b>
+                <ul>
+                  {activeModel.prompts.map((prompt) => (
+                    <li key={prompt}>{prompt}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
         <IconTextButton label="Tour" onClick={() => setTourOpen(true)}>
           <BookOpen />
         </IconTextButton>
@@ -120,15 +159,6 @@ export function Navbar({
               <b>{user.name}</b>
               <span>{user.email}</span>
               <small>{user.authProvider}</small>
-              <button
-                onClick={() => {
-                  setSettingsOpen(true);
-                  setProfileOpen(false);
-                }}
-              >
-                <Settings />
-                Settings
-              </button>
               <button
                 onClick={() => {
                   setIssueOpen(true);
