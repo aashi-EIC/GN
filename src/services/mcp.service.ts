@@ -9,6 +9,7 @@ import type {
   UserProfile,
 } from "../types/app";
 import type { CountryCode, ModelId } from "../types/semantic";
+import { getCountryLocale } from "../constants/locales";
 import { buildPlotSpec } from "../utils/plot";
 import { createId } from "../utils/session";
 import { getCountry, getModel } from "../utils/semantic";
@@ -33,6 +34,7 @@ export function buildMcpRequestPayload({
 }) {
   const bearerToken = buildBearerTokenForRls(user, conversationId, token);
   const country = getCountry(countryCode);
+  const locale = getCountryLocale(countryCode);
   const sentAt = new Date().toISOString();
   const requestId = createId("mcp");
   const payload: McpRequestPayload = {
@@ -41,6 +43,7 @@ export function buildMcpRequestPayload({
     semantic_model_id: modelId,
     country: country.code,
     country_name: country.name,
+    language: locale.speechLocale,
     prompt,
     bearer_token_for_rls: bearerToken,
   };

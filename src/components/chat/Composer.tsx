@@ -1,4 +1,5 @@
 import { Mic, Send } from "lucide-react";
+import { getCountryLocale } from "../../constants/locales";
 import type { CountryCode, ModelId } from "../../types/semantic";
 import { handleEnter } from "../../utils/keyboard";
 import { getModel } from "../../utils/semantic";
@@ -32,6 +33,7 @@ export function Composer({
   setCountryCode: (countryCode: CountryCode) => void;
 }) {
   const model = getModel(modelId);
+  const locale = getCountryLocale(countryCode);
 
   return (
     <div className="composer-wrap">
@@ -50,7 +52,7 @@ export function Composer({
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
           onKeyDown={(event) => handleEnter(event, () => submitPrompt())}
-          placeholder="Ask me about TV shows and movies"
+          placeholder={locale.placeholder}
           aria-label={`Ask ${model.name}`}
         />
         <div className="composer-bottom">
@@ -58,7 +60,7 @@ export function Composer({
           <div className="composer-actions">
             <button
               className="mic-btn"
-              onClick={() => startVoiceInput(prompt, setPrompt)}
+              onClick={() => startVoiceInput(prompt, setPrompt, locale.speechLocale)}
               type="button"
               aria-label="Use voice input"
             >
@@ -69,7 +71,7 @@ export function Composer({
               onClick={() => submitPrompt()}
               disabled={busy || !prompt.trim()}
               type="button"
-              aria-label="Send"
+              aria-label={locale.sendLabel}
             >
               <Send />
             </button>

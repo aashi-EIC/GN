@@ -14,7 +14,11 @@ type SpeechRecognitionLike = {
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
-export function startVoiceInput(currentPrompt: string, setPrompt: (prompt: string) => void) {
+export function startVoiceInput(
+  currentPrompt: string,
+  setPrompt: (prompt: string) => void,
+  speechLocale = "en-US",
+) {
   const speechWindow = window as Window & {
     SpeechRecognition?: SpeechRecognitionConstructor;
     webkitSpeechRecognition?: SpeechRecognitionConstructor;
@@ -30,7 +34,7 @@ export function startVoiceInput(currentPrompt: string, setPrompt: (prompt: strin
   const recognition = new SpeechRecognition();
   recognition.continuous = false;
   recognition.interimResults = false;
-  recognition.lang = "en-US";
+  recognition.lang = speechLocale;
   recognition.maxAlternatives = 1;
   recognition.onresult = (event) => {
     const transcript = event.results[0]?.[0]?.transcript?.trim();

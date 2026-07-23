@@ -1,4 +1,5 @@
 import { ArrowUp, Mic } from "lucide-react";
+import { getCountryLocale } from "../../constants/locales";
 import type { UserProfile } from "../../types/app";
 import type { CountryCode, ModelId, SemanticModel } from "../../types/semantic";
 import { firstName } from "../../utils/identity";
@@ -32,6 +33,9 @@ export function WelcomePanel({
   setPrompt: (prompt: string) => void;
   submitPrompt: (prompt?: string) => void;
 }) {
+  const locale = getCountryLocale(countryCode);
+  const localizedPrompts = locale.prompts[modelId] ?? model.prompts;
+
   return (
     <div className="welcome-inner">
       <div className="welcome-model-control">
@@ -44,16 +48,14 @@ export function WelcomePanel({
         />
       </div>
 
-      <h1>
-        Hello, <span>{firstName(user.name)}</span>! How can I help you today?
-      </h1>
+      <h1>{locale.welcomeGreeting(firstName(user.name))}</h1>
 
       <div className="welcome-composer">
         <textarea
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
           onKeyDown={(event) => handleEnter(event, () => submitPrompt())}
-          placeholder="Ask me about TV shows and movies"
+          placeholder={locale.placeholder}
           aria-label={`Ask ${model.name}`}
         />
         <div className="composer-bottom">
@@ -61,7 +63,7 @@ export function WelcomePanel({
           <div className="composer-actions">
             <button
               className="mic-btn"
-              onClick={() => startVoiceInput(prompt, setPrompt)}
+              onClick={() => startVoiceInput(prompt, setPrompt, locale.speechLocale)}
               type="button"
               aria-label="Use voice input"
             >
@@ -72,7 +74,7 @@ export function WelcomePanel({
               onClick={() => submitPrompt()}
               disabled={!prompt.trim()}
               type="button"
-              aria-label="Send"
+              aria-label={locale.sendLabel}
             >
               <ArrowUp />
             </button>
@@ -81,7 +83,7 @@ export function WelcomePanel({
       </div>
 
       <div className="suggestions">
-        {model.prompts.map((suggestion) => (
+        {localizedPrompts.map((suggestion) => (
           <button key={suggestion} onClick={() => submitPrompt(suggestion)}>
             <span>{suggestion}</span>
             <ArrowUp />

@@ -2,110 +2,137 @@ import type { CountryCode, SemanticModel } from "../types/semantic";
 
 export const semanticModels: SemanticModel[] = [
   {
-    id: "imagenary_stats",
-    name: "Imagenary Stats",
-    short: "IS",
-    description: "Image asset coverage, rendition readiness and editorial QA.",
+    id: "metadata_stats_linear",
+    name: "Metadata Stats Linear",
+    short: "MSL",
+    nickname: 'The "Text Checker"',
+    description:
+      'The "Text Checker" — Checks whether every movie and TV show has basic written information filled in like Title, Cast, Genre, and Description.',
     guide:
-      "Answers questions about poster coverage, backdrop availability, missing image assets, rendition readiness and image QA status.",
+      "Checks basic written info (title, cast, genre, description). Without this info, viewers cannot find shows using search. Analogy: Checking if a library book has its title and author printed on the cover so people can find it.",
+    color: "#2563EB",
+    prompts: [
+      "Which content has missing metadata fields?",
+      "Show linear metadata completeness by genre",
+      "List top metadata issues affecting search",
+    ],
+  },
+  {
+    id: "imagerystats_vod",
+    name: "Imagery Stats VOD",
+    short: "VOD",
+    nickname: 'The "Picture Checker"',
+    description:
+      'The "Picture Checker" — Verifies whether every movie and TV show has all visual assets (posters, thumbnails, hero banners).',
+    guide:
+      "Checks visual assets (poster, thumbnail, hero banner). Without pictures, homepage recommendations show blank boxes. Analogy: Checking if every product on an e-commerce website has a photo so buyers click.",
     color: "#F40953",
     prompts: [
-      "Show image readiness by content type",
-      "Which markets have missing image assets?",
-      "List image QA issues by priority",
+      "Which titles are missing poster or hero images?",
+      "Show image asset readiness by market",
+      "List titles with missing visual assets by priority",
+    ],
+  },
+  {
+    id: "mapping_stats_svc",
+    name: "Mapping Stats Service",
+    short: "MSS",
+    nickname: 'The "Speedometer"',
+    description:
+      'The "Speedometer" — Measures how long it takes for a new show sent by a provider (Disney, Sony) to be processed and recognized.',
+    guide:
+      "Measures intake processing speed from content providers. If this slows down, new episodes don't appear on time. Analogy: A post office sorting facility measuring the time for a package to arrive, get scanned, and hit the delivery truck.",
+    color: "#94073F",
+    prompts: [
+      "How long are provider imports taking today?",
+      "Which sources have processing bottlenecks?",
+      "Show match rates and delay trends by provider",
+    ],
+  },
+  {
+    id: "schedule_completeness_tsg",
+    name: "Schedule Completeness TSG",
+    short: "SC",
+    nickname: 'The "TV Guide Protector"',
+    description:
+      'The "TV Guide Protector" — Ensures upcoming TV schedules are fully filled in without "TBA" or generic placeholders.',
+    guide:
+      "Verifies upcoming TV schedules are full of real show titles rather than 'TBA' placeholders. Analogy: A newspaper printing press checking if tomorrow's newspaper has empty spaces before printing.",
+    color: "#005D8F",
+    prompts: [
+      "Are there any 'TBA' slots in tomorrow's schedule?",
+      "Show schedule completeness for next week",
+      "Where are the largest schedule coverage gaps?",
+    ],
+  },
+  {
+    id: "program_gaps_svc",
+    name: "Program Gaps Service",
+    short: "PGS",
+    nickname: 'The "Missing Child Detector"',
+    description:
+      'The "Missing Child Detector" — Compares contracted show counts against actually available shows to find missing titles.',
+    guide:
+      "Compares contracted titles against live platform titles to find missing content. Analogy: Taking inventory by counting what is supposed to be in your warehouse versus what is actually on the shelves.",
+    color: "#B60B46",
+    prompts: [
+      "Which contracted shows are missing from the platform?",
+      "Compare contract show counts against live titles",
+      "List missing programs by provider and country",
     ],
   },
   {
     id: "linear_country_grading",
     name: "Linear Country Grading",
     short: "LCG",
-    description: "Country-level linear feed grades, SLA risk and market health.",
+    nickname: 'The "Executive Report Card"',
+    description:
+      'The "Executive Report Card" — Combines quality metrics across metadata, imagery, schedule & gaps into an overall A, B, C, or D grade for each country.',
     guide:
-      "Answers questions about country grades, feed readiness, SLA status, ingestion risk and country-level quality trends.",
+      "Combines metadata, imagery, and schedule health into one overall A, B, C, or D grade per country. Analogy: A high school report card summarizing all subjects into one overall grade for executive leaders.",
     color: "#002041",
     prompts: [
-      "Show country grades by market",
-      "Which countries are below target?",
-      "Compare linear readiness by region",
+      "Show overall report card grades by country",
+      "Which countries are below target health grade?",
+      "Compare overall market grades this month",
     ],
   },
   {
-    id: "mapping_stats",
-    name: "Mapping Stats",
-    short: "MS",
-    description: "Match rates, unresolved mappings and source health.",
-    guide:
-      "Answers questions about source match rates, unresolved queues, aging records, partner imports and mapping remediation priorities.",
-    color: "#94073F",
-    prompts: [
-      "Which sources have low match rates?",
-      "Show unresolved mappings by queue",
-      "Summarize this week's mapping health",
-    ],
-  },
-  {
-    id: "metadata_stats_linear",
-    name: "Metadata Stats Linear",
-    short: "MSL",
-    description: "Linear metadata completeness, stale fields and enrichment quality.",
-    guide:
-      "Answers questions about linear metadata completeness, stale attributes, artwork gaps, genres, cast coverage and enrichment backlogs.",
-    color: "#2563EB",
-    prompts: [
-      "How complete is linear metadata?",
-      "Show metadata quality by content type",
-      "List the top linear metadata issues",
-    ],
-  },
-  {
-    id: "program_gaps",
-    name: "Program Gaps",
-    short: "PG",
-    description: "Open schedule gaps, late-night gaps and remediation queues.",
-    guide:
-      "Answers questions about program gaps, late-night programming, missing slots, market gap counts and operational remediation priorities.",
-    color: "#B60B46",
-    prompts: [
-      "Show program gaps by country",
-      "Where are the largest late-night gaps?",
-      "Rank markets by open program gaps",
-    ],
-  },
-  {
-    id: "schedule_completeness",
-    name: "Schedule Completeness",
-    short: "SC",
-    description: "Coverage, gaps and delivery quality across reporting markets.",
-    guide:
-      "Answers questions about schedule coverage, open gaps, late-night programming, market readiness and week-over-week completeness movement.",
-    color: "#005D8F",
-    prompts: [
-      "Show completeness by market",
-      "Where are the largest schedule gaps?",
-      "Compare this week to last week",
-    ],
-  },
-  {
-    id: "usage_metric_bia_dashboard",
-    name: "Usage Metric Bia Dashboard",
+    id: "usage_metrics_bia_dashboards",
+    name: "Usage Metrics BIA Dashboards",
     short: "BIA",
-    description: "BIA dashboard usage, active users and engagement signals.",
+    nickname: 'The "Customer Engagement Checker"',
+    description:
+      'The "Customer Engagement Checker" — Tracks whether invited users are actively logging in, opening reports, and using the system.',
     guide:
-      "Answers questions about dashboard usage, active users, query volume, country adoption and feature engagement trends.",
+      "Tracks user logins, report usage, and active customer signals. Analogy: A gym check-in system measuring whether members actually show up to work out to prove subscription value.",
     color: "#047857",
     prompts: [
-      "Show BIA usage by country",
-      "Which dashboard features are used most?",
-      "Compare active users week over week",
+      "Which dashboards have the highest active logins?",
+      "Show client engagement trends by country",
+      "Identify accounts with low dashboard usage",
     ],
   },
 ];
 
 export const countries: Array<{ code: CountryCode; name: string }> = [
-  { code: "us", name: "United States" },
-  { code: "in", name: "India" },
-  { code: "gb", name: "United Kingdom" },
-  { code: "br", name: "Brazil" },
-  { code: "jp", name: "Japan" },
-  { code: "de", name: "Germany" },
+  { code: "US", name: "United States" },
+  { code: "CA", name: "Canada" },
+  { code: "GB", name: "United Kingdom" },
+  { code: "AU", name: "Australia" },
+  { code: "ES", name: "Spain" },
+  { code: "BR", name: "Brazil" },
+  { code: "FR", name: "France" },
+  { code: "DE", name: "Germany" },
+  { code: "MX", name: "Mexico" },
+  { code: "JP", name: "Japan" },
+  { code: "KR", name: "South Korea" },
+  { code: "NL", name: "Netherlands" },
+  { code: "SE", name: "Sweden" },
+  { code: "BE", name: "Belgium" },
+  { code: "CH", name: "Switzerland" },
+  { code: "NO", name: "Norway" },
+  { code: "FI", name: "Finland" },
+  { code: "IE", name: "Ireland" },
+  { code: "IT", name: "Italy" },
 ];

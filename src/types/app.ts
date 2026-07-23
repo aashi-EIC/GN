@@ -62,6 +62,8 @@ export type McpRequestPayload = {
   semantic_model_id: ModelId;
   country: CountryCode;
   country_name: string;
+  language?: string;
+  language_name?: string;
   prompt: string;
   bearer_token_for_rls: string;
 };

@@ -1,18 +1,38 @@
 export type ModelId =
-  | "imagenary_stats"
-  | "linear_country_grading"
-  | "mapping_stats"
   | "metadata_stats_linear"
-  | "program_gaps"
-  | "schedule_completeness"
-  | "usage_metric_bia_dashboard";
+  | "imagerystats_vod"
+  | "mapping_stats_svc"
+  | "schedule_completeness_tsg"
+  | "program_gaps_svc"
+  | "linear_country_grading"
+  | "usage_metrics_bia_dashboards";
 
-export type CountryCode = "us" | "in" | "gb" | "br" | "jp" | "de";
+export type CountryCode =
+  | "US"
+  | "CA"
+  | "GB"
+  | "AU"
+  | "ES"
+  | "BR"
+  | "FR"
+  | "DE"
+  | "MX"
+  | "JP"
+  | "KR"
+  | "NL"
+  | "SE"
+  | "BE"
+  | "CH"
+  | "NO"
+  | "FI"
+  | "IE"
+  | "IT";
 
 export type SemanticModel = {
   id: ModelId;
   name: string;
   short: string;
+  nickname: string;
   description: string;
   guide: string;
   color: string;
