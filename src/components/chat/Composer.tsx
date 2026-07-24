@@ -4,7 +4,6 @@ import type { CountryCode, ModelId } from "../../types/semantic";
 import { handleEnter } from "../../utils/keyboard";
 import { getModel } from "../../utils/semantic";
 import { startVoiceInput } from "../../utils/speech";
-import { CountryPicker } from "./CountryPicker";
 import { ModelPicker } from "./ModelPicker";
 
 export function Composer({
@@ -37,16 +36,6 @@ export function Composer({
 
   return (
     <div className="composer-wrap">
-      <div className="composer-model-control">
-        <ModelPicker
-          modelId={modelId}
-          setModelId={setModelId}
-          open={modelsOpen}
-          setOpen={setModelsOpen}
-          compact
-          disabled={modelLocked}
-        />
-      </div>
       <div className="composer">
         <textarea
           value={prompt}
@@ -56,7 +45,14 @@ export function Composer({
           aria-label={`Ask ${model.name}`}
         />
         <div className="composer-bottom">
-          <CountryPicker countryCode={countryCode} setCountryCode={setCountryCode} />
+          <ModelPicker
+            modelId={modelId}
+            setModelId={setModelId}
+            open={modelsOpen}
+            setOpen={setModelsOpen}
+            compact
+            disabled={modelLocked}
+          />
           <div className="composer-actions">
             <button
               className="mic-btn"

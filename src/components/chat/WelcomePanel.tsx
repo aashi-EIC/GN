@@ -5,7 +5,6 @@ import type { CountryCode, ModelId, SemanticModel } from "../../types/semantic";
 import { firstName } from "../../utils/identity";
 import { handleEnter } from "../../utils/keyboard";
 import { startVoiceInput } from "../../utils/speech";
-import { CountryPicker } from "./CountryPicker";
 import { ModelPicker } from "./ModelPicker";
 
 export function WelcomePanel({
@@ -38,16 +37,6 @@ export function WelcomePanel({
 
   return (
     <div className="welcome-inner">
-      <div className="welcome-model-control">
-        <ModelPicker
-          modelId={modelId}
-          setModelId={setModelId}
-          open={modelsOpen}
-          setOpen={setModelsOpen}
-          compact
-        />
-      </div>
-
       <h1>{locale.welcomeGreeting(firstName(user.name))}</h1>
 
       <div className="welcome-composer">
@@ -59,7 +48,13 @@ export function WelcomePanel({
           aria-label={`Ask ${model.name}`}
         />
         <div className="composer-bottom">
-          <CountryPicker countryCode={countryCode} setCountryCode={setCountryCode} />
+          <ModelPicker
+            modelId={modelId}
+            setModelId={setModelId}
+            open={modelsOpen}
+            setOpen={setModelsOpen}
+            compact
+          />
           <div className="composer-actions">
             <button
               className="mic-btn"

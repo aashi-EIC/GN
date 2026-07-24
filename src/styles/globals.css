@@ -2033,26 +2033,40 @@ tr:last-child td {
 }
 
 .sidebar {
-  width: 246px;
-  flex-basis: 246px;
-  padding: 18px 12px 14px;
+  width: 260px;
+  flex: 0 0 260px;
+  padding: 14px 12px;
   color: var(--gn-navy);
   background: var(--gn-white);
   border-right: 1px solid #edf0f5;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), flex-basis 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
 }
 
 .sidebar.closed {
-  width: 68px;
-  flex-basis: 68px;
-}
-
-.sidebar .brand.light:not(.compact) {
-  padding: 0;
-  background: transparent;
+  width: 56px;
+  flex-basis: 56px;
+  padding: 14px 8px;
 }
 
 .side-head {
-  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 40px;
+  width: 100%;
+}
+
+.sidebar.closed .side-head {
+  justify-content: center;
+}
+
+.sidebar-collapsed-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
 }
 
 .new-chat {
@@ -2125,17 +2139,26 @@ tr:last-child td {
 }
 
 .welcome {
-  display: grid;
-  place-items: center;
-  padding: 32px;
-  background: var(--gn-white);
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  background: var(--gn-surface);
+  overflow-y: auto;
+  width: 100%;
 }
 
 .welcome-inner {
-  width: min(560px, 100%);
-  position: relative;
-  padding-top: 44px;
+  width: min(760px, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
+  position: relative;
 }
 
 .welcome-model-control {
@@ -2945,37 +2968,42 @@ body {
 
 /* Reference Ask Gracenote dashboard styling */
 .app-shell {
-  display: block;
-  min-height: 100vh;
+  display: flex;
+  flex-direction: row;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
   background: #f7f7f4;
 }
 
 .workspace {
-  width: 100%;
-  min-height: 100vh;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .sidebar {
-  position: fixed;
-  inset: 0 auto 0 0;
-  z-index: 90;
-  width: 286px;
-  flex-basis: auto;
-  transform: translateX(0);
-  box-shadow: 18px 0 48px rgba(31, 41, 55, 0.12);
+  position: relative;
+  flex: 0 0 260px;
+  width: 260px;
+  z-index: auto;
+  box-shadow: none;
+  transform: none;
   transition:
-    transform 0.2s ease,
-    width 0.2s ease,
-    padding 0.2s ease;
+    flex-basis 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar.closed {
-  width: 0;
-  flex-basis: 0;
-  padding: 0;
+  flex-basis: 56px;
+  width: 56px;
+  padding: 14px 8px;
   overflow: hidden;
-  border-right: 0;
-  transform: translateX(-100%);
+  border-right: 1px solid #edf0f5;
+  transform: none;
 }
 
 .topbar {
@@ -2988,7 +3016,28 @@ body {
 }
 
 .topbar-left {
-  gap: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sidebar-toggle-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(31, 41, 55, 0.14);
+  border-radius: 8px;
+  background: var(--gn-white);
+  color: var(--gn-navy);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sidebar-toggle-btn:hover {
+  background: var(--gn-soft-pink);
+  color: var(--gn-pink);
+  border-color: var(--gn-pink);
 }
 
 .brand-trigger {
@@ -3257,15 +3306,16 @@ body {
 }
 
 .welcome {
-  min-height: calc(100vh - 48px);
-  align-items: flex-start;
-  padding: 100px 24px 40px;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
   background: #f7f7f4;
 }
 
 .welcome-inner {
   width: min(780px, 100%);
-  padding-top: 44px;
+  padding-top: 0;
 }
 
 .welcome-model-control {

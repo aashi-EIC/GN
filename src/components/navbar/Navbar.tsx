@@ -5,7 +5,6 @@ import {
   Download,
   HelpCircle,
   LogOut,
-  Menu,
   Moon,
   Settings,
   Sun,
@@ -61,21 +60,9 @@ export function Navbar({
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <IconButton
-          label="Toggle sidebar"
-          className="mobile-menu"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-        >
-          <Menu />
-        </IconButton>
-        <button
-          className="brand-trigger"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          type="button"
-          aria-label="Open conversation history"
-        >
+        <div className="brand-trigger">
           <AskBrandMark />
-        </button>
+        </div>
       </div>
 
       <div className="header-actions">

@@ -10,7 +10,6 @@ import {
 import type { Conversation } from "../../types/app";
 import { formatRelativeDate } from "../../utils/formatDate";
 import { getModel } from "../../utils/semantic";
-import { BrandMark } from "../common/Brand";
 import { IconButton } from "../ui/IconButton";
 
 export function Sidebar({
@@ -40,20 +39,15 @@ export function Sidebar({
 }) {
   return (
     <aside className={`sidebar ${open ? "open" : "closed"}`}>
-      <div className="side-head">
-        <BrandMark light={false} compact={!open} />
-        {open ? (
+      {open && (
+        <div className="side-head">
           <IconButton label="Collapse sidebar" onClick={() => setSidebarOpen(false)}>
             <PanelLeftClose />
           </IconButton>
-        ) : (
-          <IconButton label="Open sidebar" onClick={() => setSidebarOpen(true)}>
-            <PanelLeftOpen />
-          </IconButton>
-        )}
-      </div>
+        </div>
+      )}
 
-      {open && (
+      {open ? (
         <>
           <button className="new-chat" onClick={startConversation}>
             <MessageSquarePlus />
@@ -107,6 +101,15 @@ export function Sidebar({
             </button>
           </div>
         </>
+      ) : (
+        <div className="sidebar-collapsed-nav">
+          <IconButton label="Expand sidebar" onClick={() => setSidebarOpen(true)}>
+            <PanelLeftOpen />
+          </IconButton>
+          <IconButton label="New Chat" onClick={startConversation}>
+            <MessageSquarePlus />
+          </IconButton>
+        </div>
       )}
     </aside>
   );
