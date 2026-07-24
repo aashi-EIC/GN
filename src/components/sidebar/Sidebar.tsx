@@ -41,7 +41,7 @@ export function Sidebar({
   return (
     <aside className={`sidebar ${open ? "open" : "closed"}`}>
       <div className="side-head">
-        <BrandMark light compact={!open} />
+        <BrandMark light={false} compact={!open} />
         {open ? (
           <IconButton label="Collapse sidebar" onClick={() => setSidebarOpen(false)}>
             <PanelLeftClose />

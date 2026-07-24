@@ -18,16 +18,8 @@ import { Sidebar } from "../components/sidebar/Sidebar";
 import { defaultSettings, storageKeys } from "../config/storage";
 import { apiScope } from "../lib/msal";
 import { LoginPage } from "../pages/Login/LoginPage";
-import {
-  buildMcpRequestPayload,
-  persistMcpRequestAudit,
-  requestMcpInsight,
-} from "../services/mcp.service";
-import {
-  loginWithCloudBi,
-  logoutCloudBiSession,
-  restoreCloudBiSession,
-} from "../services/cloudBiAuth.service";
+import { buildMcpRequestPayload, persistMcpRequestAudit, requestMcpInsight } from "../services/mcp.service";
+import { loginWithCloudBi, logoutCloudBiSession, restoreCloudBiSession } from "../services/cloudBiAuth.service";
 import type {
   CloudBiLoginCredentials,
   Conversation,

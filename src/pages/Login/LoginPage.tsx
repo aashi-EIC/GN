@@ -106,7 +106,7 @@ export function LoginPage({
           {/* Left Column: Microsoft Entra ID */}
           <div className="login-col social-col">
             <h3 className="col-heading">Sign in with your social account</h3>
-            
+
             <button
               className={`microsoft-login-btn ${entraAvailable ? "" : "needs-config"}`}
               onClick={signInWithEntra}
