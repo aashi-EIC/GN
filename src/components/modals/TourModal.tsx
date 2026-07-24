@@ -37,7 +37,7 @@ export function TourModal({ close, modelId }: { close: () => void; modelId: Mode
       <div className="modal-actions">
         <button className="primary-action" onClick={close} type="button">
           <Check />
-          Start using Ask Gracenote
+          Start using Gracenote Conversational BI
         </button>
       </div>
     </Modal>

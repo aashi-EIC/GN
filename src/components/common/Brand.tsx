@@ -16,7 +16,7 @@ export function AskBrandMark() {
       <span className="ask-brand-icon">
         <img src="/gracenote-favicon.svg" alt="" />
       </span>
-      <span>Ask Gracenote</span>
+      <span>Ask Gracenote Conversational BI</span>
     </span>
   );
 }

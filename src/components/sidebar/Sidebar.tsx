@@ -10,7 +10,6 @@ import {
 import type { Conversation } from "../../types/app";
 import { formatRelativeDate } from "../../utils/formatDate";
 import { getModel } from "../../utils/semantic";
-import { BrandMark } from "../common/Brand";
 import { IconButton } from "../ui/IconButton";
 
 export function Sidebar({
@@ -41,7 +40,6 @@ export function Sidebar({
   return (
     <aside className={`sidebar ${open ? "open" : "closed"}`}>
       <div className="side-head">
-        <BrandMark light={false} compact={!open} />
         {open ? (
           <IconButton label="Collapse sidebar" onClick={() => setSidebarOpen(false)}>
             <PanelLeftClose />
