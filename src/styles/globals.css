@@ -4104,3 +4104,217 @@ body {
   scrollbar-gutter: stable;
   touch-action: pan-y;
 }
+
+/* Tooltip styles */
+.tooltip-container {
+  position: relative;
+  display: inline-flex;
+}
+
+/* For suggestions, make sure the tooltip container takes up the correct layout space */
+.suggestions .tooltip-container {
+  display: inline-flex;
+}
+
+.tooltip-bubble {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(4px);
+  color: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: normal;
+  max-width: 250px;
+  width: max-content;
+  z-index: 1000;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+  text-align: center;
+  opacity: 0;
+  animation: tooltip-fade-in 0.15s forwards ease-out;
+}
+
+.tooltip-bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: rgba(15, 23, 42, 0.95) transparent transparent transparent;
+}
+
+@keyframes tooltip-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-8px);
+  }
+}
+
+/* Microphone pulse animation */
+@keyframes mic-record-pulse {
+  0% {
+    transform: scale(1);
+    color: #ef4444;
+    filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.4));
+  }
+  50% {
+    transform: scale(1.2);
+    color: #f87171;
+    filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.8));
+  }
+  100% {
+    transform: scale(1);
+    color: #ef4444;
+    filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.4));
+  }
+}
+
+.mic-btn.recording {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-radius: 50% !important;
+}
+
+.mic-btn.recording svg {
+  animation: mic-record-pulse 1.2s infinite ease-in-out;
+}
+
+/* Token consumption display styles */
+.token-usage-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.token-usage-info b {
+  font-weight: 600;
+  color: #475569;
+}
+
+.token-divider {
+  color: #cbd5e1;
+}
+
+:root[data-theme="dark"] .token-usage-info {
+  color: #94a3b8;
+}
+
+:root[data-theme="dark"] .token-usage-info b {
+  color: #cbd5e1;
+}
+
+:root[data-theme="dark"] .token-divider {
+  color: #475569;
+}
+
+/* Settings Token Summary styles */
+.settings-tokens-summary {
+  margin: 20px 0 16px;
+  padding: 16px 0 0;
+  border-top: 1.5px solid var(--gn-line);
+}
+
+.settings-tokens-summary h3 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gn-navy);
+  margin-bottom: 12px;
+}
+
+.settings-token-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--gn-text);
+  margin-bottom: 8px;
+}
+
+.settings-token-row strong {
+  font-weight: 600;
+  color: var(--gn-navy);
+}
+
+.settings-token-row .cost-value {
+  color: var(--gn-pink);
+  font-weight: 700;
+}
+
+:root[data-theme="dark"] .settings-tokens-summary h3,
+:root[data-theme="dark"] .settings-token-row strong {
+  color: #f1f5f9;
+}
+
+:root[data-theme="dark"] .settings-token-row {
+  color: #94a3b8;
+}
+
+/* Profile Token Summary styles */
+.profile-token-summary {
+  padding: 10px 12px;
+  background: var(--gn-line);
+  border-radius: 8px;
+  margin: 8px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-token-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gn-navy);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.profile-token-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--gn-text);
+}
+
+.profile-token-row strong {
+  font-weight: 600;
+  color: var(--gn-navy);
+}
+
+.profile-token-row .profile-cost-value {
+  color: var(--gn-pink);
+  font-weight: 700;
+}
+
+:root[data-theme="dark"] .profile-token-summary {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+:root[data-theme="dark"] .profile-token-title,
+:root[data-theme="dark"] .profile-token-row strong {
+  color: #f1f5f9;
+}
+
+:root[data-theme="dark"] .profile-token-row {
+  color: #94a3b8;
+}
+
+
+
+

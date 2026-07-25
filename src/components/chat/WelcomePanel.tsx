@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ArrowUp, Mic } from "lucide-react";
 import { getCountryLocale } from "../../constants/locales";
 import type { UserProfile } from "../../types/app";
@@ -6,6 +7,7 @@ import { firstName } from "../../utils/identity";
 import { handleEnter } from "../../utils/keyboard";
 import { startVoiceInput } from "../../utils/speech";
 import { ModelPicker } from "./ModelPicker";
+import { Tooltip } from "../common/Tooltip";
 
 export function WelcomePanel({
   user,
@@ -32,6 +34,7 @@ export function WelcomePanel({
   setPrompt: (prompt: string) => void;
   submitPrompt: (prompt?: string) => void;
 }) {
+  const [isRecording, setIsRecording] = useState(false);
   const locale = getCountryLocale(countryCode);
   const localizedPrompts = locale.prompts[modelId] ?? model.prompts;
 
@@ -57,8 +60,16 @@ export function WelcomePanel({
           />
           <div className="composer-actions">
             <button
-              className="mic-btn"
-              onClick={() => startVoiceInput(prompt, setPrompt, locale.speechLocale)}
+              className={`mic-btn ${isRecording ? "recording" : ""}`}
+              onClick={() =>
+                startVoiceInput(
+                  prompt,
+                  setPrompt,
+                  locale.speechLocale,
+                  () => setIsRecording(true),
+                  () => setIsRecording(false),
+                )
+              }
               type="button"
               aria-label="Use voice input"
             >
@@ -79,12 +90,15 @@ export function WelcomePanel({
 
       <div className="suggestions">
         {localizedPrompts.map((suggestion) => (
-          <button key={suggestion} onClick={() => submitPrompt(suggestion)}>
-            <span>{suggestion}</span>
-            <ArrowUp />
-          </button>
+          <Tooltip key={suggestion} content={suggestion}>
+            <button onClick={() => submitPrompt(suggestion)}>
+              <span>{suggestion}</span>
+              <ArrowUp />
+            </button>
+          </Tooltip>
         ))}
       </div>
     </div>
   );
 }
+

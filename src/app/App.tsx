@@ -37,6 +37,7 @@ import { accountToProfile } from "../utils/identity";
 import { createId, titleFromQuestion } from "../utils/session";
 import { getModel, normalizeCountryCode, normalizeModelId } from "../utils/semantic";
 import { loadFromStorage, saveToStorage } from "../utils/storage";
+import { calculateTokenUsageAndCost } from "../utils/tokenCost";
 
 function AppRoot({ msalEnabled }: { msalEnabled: boolean }) {
   const shell = msalEnabled ? <MsalBackedShell /> : <CloudBiOnlyShell />;
@@ -399,6 +400,22 @@ function Workspace({
   );
   const [toast, setToast] = useState<ToastState | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  const totalUsage = useMemo(() => {
+    let inputTokens = 0;
+    let outputTokens = 0;
+    let cost = 0;
+    conversations.forEach((conv) => {
+      conv.messages.forEach((msg) => {
+        if (msg.tokenUsage) {
+          inputTokens += msg.tokenUsage.inputTokens;
+          outputTokens += msg.tokenUsage.outputTokens;
+          cost += msg.tokenUsage.cost;
+        }
+      });
+    });
+    return { inputTokens, outputTokens, cost };
+  }, [conversations]);
   const workspaceStatus = useQuery({
     queryKey: ["workspace-status", user.email],
     queryFn: async () => ({
@@ -427,9 +444,11 @@ function Workspace({
     if (!query) {
       return recentConversations;
     }
-    return recentConversations.filter((conversation) =>
-      conversation.title.toLowerCase().includes(query),
-    );
+    return recentConversations.filter((conversation) => {
+      const titleMatches = conversation.title.toLowerCase().includes(query);
+      const modelNameMatches = getModel(conversation.modelId).name.toLowerCase().includes(query);
+      return titleMatches || modelNameMatches;
+    });
   }, [recentConversations, historyQuery]);
 
   useEffect(() => {
@@ -645,11 +664,17 @@ function Workspace({
       requestAudit = mcpRequest.audit;
       persistMcpRequestAudit(requestAudit);
       const answer = await requestMcpInsight(mcpRequest.payload, requestAudit);
+      const tokenUsage = calculateTokenUsageAndCost(
+        currentModelId,
+        trimmedQuestion,
+        answer.text || ""
+      );
       const responseMessage: Message = {
         id: createId("msg"),
         role: "assistant",
         createdAt: new Date().toISOString(),
         mcpRequest: requestAudit,
+        tokenUsage,
         ...answer,
       };
 
@@ -669,6 +694,11 @@ function Workspace({
         error instanceof Error
           ? error.message
           : "The analytics engine could not complete this request.";
+      const tokenUsage = calculateTokenUsageAndCost(
+        currentModelId,
+        trimmedQuestion,
+        message
+      );
       const responseMessage: Message = {
         id: createId("msg"),
         role: "assistant",
@@ -700,6 +730,7 @@ function Workspace({
         ],
         mcpRequest: requestAudit ?? undefined,
         mcpResponseSource: "configured-host",
+        tokenUsage,
       };
 
       setConversations((current) =>
@@ -777,7 +808,6 @@ function Workspace({
         openConversation={openConversation}
         deleteConversation={deleteConversation}
         setGuideOpen={setGuideOpen}
-        setIssueOpen={setIssueOpen}
         setSidebarOpen={(open) => dispatch(uiActions.setSidebarOpen(open))}
       />
 
@@ -800,6 +830,7 @@ function Workspace({
           exportConversation={exportConversation}
           onSignOut={onSignOut}
           statusLabel={workspaceStatus.data?.label ?? "Ready"}
+          totalUsage={totalUsage}
         />
 
         <main className={activeConversation ? "chat" : "welcome"}>
@@ -829,6 +860,7 @@ function Workspace({
                     copyMessage={copyMessage}
                     markFeedback={markFeedback}
                     showToast={showToast}
+                    onReportError={() => setIssueOpen(true)}
                   />
                 ))}
                 {isThinking && (
@@ -883,7 +915,7 @@ function Workspace({
         <ErrorReportModal
           close={() => setIssueOpen(false)}
           submitIssue={submitIssue}
-          activeConversationId={activeConversationId}
+          activeConversationId={activeConversationId || (conversations.length > 0 ? conversations[0].id : null)}
           modelId={normalizeModelId(activeConversation?.modelId ?? selectedModelId)}
         />
       )}
@@ -892,6 +924,7 @@ function Workspace({
           close={() => setSettingsOpen(false)}
           settings={settings}
           saveSettings={saveSettings}
+          totalUsage={totalUsage}
         />
       )}
       {toast && <div className={`toast ${toast.tone}`}>{toast.message}</div>}

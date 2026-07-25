@@ -74,6 +74,12 @@ export type McpRequestAudit = Omit<McpRequestPayload, "bearer_token_for_rls"> & 
   sent_at: string;
 };
 
+export type TokenUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  cost: number;
+};
+
 export type Message = {
   id: string;
   role: MessageRole;
@@ -88,6 +94,7 @@ export type Message = {
   plot?: PlotSpec;
   mcpRequest?: McpRequestAudit;
   mcpResponseSource?: McpResponseSource;
+  tokenUsage?: TokenUsage;
 };
 
 export type Conversation = {

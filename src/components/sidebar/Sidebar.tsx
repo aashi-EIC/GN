@@ -22,7 +22,6 @@ export function Sidebar({
   openConversation,
   deleteConversation,
   setGuideOpen,
-  setIssueOpen,
   setSidebarOpen,
 }: {
   open: boolean;
@@ -34,7 +33,6 @@ export function Sidebar({
   openConversation: (conversation: Conversation) => void;
   deleteConversation: (conversationId: string) => void;
   setGuideOpen: (open: boolean) => void;
-  setIssueOpen: (open: boolean) => void;
   setSidebarOpen: (open: boolean) => void;
 }) {
   return (
@@ -93,13 +91,6 @@ export function Sidebar({
             ))}
             {conversations.length === 0 && <p className="empty-history">No saved conversations</p>}
           </nav>
-
-          <div className="side-bottom">
-            <button onClick={() => setIssueOpen(true)}>
-              <AlertTriangle />
-              <span>Report an issue</span>
-            </button>
-          </div>
         </>
       ) : (
         <div className="sidebar-collapsed-nav">

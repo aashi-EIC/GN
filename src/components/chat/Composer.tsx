@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Mic, Send } from "lucide-react";
 import { getCountryLocale } from "../../constants/locales";
 import type { CountryCode, ModelId } from "../../types/semantic";
@@ -31,6 +32,7 @@ export function Composer({
   countryCode: CountryCode;
   setCountryCode: (countryCode: CountryCode) => void;
 }) {
+  const [isRecording, setIsRecording] = useState(false);
   const model = getModel(modelId);
   const locale = getCountryLocale(countryCode);
 
@@ -55,8 +57,16 @@ export function Composer({
           />
           <div className="composer-actions">
             <button
-              className="mic-btn"
-              onClick={() => startVoiceInput(prompt, setPrompt, locale.speechLocale)}
+              className={`mic-btn ${isRecording ? "recording" : ""}`}
+              onClick={() =>
+                startVoiceInput(
+                  prompt,
+                  setPrompt,
+                  locale.speechLocale,
+                  () => setIsRecording(true),
+                  () => setIsRecording(false),
+                )
+              }
               type="button"
               aria-label="Use voice input"
             >
@@ -77,3 +87,4 @@ export function Composer({
     </div>
   );
 }
+
