@@ -107,6 +107,8 @@ export type IssueReport = {
   description: string;
   conversationId: string | null;
   modelId: ModelId;
+  modelName: string;
+  lastMessage?: Pick<Message, "id" | "role" | "text" | "createdAt">;
   createdAt: string;
 };
 

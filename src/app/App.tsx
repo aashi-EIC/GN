@@ -412,6 +412,7 @@ function Workspace({
     (conversation) => conversation.id === activeConversationId,
   );
   const selectedModel = getModel(selectedModelId);
+  const lastMessage = activeConversation?.messages.at(-1);
   const recentConversations = useMemo(
     () =>
       [...conversations]
@@ -427,9 +428,19 @@ function Workspace({
     if (!query) {
       return recentConversations;
     }
-    return recentConversations.filter((conversation) =>
-      conversation.title.toLowerCase().includes(query),
-    );
+
+    return recentConversations.filter((conversation) => {
+      const model = getModel(conversation.modelId);
+      const searchableText = [
+        conversation.title,
+        model.name,
+        model.short,
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(query);
+    });
   }, [recentConversations, historyQuery]);
 
   useEffect(() => {
@@ -885,6 +896,11 @@ function Workspace({
           submitIssue={submitIssue}
           activeConversationId={activeConversationId}
           modelId={normalizeModelId(activeConversation?.modelId ?? selectedModelId)}
+          modelName={getModel(normalizeModelId(activeConversation?.modelId ?? selectedModelId)).name}
+          lastMessage={lastMessage}
+          lastMessageFeedback={lastMessage ? feedback[lastMessage.id] : undefined}
+          copyMessage={copyMessage}
+          markFeedback={markFeedback}
         />
       )}
       {settingsOpen && (
