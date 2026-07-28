@@ -1,7 +1,7 @@
-import { env } from "../config/env";
-import type { CloudBiLoginCredentials, UserProfile } from "../types/app";
-import { cloudBiEmail, nameFromCloudBiId } from "../utils/identity";
-import { appHttpClient } from "./axios";
+import { env } from "../../../shared/config/env";
+import type { CloudBiLoginCredentials, UserProfile } from "../../../shared/types/app";
+import { cloudBiEmail, nameFromCloudBiId } from "../../../shared/utils/identity";
+import { appHttpClient } from "../../../shared/services/axios";
 
 type CloudBiAuthResponse = {
   authenticated?: boolean;

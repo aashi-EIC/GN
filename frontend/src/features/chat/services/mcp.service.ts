@@ -1,4 +1,4 @@
-import { storageKeys } from "../config/storage";
+import { storageKeys } from "../../../shared/config/storage";
 import { postBffPrompt } from "./chat.service";
 import type {
   McpRequestAudit,
@@ -6,13 +6,14 @@ import type {
   McpResponseSource,
   Message,
   UserProfile,
-} from "../types/app";
+} from "../../../shared/types/app";
 import type { CountryCode, ModelId } from "../types/semantic";
-import { getCountryLocale } from "../constants/locales";
+import { getCountryLocale } from "../../../shared/constants/locales";
 import { buildPlotSpec } from "../utils/plot";
-import { createId } from "../utils/session";
+import { createId } from "../../../shared/utils/session";
 import { getCountry, getModel } from "../utils/semantic";
-import { loadFromStorage, saveToStorage } from "../utils/storage";
+import { loadFromStorage, saveToStorage } from "../../../shared/utils/storage";
+
 
 const bffChatUrl = "/chat";
 

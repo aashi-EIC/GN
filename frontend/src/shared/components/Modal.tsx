@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
-import { IconButton } from "../ui/IconButton";
+import { IconButton } from "./ui/IconButton";
 
 export function Modal({ children, close }: { children: ReactNode; close: () => void }) {
   return (

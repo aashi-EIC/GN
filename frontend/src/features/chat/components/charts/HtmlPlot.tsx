@@ -1,9 +1,9 @@
 import { Download, Maximize2, Minimize2, Share2 } from "lucide-react";
 import { useState } from "react";
-import type { PlotSpec, ToastState } from "../../types/app";
-import { copyText, downloadText } from "../../utils/clipboard";
+import type { PlotSpec, ToastState } from "../../../../shared/types/app";
+import { copyText, downloadText } from "../../../../shared/utils/clipboard";
 import { slugify } from "../../utils/plot";
-import { IconButton } from "../ui/IconButton";
+import { IconButton } from "../../../../shared/components/ui/IconButton";
 
 export function HtmlPlot({
   plot,

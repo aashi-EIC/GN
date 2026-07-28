@@ -1,11 +1,11 @@
 import { AlertTriangle, Clipboard } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import type { FeedbackValue, IssueReport, Message } from "../../types/app";
-import type { ModelId } from "../../types/semantic";
-import { messageToPlainText } from "../../utils/clipboard";
-import { createId } from "../../utils/session";
-import { Modal } from "./Modal";
-import { IconButton } from "../ui/IconButton";
+import type { FeedbackValue, IssueReport, Message } from "../../../shared/types/app";
+import type { ModelId } from "../../chat/types/semantic";
+import { messageToPlainText } from "../../../shared/utils/clipboard";
+import { createId } from "../../../shared/utils/session";
+import { Modal } from "../../../shared/components/Modal";
+import { IconButton } from "../../../shared/components/ui/IconButton";
 import { Copy, ThumbsDown, ThumbsUp } from "lucide-react";
 
 export function ErrorReportModal({

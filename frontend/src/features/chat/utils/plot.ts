@@ -1,4 +1,4 @@
-import type { ChartDatum, PlotSpec } from "../types/app";
+import type { ChartDatum, PlotSpec } from "../../../shared/types/app";
 import type { ModelId } from "../types/semantic";
 import { getModel } from "./semantic";
 

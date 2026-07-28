@@ -2,8 +2,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import type { CloudBiLoginCredentials } from "../../types/app";
-import { BrandMark, MicrosoftMark } from "../../components/common/Brand";
+import type { CloudBiLoginCredentials } from "../../../shared/types/app";
+import { BrandMark, MicrosoftMark } from "../../../shared/components/Brand";
 
 const cloudBiSchema = z.object({
   cloudBiId: z.string().trim().min(4, "Enter a valid username."),

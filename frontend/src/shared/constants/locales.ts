@@ -1,4 +1,4 @@
-import type { CountryCode } from "../types/semantic";
+import type { CountryCode } from "../../features/chat/types/semantic";
 
 export interface CountryLocale {
   code: CountryCode;

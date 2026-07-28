@@ -1,8 +1,9 @@
 import { ChevronDown } from "lucide-react";
-import { semanticModels } from "../../constants/semanticModels";
-import type { ModelId } from "../../types/semantic";
-import { getModel } from "../../utils/semantic";
-import { Tooltip } from "../common/Tooltip";
+import { semanticModels } from "../../../shared/constants/semanticModels";
+import type { ModelId } from "../types/semantic";
+import { getModel } from "../utils/semantic";
+import { Tooltip } from "../../../shared/components/Tooltip";
+
 
 export function ModelPicker({
   modelId,

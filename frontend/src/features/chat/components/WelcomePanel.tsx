@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { ArrowUp, Mic } from "lucide-react";
-import { getCountryLocale } from "../../constants/locales";
-import type { UserProfile } from "../../types/app";
-import type { CountryCode, ModelId, SemanticModel } from "../../types/semantic";
-import { firstName } from "../../utils/identity";
-import { handleEnter } from "../../utils/keyboard";
-import { startVoiceInput } from "../../utils/speech";
+import { getCountryLocale } from "../../../shared/constants/locales";
+import type { UserProfile } from "../../../shared/types/app";
+import type { CountryCode, ModelId, SemanticModel } from "../types/semantic";
+import { firstName } from "../../../shared/utils/identity";
+import { handleEnter } from "../../../shared/utils/keyboard";
+import { startVoiceInput } from "../utils/speech";
 import { ModelPicker } from "./ModelPicker";
-import { Tooltip } from "../common/Tooltip";
+import { Tooltip } from "../../../shared/components/Tooltip";
+
 
 export function WelcomePanel({
   user,

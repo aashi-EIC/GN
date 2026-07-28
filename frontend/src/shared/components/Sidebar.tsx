@@ -7,10 +7,10 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import type { Conversation } from "../../types/app";
-import { formatRelativeDate } from "../../utils/formatDate";
-import { getModel } from "../../utils/semantic";
-import { IconButton } from "../ui/IconButton";
+import type { Conversation } from "../types/app";
+import { formatRelativeDate } from "../utils/formatDate";
+import { getModel } from "../../features/chat/utils/semantic";
+import { IconButton } from "./ui/IconButton";
 
 export function Sidebar({
   open,

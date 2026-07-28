@@ -1,4 +1,4 @@
-import type { CountryCode, ModelId } from "./semantic";
+import type { CountryCode, ModelId } from "../../features/chat/types/semantic";
 
 export type Density = "comfortable" | "compact";
 export type MessageRole = "user" | "assistant";

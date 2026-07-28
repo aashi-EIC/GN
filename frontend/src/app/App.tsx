@@ -5,21 +5,21 @@ import { Bug, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppRouter } from "./router";
 import { uiActions, useAppDispatch, useAppSelector } from "./store";
-import { Composer } from "../components/chat/Composer";
-import { MessageBubble } from "../components/chat/MessageBubble";
-import { WelcomePanel } from "../components/chat/WelcomePanel";
-import { LoadingScreen } from "../components/common/LoadingScreen";
-import { ErrorReportModal } from "../components/modals/ErrorReportModal";
-import { GuideModal } from "../components/modals/GuideModal";
-import { SettingsModal } from "../components/modals/SettingsModal";
-import { TourModal } from "../components/modals/TourModal";
-import { Navbar } from "../components/navbar/Navbar";
-import { Sidebar } from "../components/sidebar/Sidebar";
-import { defaultSettings, storageKeys } from "../config/storage";
-import { apiScope } from "../lib/msal";
-import { LoginPage } from "../pages/Login/LoginPage";
-import { buildMcpRequestPayload, persistMcpRequestAudit, requestMcpInsight } from "../services/mcp.service";
-import { loginWithCloudBi, logoutCloudBiSession, restoreCloudBiSession } from "../services/cloudBiAuth.service";
+import { Composer } from "../features/chat/components/Composer";
+import { MessageBubble } from "../features/chat/components/MessageBubble";
+import { WelcomePanel } from "../features/chat/components/WelcomePanel";
+import { LoadingScreen } from "../shared/components/LoadingScreen";
+import { ErrorReportModal } from "../features/debug/components/ErrorReportModal";
+import { GuideModal } from "../features/settings/components/GuideModal";
+import { SettingsModal } from "../features/settings/components/SettingsModal";
+import { TourModal } from "../shared/components/TourModal";
+import { Navbar } from "../shared/components/Navbar";
+import { Sidebar } from "../shared/components/Sidebar";
+import { defaultSettings, storageKeys } from "../shared/config/storage";
+import { apiScope } from "../features/auth/lib/msal";
+import { LoginPage } from "../features/auth/pages/LoginPage";
+import { buildMcpRequestPayload, persistMcpRequestAudit, requestMcpInsight } from "../features/chat/services/mcp.service";
+import { loginWithCloudBi, logoutCloudBiSession, restoreCloudBiSession } from "../features/auth/services/cloudBiAuth.service";
 import type {
   CloudBiLoginCredentials,
   Conversation,
@@ -30,14 +30,14 @@ import type {
   SettingsState,
   ToastState,
   UserProfile,
-} from "../types/app";
-import type { CountryCode, ModelId } from "../types/semantic";
-import { copyText, downloadJson, messageToPlainText } from "../utils/clipboard";
-import { accountToProfile } from "../utils/identity";
-import { createId, titleFromQuestion } from "../utils/session";
-import { getModel, normalizeCountryCode, normalizeModelId } from "../utils/semantic";
-import { loadFromStorage, saveToStorage } from "../utils/storage";
-import { calculateTokenUsageAndCost } from "../utils/tokenCost";
+} from "../shared/types/app";
+import type { CountryCode, ModelId } from "../features/chat/types/semantic";
+import { copyText, downloadJson, messageToPlainText } from "../shared/utils/clipboard";
+import { accountToProfile } from "../shared/utils/identity";
+import { createId, titleFromQuestion } from "../shared/utils/session";
+import { getModel, normalizeCountryCode, normalizeModelId } from "../features/chat/utils/semantic";
+import { loadFromStorage, saveToStorage } from "../shared/utils/storage";
+import { calculateTokenUsageAndCost } from "../features/chat/utils/tokenCost";
 
 function AppRoot({ msalEnabled }: { msalEnabled: boolean }) {
   const shell = msalEnabled ? <MsalBackedShell /> : <CloudBiOnlyShell />;

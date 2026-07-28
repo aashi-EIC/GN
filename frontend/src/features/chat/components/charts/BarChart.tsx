@@ -1,5 +1,5 @@
-import type { ChartDatum } from "../../types/app";
-import { formatClock } from "../../utils/formatDate";
+import type { ChartDatum } from "../../../../shared/types/app";
+import { formatClock } from "../../../../shared/utils/formatDate";
 
 export function BarChart({ title, data }: { title: string; data: ChartDatum[] }) {
   const max = Math.max(...data.map((datum) => datum.value));

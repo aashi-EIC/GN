@@ -1,4 +1,4 @@
-import { bffClient } from "./axios";
+import { bffClient } from "../../../shared/services/axios";
 
 export async function postBffPrompt<TPayload, TResponse>(
   url: string,

@@ -1,5 +1,5 @@
 import type { Configuration } from "@azure/msal-browser";
-import { env } from "../config/env";
+import { env } from "../../../shared/config/env";
 
 export const apiScope = env.entraApiScope;
 
