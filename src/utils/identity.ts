@@ -2,7 +2,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import type { UserProfile } from "../types/app";
 
 export function accountToProfile(account?: AccountInfo): UserProfile {
-  const email = account?.username || "signed.in@gracenote.com";
+  const email = account?.username || "signed.in@conversationalbi.com";
   return {
     email,
     name: account?.name || nameFromEmail(email),
@@ -24,7 +24,7 @@ export function nameFromEmail(email: string) {
 }
 
 export function cloudBiEmail(cloudBiId: string) {
-  return cloudBiId.includes("@") ? cloudBiId : `${cloudBiId}@cloudbi.gracenote.internal`;
+  return cloudBiId.includes("@") ? cloudBiId : `${cloudBiId}@cloudbi.conversationalbi.internal`;
 }
 
 export function nameFromCloudBiId(cloudBiId: string) {

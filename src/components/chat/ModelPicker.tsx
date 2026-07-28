@@ -2,6 +2,7 @@ import { ChevronDown } from "lucide-react";
 import { semanticModels } from "../../constants/semanticModels";
 import type { ModelId } from "../../types/semantic";
 import { getModel } from "../../utils/semantic";
+import { Tooltip } from "../common/Tooltip";
 
 export function ModelPicker({
   modelId,
@@ -20,7 +21,7 @@ export function ModelPicker({
 }) {
   const currentModel = getModel(modelId);
 
-  return (
+  const pickerContent = (
     <div className={`model-picker ${compact ? "compact" : ""} ${disabled ? "locked" : ""}`}>
       <button
         onClick={() => {
@@ -32,11 +33,6 @@ export function ModelPicker({
         type="button"
         disabled={disabled}
         aria-expanded={disabled ? false : open}
-        title={
-          disabled
-            ? "Start a new chat to change the semantic model"
-            : `Semantic model: ${currentModel.name}`
-        }
         aria-label={
           disabled
             ? `Semantic model locked: ${currentModel.name}`
@@ -75,4 +71,15 @@ export function ModelPicker({
       )}
     </div>
   );
+
+  if (disabled) {
+    return (
+      <Tooltip content="This model is locked because the chat has already started. You can change the model by adding a new chat.">
+        {pickerContent}
+      </Tooltip>
+    );
+  }
+
+  return pickerContent;
 }
+

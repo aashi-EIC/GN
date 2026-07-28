@@ -1,4 +1,4 @@
-import { Check, Code2, Copy, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Check, Code2, Copy, Sparkles, ThumbsDown, ThumbsUp, AlertTriangle } from "lucide-react";
 import type { FeedbackValue, Message, ToastState } from "../../types/app";
 import { BarChart } from "../charts/BarChart";
 import { HtmlPlot } from "../charts/HtmlPlot";
@@ -12,6 +12,7 @@ export function MessageBubble({
   copyMessage,
   markFeedback,
   showToast,
+  onReportError,
 }: {
   message: Message;
   debugOpen: boolean;
@@ -19,6 +20,7 @@ export function MessageBubble({
   copyMessage: (message: Message) => void;
   markFeedback: (messageId: string, value: FeedbackValue) => void;
   showToast: (message: string, tone?: ToastState["tone"]) => void;
+  onReportError: () => void;
 }) {
   if (message.role === "user") {
     return (
@@ -66,6 +68,8 @@ export function MessageBubble({
           </div>
         )}
 
+
+
         <div className="response-actions">
           <IconButton label="Copy response" onClick={() => copyMessage(message)}>
             <Copy />
@@ -83,6 +87,12 @@ export function MessageBubble({
             onClick={() => markFeedback(message.id, "not-helpful")}
           >
             <ThumbsDown />
+          </IconButton>
+          <IconButton
+            label="Report an error"
+            onClick={onReportError}
+          >
+            <AlertTriangle />
           </IconButton>
         </div>
 

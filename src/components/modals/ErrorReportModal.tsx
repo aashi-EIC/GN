@@ -1,10 +1,12 @@
-import { AlertTriangle, Clipboard, Copy, ThumbsDown, ThumbsUp } from "lucide-react";
+import { AlertTriangle, Clipboard } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import type { FeedbackValue, IssueReport, Message } from "../../types/app";
 import type { ModelId } from "../../types/semantic";
+import { messageToPlainText } from "../../utils/clipboard";
 import { createId } from "../../utils/session";
-import { IconButton } from "../ui/IconButton";
 import { Modal } from "./Modal";
+import { IconButton } from "../ui/IconButton";
+import { Copy, ThumbsDown, ThumbsUp } from "lucide-react";
 
 export function ErrorReportModal({
   close,
@@ -24,7 +26,7 @@ export function ErrorReportModal({
   modelName: string;
   lastMessage?: Message;
   lastMessageFeedback?: FeedbackValue;
-  copyMessage: (message: Message) => Promise<void>;
+  copyMessage: (message: Message) => void;
   markFeedback: (messageId: string, value: FeedbackValue) => void;
 }) {
   const [category, setCategory] = useState("Answer quality");
@@ -66,44 +68,6 @@ export function ErrorReportModal({
       </span>
       <h2>Report an issue</h2>
       <form className="modal-form" onSubmit={submit}>
-        <section className="issue-context">
-          <label>
-            Selected model
-            <input value={modelName} readOnly aria-label="Selected model" />
-          </label>
-
-          <label>
-            Last message sent
-            <textarea
-              value={lastMessage?.text ?? "No message has been sent in this chat yet."}
-              readOnly
-              aria-label="Last message sent"
-            />
-          </label>
-
-          {lastMessage && (
-            <div className="response-actions">
-              <IconButton label="Copy message" onClick={() => void copyMessage(lastMessage)}>
-                <Copy />
-              </IconButton>
-              <IconButton
-                label="Mark helpful"
-                active={lastMessageFeedback === "helpful"}
-                onClick={() => markFeedback(lastMessage.id, "helpful")}
-              >
-                <ThumbsUp />
-              </IconButton>
-              <IconButton
-                label="Mark not helpful"
-                active={lastMessageFeedback === "not-helpful"}
-                onClick={() => markFeedback(lastMessage.id, "not-helpful")}
-              >
-                <ThumbsDown />
-              </IconButton>
-            </div>
-          )}
-        </section>
-
         <label>
           Category
           <select value={category} onChange={(event) => setCategory(event.target.value)}>
@@ -122,6 +86,35 @@ export function ErrorReportModal({
             <option>Critical</option>
           </select>
         </label>
+        <label>
+          Selected model
+          <input value={modelName} readOnly />
+        </label>
+        {lastMessage && (
+          <label>
+            Last message sent
+            <textarea value={messageToPlainText(lastMessage)} readOnly aria-label="Last message sent" />
+            <div className="response-actions">
+              <IconButton label="Copy response" onClick={() => copyMessage(lastMessage)}>
+                <Copy />
+              </IconButton>
+              <IconButton
+                label="Mark helpful"
+                active={lastMessageFeedback === "helpful"}
+                onClick={() => markFeedback(lastMessage.id, "helpful")}
+              >
+                <ThumbsUp />
+              </IconButton>
+              <IconButton
+                label="Mark not helpful"
+                active={lastMessageFeedback === "not-helpful"}
+                onClick={() => markFeedback(lastMessage.id, "not-helpful")}
+              >
+                <ThumbsDown />
+              </IconButton>
+            </div>
+          </label>
+        )}
         <label>
           Issue details
           <textarea

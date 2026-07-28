@@ -1,7 +1,6 @@
 import { storageKeys } from "../config/storage";
 import { postBffPrompt } from "./chat.service";
 import type {
-  DebugEvent,
   McpRequestAudit,
   McpRequestPayload,
   McpResponseSource,
@@ -15,18 +14,7 @@ import { createId } from "../utils/session";
 import { getCountry, getModel } from "../utils/semantic";
 import { loadFromStorage, saveToStorage } from "../utils/storage";
 
-type BffChatRequest = {
-  session_id: string;
-  semantic_model_id: ModelId;
-  prompt: string;
-};
-
-type BffChatResponse = {
-  answer: string;
-  data?: unknown;
-  debug_events?: unknown[];
-  visualization?: unknown;
-};
+const bffChatUrl = "/chat";
 
 export function buildMcpRequestPayload({
   user,
@@ -72,14 +60,21 @@ export async function requestMcpInsight(
   payload: McpRequestPayload,
   audit: McpRequestAudit,
 ): Promise<Omit<Message, "id" | "role" | "createdAt">> {
-  const bffPayload: BffChatRequest = {
-    session_id: payload.session_id,
-    semantic_model_id: payload.semantic_model_id,
-    prompt: payload.prompt,
-  };
-
-  const hostResponse = await postBffPrompt<BffChatRequest, BffChatResponse>(
-    bffPayload,
+  const hostResponse = await postBffPrompt<
+    Pick<McpRequestPayload, "session_id" | "semantic_model_id" | "prompt">,
+    {
+      answer?: unknown;
+      data?: unknown;
+      debug_events?: unknown;
+      visualization?: unknown;
+    } & Partial<Omit<Message, "id" | "role" | "createdAt">>
+  >(
+    bffChatUrl,
+    {
+      session_id: payload.session_id,
+      semantic_model_id: payload.semantic_model_id,
+      prompt: payload.prompt,
+    },
     payload.bearer_token_for_rls,
   );
 
@@ -93,16 +88,41 @@ export function persistMcpRequestAudit(audit: McpRequestAudit) {
 }
 
 function normalizeMcpResponse(
-  response: BffChatResponse,
+  response: {
+    answer?: unknown;
+    data?: unknown;
+    debug_events?: unknown;
+    visualization?: unknown;
+  } & Partial<Omit<Message, "id" | "role" | "createdAt">>,
 ): Omit<Message, "id" | "role" | "createdAt"> {
-  const text = typeof response.answer === "string"
-    ? response.answer
-    : "BFF response received without answer text.";
+  const text =
+    typeof response.text === "string"
+      ? response.text
+      : typeof response.answer === "string"
+        ? response.answer
+        : typeof response.data === "string"
+          ? response.data
+        : "MCP response received without answer text.";
 
   return {
     text,
-    debug: normalizeDebugEvents(response.debug_events),
-    plot: normalizeVisualization(response.visualization),
+    chartTitle: response.chartTitle,
+    chart: response.chart,
+    metrics: response.metrics,
+    table: response.table,
+    actions: response.actions,
+    debug: Array.isArray(response.debug)
+      ? response.debug
+      : Array.isArray(response.debug_events)
+        ? (response.debug_events as Message["debug"])
+        : undefined,
+    plot:
+      response.plot ??
+      (response.visualization &&
+      typeof response.visualization === "object" &&
+      "html" in response.visualization
+        ? (response.visualization as Message["plot"])
+        : undefined),
   };
 }
 
@@ -140,46 +160,6 @@ function withMcpRuntime(
         detail: plot ? "Rendered 2D HTML plot in chat" : "Rendered text response in chat",
       },
     ],
-  };
-}
-
-function normalizeDebugEvents(events: unknown[] | undefined): DebugEvent[] | undefined {
-  if (!events?.length) return undefined;
-
-  return events.map((event, index) => {
-    if (event && typeof event === "object") {
-      const candidate = event as Record<string, unknown>;
-      return {
-        stage: typeof candidate.stage === "string" ? candidate.stage : `debug_event_${index + 1}`,
-        status: candidate.status === "warning" ? "warning" : "success",
-        detail: typeof candidate.detail === "string" ? candidate.detail : "Debug event returned by BFF",
-        payload: candidate,
-      };
-    }
-
-    return {
-      stage: `debug_event_${index + 1}`,
-      status: "success",
-      detail: "Debug event returned by BFF",
-      payload: event,
-    };
-  });
-}
-
-function normalizeVisualization(visualization: unknown): Message["plot"] {
-  if (!visualization || typeof visualization !== "object") return undefined;
-
-  const candidate = visualization as Record<string, unknown>;
-  const html = typeof candidate.html === "string" ? candidate.html : undefined;
-
-  if (!html) return undefined;
-
-  return {
-    title: typeof candidate.title === "string" ? candidate.title : "MCP visualization",
-    description: typeof candidate.description === "string"
-      ? candidate.description
-      : "Visualization returned by MCP through the Node BFF.",
-    html,
   };
 }
 

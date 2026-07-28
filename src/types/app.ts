@@ -3,7 +3,7 @@ import type { CountryCode, ModelId } from "./semantic";
 export type Density = "comfortable" | "compact";
 export type MessageRole = "user" | "assistant";
 export type FeedbackValue = "helpful" | "not-helpful";
-export type McpResponseSource = "node-bff";
+export type McpResponseSource = "configured-host" | "node-bff";
 
 export type UserProfile = {
   email: string;
@@ -74,6 +74,12 @@ export type McpRequestAudit = Omit<McpRequestPayload, "bearer_token_for_rls"> & 
   sent_at: string;
 };
 
+export type TokenUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  cost: number;
+};
+
 export type Message = {
   id: string;
   role: MessageRole;
@@ -88,6 +94,7 @@ export type Message = {
   plot?: PlotSpec;
   mcpRequest?: McpRequestAudit;
   mcpResponseSource?: McpResponseSource;
+  tokenUsage?: TokenUsage;
 };
 
 export type Conversation = {

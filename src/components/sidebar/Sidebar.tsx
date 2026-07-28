@@ -22,7 +22,6 @@ export function Sidebar({
   openConversation,
   deleteConversation,
   setGuideOpen,
-  setIssueOpen,
   setSidebarOpen,
 }: {
   open: boolean;
@@ -34,24 +33,19 @@ export function Sidebar({
   openConversation: (conversation: Conversation) => void;
   deleteConversation: (conversationId: string) => void;
   setGuideOpen: (open: boolean) => void;
-  setIssueOpen: (open: boolean) => void;
   setSidebarOpen: (open: boolean) => void;
 }) {
   return (
     <aside className={`sidebar ${open ? "open" : "closed"}`}>
-      <div className="side-head">
-        {open ? (
+      {open && (
+        <div className="side-head">
           <IconButton label="Collapse sidebar" onClick={() => setSidebarOpen(false)}>
             <PanelLeftClose />
           </IconButton>
-        ) : (
-          <IconButton label="Open sidebar" onClick={() => setSidebarOpen(true)}>
-            <PanelLeftOpen />
-          </IconButton>
-        )}
-      </div>
+        </div>
+      )}
 
-      {open && (
+      {open ? (
         <>
           <button className="new-chat" onClick={startConversation}>
             <MessageSquarePlus />
@@ -97,14 +91,16 @@ export function Sidebar({
             ))}
             {conversations.length === 0 && <p className="empty-history">No saved conversations</p>}
           </nav>
-
-          <div className="side-bottom">
-            <button onClick={() => setIssueOpen(true)}>
-              <AlertTriangle />
-              <span>Report an issue</span>
-            </button>
-          </div>
         </>
+      ) : (
+        <div className="sidebar-collapsed-nav">
+          <IconButton label="Expand sidebar" onClick={() => setSidebarOpen(true)}>
+            <PanelLeftOpen />
+          </IconButton>
+          <IconButton label="New Chat" onClick={startConversation}>
+            <MessageSquarePlus />
+          </IconButton>
+        </div>
       )}
     </aside>
   );

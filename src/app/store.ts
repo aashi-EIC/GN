@@ -9,7 +9,7 @@ type UiState = {
 };
 
 const initialState: UiState = {
-  sidebarOpen: false,
+  sidebarOpen: true,
   debugOpen: false,
   themeMode:
     typeof window !== "undefined" && localStorage.getItem(storageKeys.theme) === "dark"

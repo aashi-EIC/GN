@@ -1,6 +1,7 @@
 import { bffClient } from "./axios";
 
 export async function postBffPrompt<TPayload, TResponse>(
+  url: string,
   payload: TPayload,
   bearerToken: string,
 ) {
@@ -8,7 +9,7 @@ export async function postBffPrompt<TPayload, TResponse>(
     ? bearerToken
     : `Bearer ${bearerToken}`;
 
-  const response = await bffClient.post<TResponse>("/chat", payload, {
+  const response = await bffClient.post<TResponse>(url, payload, {
     headers: {
       "Content-Type": "application/json",
       Authorization: authorization,

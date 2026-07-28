@@ -1,5 +1,5 @@
 {
-  "name": "gracenote-conversational-bi",
+  "name": "conversational-bi",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -30,7 +30,7 @@
     "react-dom": "^19.1.0",
     "react-hook-form": "^7.82.0",
     "react-redux": "^9.3.0",
-    "react-router-dom": "^7.18.1",
+    "react-router-dom": "^7.11.0",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~5.8.3",

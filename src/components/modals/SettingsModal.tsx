@@ -7,10 +7,12 @@ export function SettingsModal({
   close,
   settings,
   saveSettings,
+  totalUsage,
 }: {
   close: () => void;
   settings: SettingsState;
   saveSettings: (settings: SettingsState) => void;
+  totalUsage: { inputTokens: number; outputTokens: number; cost: number };
 }) {
   const [draft, setDraft] = useState(settings);
 
@@ -79,6 +81,23 @@ export function SettingsModal({
           />
           Keep debug events visible
         </label>
+
+        <div className="settings-tokens-summary">
+          <h3>Token Usage Summary</h3>
+          <div className="settings-token-row">
+            <span>Input Tokens</span>
+            <strong>{totalUsage.inputTokens.toLocaleString()}</strong>
+          </div>
+          <div className="settings-token-row">
+            <span>Output Tokens</span>
+            <strong>{totalUsage.outputTokens.toLocaleString()}</strong>
+          </div>
+          <div className="settings-token-row">
+            <span>Total Session Cost</span>
+            <strong className="cost-value">${totalUsage.cost.toFixed(5)}</strong>
+          </div>
+        </div>
+
         <div className="modal-actions">
           <button type="button" onClick={close}>
             Cancel

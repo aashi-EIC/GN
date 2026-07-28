@@ -5,7 +5,6 @@ import {
   Download,
   HelpCircle,
   LogOut,
-  Menu,
   Moon,
   Settings,
   Sun,
@@ -36,6 +35,7 @@ export function Navbar({
   exportConversation,
   onSignOut,
   statusLabel,
+  totalUsage,
 }: {
   user: UserProfile;
   modelId?: ModelId;
@@ -54,6 +54,7 @@ export function Navbar({
   exportConversation: () => void;
   onSignOut: () => void;
   statusLabel: string;
+  totalUsage: { inputTokens: number; outputTokens: number; cost: number };
 }) {
   const [guideHovered, setGuideHovered] = useState(false);
   const activeModel = getModel(modelId ?? "metadata_stats_linear");
@@ -61,21 +62,9 @@ export function Navbar({
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <IconButton
-          label="Toggle sidebar"
-          className="mobile-menu"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-        >
-          <Menu />
-        </IconButton>
-        <button
-          className="brand-trigger"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          type="button"
-          aria-label="Open conversation history"
-        >
+        <div className="brand-trigger">
           <AskBrandMark />
-        </button>
+        </div>
       </div>
 
       <div className="header-actions">
@@ -159,15 +148,19 @@ export function Navbar({
               <b>{user.name}</b>
               <span>{user.email}</span>
               <small>{user.authProvider}</small>
-              <button
-                onClick={() => {
-                  setIssueOpen(true);
-                  setProfileOpen(false);
-                }}
-              >
-                <Bug />
-                Report errors
-              </button>
+              
+              <div className="profile-token-summary">
+                <div className="profile-token-title">Token Usage</div>
+                <div className="profile-token-row">
+                  <span>Input / Output</span>
+                  <strong>{totalUsage.inputTokens.toLocaleString()} / {totalUsage.outputTokens.toLocaleString()}</strong>
+                </div>
+                <div className="profile-token-row">
+                  <span>Cost</span>
+                  <strong className="profile-cost-value">${totalUsage.cost.toFixed(5)}</strong>
+                </div>
+              </div>
+
               <button onClick={onSignOut}>
                 <LogOut />
                 Sign out
