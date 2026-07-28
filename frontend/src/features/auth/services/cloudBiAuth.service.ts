@@ -1,7 +1,7 @@
-import { env } from "../../../shared/config/env";
-import type { CloudBiLoginCredentials, UserProfile } from "../../../shared/types/app";
-import { cloudBiEmail, nameFromCloudBiId } from "../../../shared/utils/identity";
-import { mcpClient } from "../../../shared/services/axios";
+import { env } from "../config/env";
+import type { CloudBiLoginCredentials, UserProfile } from "../types/app";
+import { cloudBiEmail, nameFromCloudBiId } from "../utils/identity";
+import { appHttpClient } from "./axios";
 
 type CloudBiAuthResponse = {
   authenticated?: boolean;
@@ -36,7 +36,7 @@ export async function loginWithCloudBi(
     };
   }
 
-  const { data } = await mcpClient.post<CloudBiAuthResponse>(
+  const { data } = await appHttpClient.post<CloudBiAuthResponse>(
     env.cloudBiLoginUrl,
     credentials,
     { withCredentials: true },
@@ -45,7 +45,7 @@ export async function loginWithCloudBi(
 }
 
 export async function restoreCloudBiSession(): Promise<UserProfile | null> {
-  const { data } = await mcpClient.get<CloudBiAuthResponse>(env.cloudBiSessionUrl, {
+  const { data } = await appHttpClient.get<CloudBiAuthResponse>(env.cloudBiSessionUrl, {
     withCredentials: true,
   });
 
@@ -57,7 +57,7 @@ export async function restoreCloudBiSession(): Promise<UserProfile | null> {
 }
 
 export async function logoutCloudBiSession() {
-  await mcpClient.post(env.cloudBiLogoutUrl, undefined, { withCredentials: true });
+  await appHttpClient.post(env.cloudBiLogoutUrl, undefined, { withCredentials: true });
 }
 
 function isTemporaryCloudBiCredential(credentials: CloudBiLoginCredentials) {

@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Mic, Send } from "lucide-react";
-import { getCountryLocale } from "../../../shared/constants/locales";
-import type { CountryCode, ModelId } from "../types/semantic";
-import { handleEnter } from "../../../shared/utils/keyboard";
-import { getModel } from "../utils/semantic";
-import { startVoiceInput } from "../utils/speech";
+import { getCountryLocale } from "../../constants/locales";
+import type { CountryCode, ModelId } from "../../types/semantic";
+import { handleEnter } from "../../utils/keyboard";
+import { getModel } from "../../utils/semantic";
+import { startVoiceInput } from "../../utils/speech";
 import { ModelPicker } from "./ModelPicker";
 
 export function Composer({

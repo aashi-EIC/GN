@@ -1,4 +1,4 @@
-import { countries, semanticModels } from "../../../shared/constants/semanticModels";
+import { countries, semanticModels } from "../constants/semanticModels";
 import type { CountryCode, ModelId } from "../types/semantic";
 
 export function normalizeModelId(value?: string): ModelId {

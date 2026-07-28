@@ -1,7 +1,7 @@
 import { BookOpen } from "lucide-react";
-import type { ModelId } from "../../chat/types/semantic";
-import { getModel } from "../../chat/utils/semantic";
-import { Modal } from "../../../shared/components/Modal";
+import type { ModelId } from "../../types/semantic";
+import { getModel } from "../../utils/semantic";
+import { Modal } from "./Modal";
 
 export function GuideModal({ close, modelId }: { close: () => void; modelId: ModelId }) {
   const activeModel = getModel(modelId);

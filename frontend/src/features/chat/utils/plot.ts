@@ -1,4 +1,4 @@
-import type { ChartDatum, PlotSpec } from "../../../shared/types/app";
+import type { ChartDatum, PlotSpec } from "../types/app";
 import type { ModelId } from "../types/semantic";
 import { getModel } from "./semantic";
 
@@ -17,7 +17,7 @@ export function slugify(value: string) {
     value
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "gracenote-chart"
+      .replace(/^-+|-+$/g, "") || "conversational-bi-chart"
   );
 }
 
@@ -123,7 +123,7 @@ function buildPlotHtml(
     </svg>
     <div class="caption">
       <span id="point-label">Hover points to inspect values</span>
-      <strong>Powered by gracenote</strong>
+      <strong>Powered by Conversational BI</strong>
     </div>
   </section>
   <script>

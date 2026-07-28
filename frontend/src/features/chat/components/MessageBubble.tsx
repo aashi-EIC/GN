@@ -1,9 +1,9 @@
 import { Check, Code2, Copy, Sparkles, ThumbsDown, ThumbsUp, AlertTriangle } from "lucide-react";
-import type { FeedbackValue, Message, ToastState } from "../../../shared/types/app";
-import { BarChart } from "./charts/BarChart";
-import { HtmlPlot } from "./charts/HtmlPlot";
-import { InsightTable } from "./charts/InsightTable";
-import { IconButton } from "../../../shared/components/ui/IconButton";
+import type { FeedbackValue, Message, ToastState } from "../../types/app";
+import { BarChart } from "../charts/BarChart";
+import { HtmlPlot } from "../charts/HtmlPlot";
+import { InsightTable } from "../charts/InsightTable";
+import { IconButton } from "../ui/IconButton";
 
 export function MessageBubble({
   message,
@@ -101,7 +101,7 @@ export function MessageBubble({
             <div>
               <Code2 />
               <span>Admin debug mode</span>
-              <b>{message.mcpResponseSource ?? "configured-host"}</b>
+              <b>{message.mcpResponseSource ?? "node-bff"}</b>
             </div>
             <pre>
               {JSON.stringify(

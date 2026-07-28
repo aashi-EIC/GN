@@ -1,4 +1,4 @@
-import type { CountryCode, SemanticModel } from "../../features/chat/types/semantic";
+import type { CountryCode, SemanticModel } from "../types/semantic";
 
 export const semanticModels: SemanticModel[] = [
   {

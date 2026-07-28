@@ -1,20 +1,33 @@
 import { AlertTriangle, Clipboard } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import type { IssueReport } from "../../../shared/types/app";
-import type { ModelId } from "../../chat/types/semantic";
-import { createId } from "../../../shared/utils/session";
-import { Modal } from "../../../shared/components/Modal";
+import type { FeedbackValue, IssueReport, Message } from "../../types/app";
+import type { ModelId } from "../../types/semantic";
+import { messageToPlainText } from "../../utils/clipboard";
+import { createId } from "../../utils/session";
+import { Modal } from "./Modal";
+import { IconButton } from "../ui/IconButton";
+import { Copy, ThumbsDown, ThumbsUp } from "lucide-react";
 
 export function ErrorReportModal({
   close,
   submitIssue,
   activeConversationId,
   modelId,
+  modelName,
+  lastMessage,
+  lastMessageFeedback,
+  copyMessage,
+  markFeedback,
 }: {
   close: () => void;
   submitIssue: (issue: IssueReport) => void;
   activeConversationId: string | null;
   modelId: ModelId;
+  modelName: string;
+  lastMessage?: Message;
+  lastMessageFeedback?: FeedbackValue;
+  copyMessage: (message: Message) => void;
+  markFeedback: (messageId: string, value: FeedbackValue) => void;
 }) {
   const [category, setCategory] = useState("Answer quality");
   const [severity, setSeverity] = useState("Medium");
@@ -35,6 +48,15 @@ export function ErrorReportModal({
       description: description.trim(),
       conversationId: activeConversationId,
       modelId,
+      modelName,
+      lastMessage: lastMessage
+        ? {
+            id: lastMessage.id,
+            role: lastMessage.role,
+            text: lastMessage.text,
+            createdAt: lastMessage.createdAt,
+          }
+        : undefined,
       createdAt: new Date().toISOString(),
     });
   };
@@ -64,6 +86,35 @@ export function ErrorReportModal({
             <option>Critical</option>
           </select>
         </label>
+        <label>
+          Selected model
+          <input value={modelName} readOnly />
+        </label>
+        {lastMessage && (
+          <label>
+            Last message sent
+            <textarea value={messageToPlainText(lastMessage)} readOnly aria-label="Last message sent" />
+            <div className="response-actions">
+              <IconButton label="Copy response" onClick={() => copyMessage(lastMessage)}>
+                <Copy />
+              </IconButton>
+              <IconButton
+                label="Mark helpful"
+                active={lastMessageFeedback === "helpful"}
+                onClick={() => markFeedback(lastMessage.id, "helpful")}
+              >
+                <ThumbsUp />
+              </IconButton>
+              <IconButton
+                label="Mark not helpful"
+                active={lastMessageFeedback === "not-helpful"}
+                onClick={() => markFeedback(lastMessage.id, "not-helpful")}
+              >
+                <ThumbsDown />
+              </IconButton>
+            </div>
+          </label>
+        )}
         <label>
           Issue details
           <textarea

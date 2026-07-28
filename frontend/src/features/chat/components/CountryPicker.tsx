@@ -1,8 +1,8 @@
 import { ChevronDown, Globe2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { countries } from "../../../shared/constants/semanticModels";
-import type { CountryCode } from "../types/semantic";
-import { getCountry, normalizeCountryCode } from "../utils/semantic";
+import { countries } from "../../constants/semanticModels";
+import type { CountryCode } from "../../types/semantic";
+import { getCountry, normalizeCountryCode } from "../../utils/semantic";
 
 export function CountryPicker({
   countryCode,

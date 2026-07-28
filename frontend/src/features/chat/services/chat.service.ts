@@ -1,14 +1,18 @@
-import { mcpClient } from "../../../shared/services/axios";
+import { bffClient } from "./axios";
 
-export async function postMcpPrompt<TPayload, TResponse>(
+export async function postBffPrompt<TPayload, TResponse>(
   url: string,
   payload: TPayload,
   bearerToken: string,
 ) {
-  const response = await mcpClient.post<TResponse>(url, payload, {
+  const authorization = bearerToken.startsWith("Bearer ")
+    ? bearerToken
+    : `Bearer ${bearerToken}`;
+
+  const response = await bffClient.post<TResponse>(url, payload, {
     headers: {
       "Content-Type": "application/json",
-      Authorization: bearerToken,
+      Authorization: authorization,
     },
   });
 

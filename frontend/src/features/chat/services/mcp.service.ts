@@ -1,21 +1,20 @@
-import { env } from "../../../shared/config/env";
-import { storageKeys } from "../../../shared/config/storage";
-import { postMcpPrompt } from "./chat.service";
+import { storageKeys } from "../config/storage";
+import { postBffPrompt } from "./chat.service";
 import type {
   McpRequestAudit,
   McpRequestPayload,
   McpResponseSource,
   Message,
   UserProfile,
-} from "../../../shared/types/app";
+} from "../types/app";
 import type { CountryCode, ModelId } from "../types/semantic";
-import { getCountryLocale } from "../../../shared/constants/locales";
+import { getCountryLocale } from "../constants/locales";
 import { buildPlotSpec } from "../utils/plot";
-import { createId } from "../../../shared/utils/session";
+import { createId } from "../utils/session";
 import { getCountry, getModel } from "../utils/semantic";
-import { loadFromStorage, saveToStorage } from "../../../shared/utils/storage";
+import { loadFromStorage, saveToStorage } from "../utils/storage";
 
-const mcpHostUrl = env.mcpHostUrl;
+const bffChatUrl = "/chat";
 
 export function buildMcpRequestPayload({
   user,
@@ -61,17 +60,26 @@ export async function requestMcpInsight(
   payload: McpRequestPayload,
   audit: McpRequestAudit,
 ): Promise<Omit<Message, "id" | "role" | "createdAt">> {
-  const hostResponse = await postMcpPrompt<
-    McpRequestPayload,
-    Partial<Omit<Message, "id" | "role" | "createdAt">> & { answer?: unknown }
+  const hostResponse = await postBffPrompt<
+    Pick<McpRequestPayload, "session_id" | "semantic_model_id" | "prompt">,
+    {
+      answer?: unknown;
+      data?: unknown;
+      debug_events?: unknown;
+      visualization?: unknown;
+    } & Partial<Omit<Message, "id" | "role" | "createdAt">>
   >(
-    mcpHostUrl,
-    payload,
+    bffChatUrl,
+    {
+      session_id: payload.session_id,
+      semantic_model_id: payload.semantic_model_id,
+      prompt: payload.prompt,
+    },
     payload.bearer_token_for_rls,
   );
 
   const normalizedResponse = normalizeMcpResponse(hostResponse);
-  return withMcpRuntime(normalizedResponse, payload, audit, "configured-host");
+  return withMcpRuntime(normalizedResponse, payload, audit, "node-bff");
 }
 
 export function persistMcpRequestAudit(audit: McpRequestAudit) {
@@ -80,13 +88,20 @@ export function persistMcpRequestAudit(audit: McpRequestAudit) {
 }
 
 function normalizeMcpResponse(
-  response: Partial<Omit<Message, "id" | "role" | "createdAt">> & { answer?: unknown },
+  response: {
+    answer?: unknown;
+    data?: unknown;
+    debug_events?: unknown;
+    visualization?: unknown;
+  } & Partial<Omit<Message, "id" | "role" | "createdAt">>,
 ): Omit<Message, "id" | "role" | "createdAt"> {
   const text =
     typeof response.text === "string"
       ? response.text
       : typeof response.answer === "string"
         ? response.answer
+        : typeof response.data === "string"
+          ? response.data
         : "MCP response received without answer text.";
 
   return {
@@ -96,8 +111,18 @@ function normalizeMcpResponse(
     metrics: response.metrics,
     table: response.table,
     actions: response.actions,
-    debug: response.debug,
-    plot: response.plot,
+    debug: Array.isArray(response.debug)
+      ? response.debug
+      : Array.isArray(response.debug_events)
+        ? (response.debug_events as Message["debug"])
+        : undefined,
+    plot:
+      response.plot ??
+      (response.visualization &&
+      typeof response.visualization === "object" &&
+      "html" in response.visualization
+        ? (response.visualization as Message["plot"])
+        : undefined),
   };
 }
 
@@ -125,7 +150,7 @@ function withMcpRuntime(
       {
         stage: "mcp_request_payload",
         status: "success",
-        detail: "Payload sent to MCP host",
+        detail: "Payload sent to Node BFF",
         payload: audit,
       },
       ...(answer.debug ?? []),

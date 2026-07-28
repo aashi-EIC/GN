@@ -2,8 +2,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import type { CloudBiLoginCredentials } from "../../../shared/types/app";
-import { BrandMark, MicrosoftMark } from "../../../shared/components/Brand";
+import type { CloudBiLoginCredentials } from "../../types/app";
+import { BrandMark, MicrosoftMark } from "../../components/common/Brand";
 
 const cloudBiSchema = z.object({
   cloudBiId: z.string().trim().min(4, "Enter a valid username."),
@@ -90,13 +90,13 @@ export function LoginPage({
         <header className="login-card-header">
           <div className="header-brand-wrap">
             <div className="header-text-brand">
-              <span className="brand-name">gracenote</span>
+              <span className="brand-name">Conversational BI</span>
               <span className="brand-sub">a nielsen company</span>
             </div>
           </div>
-          <h1 className="header-title">Gracenote Video</h1>
+          <h1 className="header-title">Conversational BI</h1>
           <p className="header-subtitle">
-            Gracenote/Nielsen users, continue with Microsoft.<br />
+            Conversational BI/Nielsen users, continue with Microsoft.<br />
             All others, sign in with username &amp; password.
           </p>
         </header>

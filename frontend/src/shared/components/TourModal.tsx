@@ -1,6 +1,6 @@
 import { Check, HelpCircle } from "lucide-react";
-import type { ModelId } from "../../features/chat/types/semantic";
-import { getModel } from "../../features/chat/utils/semantic";
+import type { ModelId } from "../../types/semantic";
+import { getModel } from "../../utils/semantic";
 import { Modal } from "./Modal";
 
 export function TourModal({ close, modelId }: { close: () => void; modelId: ModelId }) {
@@ -37,7 +37,7 @@ export function TourModal({ close, modelId }: { close: () => void; modelId: Mode
       <div className="modal-actions">
         <button className="primary-action" onClick={close} type="button">
           <Check />
-          Start using Ask Gracenote
+          Start using Conversational BI
         </button>
       </div>
     </Modal>

@@ -1,6 +1,6 @@
 import { configureStore, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { useDispatch, useSelector, type TypedUseSelectorHook } from "react-redux";
-import { storageKeys } from "../shared/config/storage";
+import { storageKeys } from "../config/storage";
 
 type UiState = {
   sidebarOpen: boolean;

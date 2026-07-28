@@ -1,4 +1,4 @@
-import type { TokenUsage } from "../../../shared/types/app";
+import type { TokenUsage } from "../types/app";
 import type { ModelId } from "../types/semantic";
 
 // Rates per 1,000 tokens in USD

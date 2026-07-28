@@ -1,7 +1,7 @@
 import { Check, Settings } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import type { Density, SettingsState } from "../../../shared/types/app";
-import { Modal } from "../../../shared/components/Modal";
+import type { Density, SettingsState } from "../../types/app";
+import { Modal } from "./Modal";
 
 export function SettingsModal({
   close,

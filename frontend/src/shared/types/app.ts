@@ -1,9 +1,9 @@
-import type { CountryCode, ModelId } from "../../features/chat/types/semantic";
+import type { CountryCode, ModelId } from "./semantic";
 
 export type Density = "comfortable" | "compact";
 export type MessageRole = "user" | "assistant";
 export type FeedbackValue = "helpful" | "not-helpful";
-export type McpResponseSource = "configured-host";
+export type McpResponseSource = "configured-host" | "node-bff";
 
 export type UserProfile = {
   email: string;
@@ -114,6 +114,8 @@ export type IssueReport = {
   description: string;
   conversationId: string | null;
   modelId: ModelId;
+  modelName: string;
+  lastMessage?: Pick<Message, "id" | "role" | "text" | "createdAt">;
   createdAt: string;
 };
 

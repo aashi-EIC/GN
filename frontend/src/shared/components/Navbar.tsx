@@ -10,12 +10,12 @@ import {
   Sun,
 } from "lucide-react";
 import { useState } from "react";
-import type { UserProfile } from "../types/app";
-import type { ModelId } from "../../features/chat/types/semantic";
-import { initials } from "../utils/identity";
-import { getModel } from "../../features/chat/utils/semantic";
-import { AskBrandMark } from "./Brand";
-import { IconButton, IconTextButton } from "./ui/IconButton";
+import type { UserProfile } from "../../types/app";
+import type { ModelId } from "../../types/semantic";
+import { initials } from "../../utils/identity";
+import { getModel } from "../../utils/semantic";
+import { AskBrandMark } from "../common/Brand";
+import { IconButton, IconTextButton } from "../ui/IconButton";
 
 export function Navbar({
   user,

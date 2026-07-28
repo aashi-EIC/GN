@@ -1,5 +1,9 @@
 import axios from "axios";
+import { env } from "../config/env";
 
-export const mcpClient = axios.create({
+export const appHttpClient = axios.create({
+  baseURL: env.apiBaseUrl,
   timeout: 30000,
 });
+
+export const bffClient = appHttpClient;

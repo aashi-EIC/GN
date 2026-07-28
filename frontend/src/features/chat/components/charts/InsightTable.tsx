@@ -1,4 +1,4 @@
-import type { TableData } from "../../../../shared/types/app";
+import type { TableData } from "../../types/app";
 
 export function InsightTable({ table }: { table: TableData }) {
   return (
