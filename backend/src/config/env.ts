@@ -24,6 +24,9 @@ const schema = z.object({
 
   DATABASE_URL: optionalText,
   DATABASE_SSL: bool.default(false),
+  DB_POOL_MAX: integer(10),
+  DB_IDLE_TIMEOUT_MS: integer(30_000),
+  DB_CONNECTION_TIMEOUT_MS: integer(10_000),
   CORS_ALLOWED_ORIGINS: optionalText,
 
   ENTRA_TENANT_ID: optionalText,

@@ -2,7 +2,7 @@ import { InteractionRequiredAuthError, InteractionStatus } from "@azure/msal-bro
 import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { useQuery } from "@tanstack/react-query";
 import { Bug, Sparkles } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppRouter } from "./router";
 import { uiActions, useAppDispatch, useAppSelector } from "./store";
 import { Composer } from "../components/chat/Composer";
@@ -36,8 +36,11 @@ import { copyText, downloadJson, messageToPlainText } from "../utils/clipboard";
 import { accountToProfile } from "../utils/identity";
 import { createId, titleFromQuestion } from "../utils/session";
 import { getModel, normalizeCountryCode, normalizeModelId } from "../utils/semantic";
-import { loadFromStorage, saveToStorage } from "../utils/storage";
+import { loadFromStorage, saveToStorage, saveToStorageDeferred } from "../utils/storage";
 import { calculateTokenUsageAndCost } from "../utils/tokenCost";
+
+const HISTORY_LIMIT = 10;
+const CHAT_RENDER_WINDOW = 150;
 
 function AppRoot({ msalEnabled }: { msalEnabled: boolean }) {
   const shell = msalEnabled ? <MsalBackedShell /> : <CloudBiOnlyShell />;
@@ -53,7 +56,7 @@ function MsalBackedShell() {
   const [cloudBiUser, setCloudBiUser] = useState<UserProfile | null>(() =>
     usableCloudBiProfile(loadFromStorage<UserProfile | null>(storageKeys.user, null)),
   );
-  const activeUser = cloudBiUser ?? (isAuthenticated ? profile : null);
+  const activeUser = cloudBiUser ?? (account ? profile : null);
   const [ssoReady, setSsoReady] = useState(false);
   const ssoAttempted = useRef(false);
 
@@ -124,18 +127,18 @@ function MsalBackedShell() {
 
   const [authStatus, setAuthStatus] = useState<"signing-in" | "signing-out" | null>(null);
 
+  if (!ssoReady || inProgress !== InteractionStatus.None) {
+    return <LoadingScreen text="Checking Microsoft sign-in..." />;
+  }
+
   const signIn = async () => {
     try {
       setAuthStatus("signing-in");
-      const result = await instance.loginPopup({
-        scopes: ["openid", "profile", "email", apiScope],
-      });
-      if (result.account) {
-        instance.setActiveAccount(result.account);
-      }
       localStorage.setItem(storageKeys.ssoProvider, "entra");
       localStorage.removeItem(storageKeys.user);
-      setCloudBiUser(null);
+      await instance.loginRedirect({
+        scopes: ["openid", "profile", "email", apiScope],
+      });
     } finally {
       setAuthStatus(null);
     }
@@ -314,6 +317,31 @@ function usableCloudBiProfile(profile: UserProfile | null) {
   return expiresAt > Date.now() + 60_000 ? profile : null;
 }
 
+function selectRecentConversations(conversations: Conversation[], limit: number) {
+  const recent: Conversation[] = [];
+
+  conversations.forEach((conversation) => {
+    const updatedAt = Date.parse(conversation.updatedAt);
+    const insertAt = recent.findIndex(
+      (candidate) => updatedAt > Date.parse(candidate.updatedAt),
+    );
+
+    if (insertAt === -1) {
+      if (recent.length < limit) {
+        recent.push(conversation);
+      }
+      return;
+    }
+
+    recent.splice(insertAt, 0, conversation);
+    if (recent.length > limit) {
+      recent.pop();
+    }
+  });
+
+  return recent;
+}
+
 function IntelligenceApp({
   user,
   entraAvailable,
@@ -425,19 +453,18 @@ function Workspace({
     staleTime: 60_000,
   });
 
-  const activeConversation = conversations.find(
-    (conversation) => conversation.id === activeConversationId,
-  );
+  const conversationById = useMemo(() => {
+    const index = new Map<string, Conversation>();
+    conversations.forEach((conversation) => index.set(conversation.id, conversation));
+    return index;
+  }, [conversations]);
+  const activeConversation = activeConversationId
+    ? conversationById.get(activeConversationId)
+    : undefined;
   const lastMessage = activeConversation?.messages.at(-1);
   const selectedModel = getModel(selectedModelId);
   const recentConversations = useMemo(
-    () =>
-      [...conversations]
-        .sort(
-          (left, right) =>
-            new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
-        )
-        .slice(0, 10),
+    () => selectRecentConversations(conversations, HISTORY_LIMIT),
     [conversations],
   );
   const filteredConversations = useMemo(() => {
@@ -453,9 +480,17 @@ function Workspace({
       return titleMatches || modelNameMatches || modelShortMatches;
     });
   }, [recentConversations, historyQuery]);
+  const visibleMessages = useMemo(
+    () => activeConversation?.messages.slice(-CHAT_RENDER_WINDOW) ?? [],
+    [activeConversation?.messages],
+  );
+  const hiddenMessageCount = Math.max(
+    0,
+    (activeConversation?.messages.length ?? 0) - visibleMessages.length,
+  );
 
   useEffect(() => {
-    saveToStorage(storageKeys.conversations, conversations);
+    saveToStorageDeferred(storageKeys.conversations, conversations);
   }, [conversations]);
 
   useEffect(() => {
@@ -529,9 +564,9 @@ function Workspace({
     };
   }, [dispatch, modelsOpen, profileOpen, sidebarOpen]);
 
-  const showToast = (message: string, tone: ToastState["tone"] = "success") => {
+  const showToast = useCallback((message: string, tone: ToastState["tone"] = "success") => {
     setToast({ message, tone });
-  };
+  }, []);
 
   const closeTour = () => {
     saveToStorage(storageKeys.tourSeen, true);
@@ -766,15 +801,17 @@ function Workspace({
     showToast(`Issue ${issue.id} saved`);
   };
 
-  const copyMessage = async (message: Message) => {
+  const copyMessage = useCallback(async (message: Message) => {
     await copyText(messageToPlainText(message));
     showToast("Response copied");
-  };
+  }, [showToast]);
 
-  const markFeedback = (messageId: string, value: FeedbackValue) => {
+  const markFeedback = useCallback((messageId: string, value: FeedbackValue) => {
     setFeedback((current) => ({ ...current, [messageId]: value }));
     showToast(value === "helpful" ? "Marked helpful" : "Feedback recorded");
-  };
+  }, [showToast]);
+
+  const openIssueReport = useCallback(() => setIssueOpen(true), []);
 
   const exportConversation = () => {
     if (!activeConversation) {
@@ -854,7 +891,12 @@ function Workspace({
           ) : (
             <>
               <div className="messages">
-                {activeConversation.messages.map((message) => (
+                {hiddenMessageCount > 0 && (
+                  <div className="history-window-note">
+                    Showing latest {visibleMessages.length} messages. Older messages remain in chat history.
+                  </div>
+                )}
+                {visibleMessages.map((message) => (
                   <MessageBubble
                     key={message.id}
                     message={message}
@@ -863,7 +905,7 @@ function Workspace({
                     copyMessage={copyMessage}
                     markFeedback={markFeedback}
                     showToast={showToast}
-                    onReportError={() => setIssueOpen(true)}
+                    onReportError={openIssueReport}
                   />
                 ))}
                 {isThinking && (
@@ -902,7 +944,7 @@ function Workspace({
         </main>
       </section>
 
-      <button className="report-fab" onClick={() => setIssueOpen(true)} type="button">
+      <button className="report-fab" onClick={openIssueReport} type="button">
         <Bug />
         <span>Report errors</span>
       </button>

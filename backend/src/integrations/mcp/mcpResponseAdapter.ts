@@ -5,11 +5,21 @@ import { assertSafeUnknown } from '../../security/contentSafety.js';
 import type { NormalizedMcpResponse } from '../../types.js';
 
 const externalRoot = z.record(z.string(), z.unknown());
+const pathCache = new Map<string, string[]>();
+
+function getPathParts(path: string) {
+  const cached = pathCache.get(path);
+  if (cached) return cached;
+
+  const parts = path.split('.');
+  pathCache.set(path, parts);
+  return parts;
+}
 
 function getPath(root: Record<string, unknown>, path?: string): unknown {
   if (!path) return undefined;
 
-  return path.split('.').reduce<unknown>((value, key) => {
+  return getPathParts(path).reduce<unknown>((value, key) => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
     return (value as Record<string, unknown>)[key];
   }, root);

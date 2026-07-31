@@ -1561,6 +1561,16 @@ textarea:focus {
   padding: 28px max(26px, calc((100% - 900px) / 2)) 20px;
 }
 
+.history-window-note {
+  align-self: center;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.45rem 0.75rem;
+}
+
 .user-row {
   display: flex;
   justify-content: flex-end;
