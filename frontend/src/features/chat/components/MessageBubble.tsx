@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Check, Code2, Copy, Sparkles, ThumbsDown, ThumbsUp, AlertTriangle } from "lucide-react";
 import type { FeedbackValue, Message, ToastState } from "../../../shared/types/app";
 import { BarChart } from "./charts/BarChart";
@@ -5,7 +6,7 @@ import { HtmlPlot } from "./charts/HtmlPlot";
 import { InsightTable } from "./charts/InsightTable";
 import { IconButton } from "../../../shared/components/ui/IconButton";
 
-export function MessageBubble({
+function MessageBubbleComponent({
   message,
   debugOpen,
   feedback,
@@ -119,3 +120,5 @@ export function MessageBubble({
     </div>
   );
 }
+
+export const MessageBubble = memo(MessageBubbleComponent);

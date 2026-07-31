@@ -19,7 +19,16 @@ const root = ReactDOM.createRoot(document.getElementById("root") as HTMLElement)
 if (entraSettingsAreConfigured) {
   const msalInstance = new PublicClientApplication(msalConfig);
   await msalInstance.initialize();
-  await msalInstance.handleRedirectPromise();
+  const redirectResult = await msalInstance.handleRedirectPromise();
+  if (redirectResult?.account) {
+    msalInstance.setActiveAccount(redirectResult.account);
+    localStorage.setItem(storageKeys.ssoProvider, "entra");
+    localStorage.removeItem(storageKeys.user);
+  }
+  const cachedAccount = msalInstance.getActiveAccount() ?? msalInstance.getAllAccounts()[0];
+  if (cachedAccount) {
+    msalInstance.setActiveAccount(cachedAccount);
+  }
 
   root.render(
     <React.StrictMode>

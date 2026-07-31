@@ -4,7 +4,13 @@ import { config, requireConfig } from '../../config/env.js';
 let pool: pg.Pool | undefined;
 export function getPool(): pg.Pool {
   requireConfig('DATABASE_URL');
-  pool ??= new pg.Pool({ connectionString: config.DATABASE_URL, ssl: config.DATABASE_SSL ? { rejectUnauthorized: true } : false, max: 10, idleTimeoutMillis: 30_000 });
+  pool ??= new pg.Pool({
+    connectionString: config.DATABASE_URL,
+    ssl: config.DATABASE_SSL ? { rejectUnauthorized: true } : false,
+    max: config.DB_POOL_MAX,
+    idleTimeoutMillis: config.DB_IDLE_TIMEOUT_MS,
+    connectionTimeoutMillis: config.DB_CONNECTION_TIMEOUT_MS,
+  });
   return pool;
 }
 export async function checkDatabase() { const result = await getPool().query('select 1 as ok'); return result.rows[0]?.ok === 1; }
