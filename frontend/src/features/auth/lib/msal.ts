@@ -18,5 +18,7 @@ export const msalConfig: Configuration = {
   },
   system: {
     allowPlatformBroker: false,
+    windowHashTimeout: 60000,
+    iframeHashTimeout: 60000,
   },
 };

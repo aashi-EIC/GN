@@ -19,9 +19,7 @@ import { defaultSettings, storageKeys } from "../shared/config/storage";
 import { apiScope } from "../features/auth/lib/msal";
 import { LoginPage } from "../features/auth/pages/LoginPage";
 import { buildMcpRequestPayload, persistMcpRequestAudit, requestMcpInsight } from "../features/chat/services/mcp.service";
-import { loginWithCloudBi, logoutCloudBiSession, restoreCloudBiSession } from "../features/auth/services/cloudBiAuth.service";
 import type {
-  CloudBiLoginCredentials,
   Conversation,
   FeedbackValue,
   IssueReport,
@@ -40,88 +38,62 @@ import { loadFromStorage, saveToStorage } from "../shared/utils/storage";
 import { calculateTokenUsageAndCost } from "../features/chat/utils/tokenCost";
 
 function AppRoot({ msalEnabled }: { msalEnabled: boolean }) {
-  const shell = msalEnabled ? <MsalBackedShell /> : <CloudBiOnlyShell />;
+  return <AppRouter shell={msalEnabled ? <MsalBackedShell /> : <LocalShell />} />;
+}
 
-  return <AppRouter shell={shell} />;
+function LocalShell() {
+  const [localUser, setLocalUser] = useState<UserProfile | null>(() =>
+    loadFromStorage<UserProfile | null>(storageKeys.user, null),
+  );
+  const [authStatus, setAuthStatus] = useState<"signing-in" | "signing-out" | null>(null);
+
+  const localSignIn = async (credentials: { username: string; name?: string }) => {
+    const displayName = credentials.name || credentials.username.split("@")[0] || credentials.username;
+    const userProfile: UserProfile = {
+      name: displayName,
+      email: credentials.username,
+      authProvider: "Local Auth",
+    };
+    setLocalUser(userProfile);
+    saveToStorage(storageKeys.user, userProfile);
+  };
+
+  const signOut = async () => {
+    setAuthStatus("signing-out");
+    try {
+      setLocalUser(null);
+      saveToStorage(storageKeys.user, null);
+    } finally {
+      setAuthStatus(null);
+    }
+  };
+
+  const acquireToken = async () => null;
+
+  if (authStatus === "signing-out") {
+    return <LoadingScreen text="Signing out..." />;
+  }
+
+  return (
+    <IntelligenceApp
+      user={localUser}
+      entraAvailable={false}
+      onLocalSignIn={localSignIn}
+      onSignOut={signOut}
+      acquireToken={acquireToken}
+    />
+  );
 }
 
 function MsalBackedShell() {
-  const { instance, accounts, inProgress } = useMsal();
+  const { instance, accounts } = useMsal();
   const isAuthenticated = useIsAuthenticated();
   const account = instance.getActiveAccount() ?? accounts[0];
   const profile = accountToProfile(account);
-  const [cloudBiUser, setCloudBiUser] = useState<UserProfile | null>(() =>
-    usableCloudBiProfile(loadFromStorage<UserProfile | null>(storageKeys.user, null)),
+  const [localUser, setLocalUser] = useState<UserProfile | null>(() =>
+    loadFromStorage<UserProfile | null>(storageKeys.user, null),
   );
-  const activeUser = cloudBiUser ?? (isAuthenticated ? profile : null);
-  const [ssoReady, setSsoReady] = useState(false);
-  const ssoAttempted = useRef(false);
-
-  useEffect(() => {
-    let active = true;
-    const fallbackTimer = setTimeout(() => {
-      if (active) {
-        setSsoReady(true);
-      }
-    }, 2500);
-
-    if (ssoAttempted.current || inProgress !== InteractionStatus.None) {
-      return () => {
-        clearTimeout(fallbackTimer);
-      };
-    }
-
-    ssoAttempted.current = true;
-
-    const complete = () => {
-      if (active) {
-        setSsoReady(true);
-      }
-    };
-
-    const runStartupSso = async () => {
-      const preferredProvider = localStorage.getItem(storageKeys.ssoProvider);
-
-      if (preferredProvider === "cloud-bi") {
-        const restoredCloudBi = await tryRestoreCloudBiSession();
-        if (restoredCloudBi) {
-          if (active) {
-            saveToStorage(storageKeys.user, restoredCloudBi);
-            setCloudBiUser(restoredCloudBi);
-          }
-          complete();
-          return;
-        }
-      }
-
-      const cachedAccount = instance.getActiveAccount() ?? accounts[0];
-      if (cachedAccount) {
-        instance.setActiveAccount(cachedAccount);
-        localStorage.setItem(storageKeys.ssoProvider, "entra");
-        localStorage.removeItem(storageKeys.user);
-        if (active) {
-          setCloudBiUser(null);
-        }
-        complete();
-        return;
-      }
-
-      const restoredCloudBi = await tryRestoreCloudBiSession();
-      if (restoredCloudBi && active) {
-        saveToStorage(storageKeys.user, restoredCloudBi);
-        setCloudBiUser(restoredCloudBi);
-      }
-      complete();
-    };
-
-    runStartupSso().catch(complete);
-
-    return () => {
-      active = false;
-      clearTimeout(fallbackTimer);
-    };
-  }, [accounts, inProgress, instance]);
-
+  const activeUser = (isAuthenticated ? profile : null) || localUser;
   const [authStatus, setAuthStatus] = useState<"signing-in" | "signing-out" | null>(null);
 
   const signIn = async () => {
@@ -133,52 +105,40 @@ function MsalBackedShell() {
       if (result.account) {
         instance.setActiveAccount(result.account);
       }
-      localStorage.setItem(storageKeys.ssoProvider, "entra");
-      localStorage.removeItem(storageKeys.user);
-      setCloudBiUser(null);
     } finally {
       setAuthStatus(null);
     }
+  };
+
+  const localSignIn = async (credentials: { username: string; name?: string }) => {
+    const displayName = credentials.name || credentials.username.split("@")[0] || credentials.username;
+    const userProfile: UserProfile = {
+      name: displayName,
+      email: credentials.username,
+      authProvider: "Local Auth",
+    };
+    setLocalUser(userProfile);
+    saveToStorage(storageKeys.user, userProfile);
   };
 
   const signOut = async () => {
     try {
       setAuthStatus("signing-out");
-      localStorage.removeItem(storageKeys.ssoProvider);
-      localStorage.removeItem(storageKeys.user);
-
-      if (!cloudBiUser && isAuthenticated && account) {
+      setLocalUser(null);
+      saveToStorage(storageKeys.user, null);
+      if (isAuthenticated && account) {
         try {
           await instance.logoutPopup({ account });
         } catch {
           instance.setActiveAccount(null);
         }
-      } else {
-        await logoutCloudBiSession().catch(() => undefined);
       }
-      setCloudBiUser(null);
-    } finally {
-      setAuthStatus(null);
-    }
-  };
-
-  const signInWithCloudBi = async (credentials: CloudBiLoginCredentials) => {
-    try {
-      setAuthStatus("signing-in");
-      const profile = await loginWithCloudBi(credentials);
-      saveToStorage(storageKeys.user, profile);
-      localStorage.setItem(storageKeys.ssoProvider, "cloud-bi");
-      setCloudBiUser(profile);
     } finally {
       setAuthStatus(null);
     }
   };
 
   const acquireToken = async () => {
-    if (cloudBiUser?.accessToken) {
-      return cloudBiUser.accessToken;
-    }
-
     if (!account) {
       return null;
     }
@@ -214,118 +174,25 @@ function MsalBackedShell() {
       user={activeUser}
       entraAvailable
       onEntraSignIn={signIn}
-      onCloudBiSignIn={signInWithCloudBi}
+      onLocalSignIn={localSignIn}
       onSignOut={signOut}
       acquireToken={acquireToken}
     />
   );
 }
 
-function CloudBiOnlyShell() {
-  const [user, setUser] = useState<UserProfile | null>(() =>
-    usableCloudBiProfile(loadFromStorage<UserProfile | null>(storageKeys.user, null)),
-  );
-  const [authStatus, setAuthStatus] = useState<"signing-in" | "signing-out" | null>(null);
-
-  useEffect(() => {
-    let active = true;
-
-    restoreCloudBiSession()
-      .then((profile) => {
-        if (!active || !profile) {
-          return;
-        }
-        saveToStorage(storageKeys.user, profile);
-        localStorage.setItem(storageKeys.ssoProvider, "cloud-bi");
-        setUser(profile);
-      })
-      .catch(() => undefined);
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const signIn = async (credentials: CloudBiLoginCredentials) => {
-    try {
-      setAuthStatus("signing-in");
-      const profile = await loginWithCloudBi(credentials);
-      saveToStorage(storageKeys.user, profile);
-      localStorage.setItem(storageKeys.ssoProvider, "cloud-bi");
-      setUser(profile);
-    } finally {
-      setAuthStatus(null);
-    }
-  };
-
-  const signOut = async () => {
-    try {
-      setAuthStatus("signing-out");
-      await logoutCloudBiSession().catch(() => undefined);
-      localStorage.removeItem(storageKeys.ssoProvider);
-      localStorage.removeItem(storageKeys.user);
-      setUser(null);
-    } finally {
-      setAuthStatus(null);
-    }
-  };
-
-  if (authStatus === "signing-in") {
-    return <LoadingScreen text="Signing in..." />;
-  }
-
-  if (authStatus === "signing-out") {
-    return <LoadingScreen text="Signing out..." />;
-  }
-
-  return (
-    <IntelligenceApp
-      user={user}
-      entraAvailable={false}
-      onCloudBiSignIn={signIn}
-      onSignOut={signOut}
-      acquireToken={async () => user?.accessToken ?? null}
-    />
-  );
-}
-
-async function tryRestoreCloudBiSession() {
-  try {
-    return usableCloudBiProfile(await restoreCloudBiSession());
-  } catch {
-    return null;
-  }
-}
-
-function usableCloudBiProfile(profile: UserProfile | null) {
-  if (!profile || profile.authProvider !== "Cloud BI ID" || !profile.accessToken) {
-    return null;
-  }
-
-  if (!profile.tokenExpiresAt) {
-    return profile;
-  }
-
-  const expiresAt = Date.parse(profile.tokenExpiresAt);
-  if (!Number.isFinite(expiresAt)) {
-    return profile;
-  }
-
-  return expiresAt > Date.now() + 60_000 ? profile : null;
-}
-
 function IntelligenceApp({
   user,
   entraAvailable,
   onEntraSignIn,
-  onCloudBiSignIn,
+  onLocalSignIn,
   onSignOut,
   acquireToken,
 }: {
   user: UserProfile | null;
   entraAvailable: boolean;
   onEntraSignIn?: () => Promise<void>;
-  onCloudBiSignIn: (credentials: CloudBiLoginCredentials) => Promise<void>;
+  onLocalSignIn?: (credentials: { username: string; name?: string }) => Promise<void>;
   onSignOut: () => void;
   acquireToken: () => Promise<string | null>;
 }) {
@@ -338,7 +205,7 @@ function IntelligenceApp({
       <LoginPage
         entraAvailable={entraAvailable}
         onEntraSignIn={onEntraSignIn}
-        onCloudBiSignIn={onCloudBiSignIn}
+        onLocalSignIn={onLocalSignIn}
       />
     );
   }

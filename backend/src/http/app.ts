@@ -8,6 +8,8 @@ import { authenticate } from './middleware/authenticate.js';
 import { cancellation } from './middleware/cancellation.js';
 import { correlation } from './middleware/correlation.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
+import { rateLimit } from './middleware/rateLimit.js';
+import { authRouter } from './routes/auth.js';
 import { chatRouter } from './routes/chat.js';
 import { healthRouter } from './routes/health.js';
 
@@ -27,18 +29,48 @@ app.use(pinoHttp({
     res: (res) => ({ statusCode: res.statusCode }),
   },
 }));
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({
-  origin: (origin, callback) => {
-    callback(null, !origin || allowedOrigins.includes(origin));
-  },
-  credentials: false,
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['authorization', 'content-type', 'x-correlation-id'],
-}));
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'", "https:", "data:"],
+        objectSrc: ["'none'"],
+      },
+    },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+    noSniff: true,
+    frameguard: { action: 'deny' },
+    xssFilter: true,
+  }),
+);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS policy violation: Request origin not permitted'));
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['authorization', 'content-type', 'x-correlation-id'],
+  }),
+);
+
 app.use(express.json({ limit: '256kb', strict: true }));
 app.use(cancellation);
+app.use('/api', rateLimit);
 app.use('/api/v1/health', healthRouter);
+app.use('/api/v1', authRouter);
 app.use('/api/v1', authenticate, chatRouter);
 app.use(notFound);
 app.use(errorHandler);

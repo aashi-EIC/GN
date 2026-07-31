@@ -183,7 +183,7 @@ function buildBearerTokenForRls(
   )
     .replace(/=+$/g, "")
     .slice(0, 32);
-  return `Bearer cloud-bi-rls-${encodedSeed}`;
+  return `Bearer rls-${encodedSeed}`;
 }
 
 function redactBearerToken(token: string) {

@@ -28,10 +28,11 @@ export const rateLimit: RequestHandler = async (request, res, next) => {
   }
 };
 
-function getRateLimitKey(req: AuthenticatedRequest, now: number) {
+function getRateLimitKey(req: Partial<AuthenticatedRequest>, now: number) {
   const bucket = Math.floor(now / config.RATE_LIMIT_WINDOW_MS);
+  const userKey = req.user ? `${req.user.tenantId}:${req.user.objectId}` : (req.ip || 'anonymous');
   const identity = createHash('sha256')
-    .update(`${req.user.tenantId}:${req.user.objectId}`)
+    .update(userKey)
     .digest('hex');
 
   return `bff:rate:${identity}:${bucket}`;

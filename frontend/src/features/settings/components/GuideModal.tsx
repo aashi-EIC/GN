@@ -13,7 +13,7 @@ export function GuideModal({ close, modelId }: { close: () => void; modelId: Mod
       </span>
       <h2>{activeModel.name} guide</h2>
       <div className="guide-current">
-        <span style={{ backgroundColor: activeModel.color }}>{activeModel.short}</span>
+        <span className="model-chip" style={{ backgroundColor: activeModel.color }}>{activeModel.short}</span>
         <div>
           <b>{activeModel.name}</b>
           <p>{activeModel.description}</p>

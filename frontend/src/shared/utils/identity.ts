@@ -23,18 +23,6 @@ export function nameFromEmail(email: string) {
     .join(" ");
 }
 
-export function cloudBiEmail(cloudBiId: string) {
-  return cloudBiId.includes("@") ? cloudBiId : `${cloudBiId}@cloudbi.conversationalbi.internal`;
-}
-
-export function nameFromCloudBiId(cloudBiId: string) {
-  return cloudBiId
-    .split("@")[0]
-    .split(/[._-]/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
 
 export function initials(name: string) {
   const parts = name.split(" ").filter(Boolean);

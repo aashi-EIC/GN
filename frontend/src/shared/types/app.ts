@@ -8,17 +8,11 @@ export type McpResponseSource = "configured-host" | "node-bff";
 export type UserProfile = {
   email: string;
   name: string;
-  authProvider: "Microsoft Entra ID" | "Cloud BI ID";
-  cloudBiId?: string;
+  authProvider: "Microsoft Entra ID" | "Local Auth";
   accessToken?: string;
   tokenExpiresAt?: string;
 };
 
-export type CloudBiLoginCredentials = {
-  cloudBiId: string;
-  accessCode: string;
-  name?: string;
-};
 
 export type SettingsState = {
   displayName: string;

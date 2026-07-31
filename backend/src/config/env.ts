@@ -27,6 +27,8 @@ const schema = z.object({
   CORS_ALLOWED_ORIGINS: optionalText,
 
   ENTRA_TENANT_ID: optionalText,
+  ENTRA_CLIENT_ID: optionalText,
+  ENTRA_CLIENT_SECRET: optionalText,
   ENTRA_API_AUDIENCE: optionalText,
   ENTRA_REQUIRED_SCOPE: optionalText,
   ENTRA_ALLOWED_ROLES: optionalText,
