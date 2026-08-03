@@ -32,7 +32,7 @@ import type {
 import type { CountryCode, ModelId } from "../features/chat/types/semantic";
 import { copyText, downloadJson, messageToPlainText } from "../shared/utils/clipboard";
 import { accountToProfile } from "../shared/utils/identity";
-import { createId, titleFromQuestion } from "../shared/utils/session";
+import { createId, titleFromUserMessages } from "../shared/utils/session";
 import { getModel, normalizeCountryCode, normalizeModelId } from "../features/chat/utils/semantic";
 import { loadFromStorage, saveToStorage } from "../shared/utils/storage";
 import { calculateTokenUsageAndCost } from "../features/chat/utils/tokenCost";
@@ -494,20 +494,24 @@ function Workspace({
     setConversations((current) => {
       const existing = current.find((conversation) => conversation.id === conversationId);
       if (existing) {
-        return current.map((conversation) =>
-          conversation.id === conversationId
-            ? {
-                ...conversation,
-                messages: [...conversation.messages, userMessage],
-                updatedAt: createdAt,
-              }
-            : conversation,
-        );
+        return current.map((conversation) => {
+          if (conversation.id !== conversationId) return conversation;
+          const nextMessages = [...conversation.messages, userMessage];
+          const userMsgs = nextMessages
+            .filter((m) => m.role === "user")
+            .map((m) => m.text);
+          return {
+            ...conversation,
+            title: titleFromUserMessages(userMsgs),
+            messages: nextMessages,
+            updatedAt: createdAt,
+          };
+        });
       }
 
       const nextConversation: Conversation = {
         id: conversationId,
-        title: titleFromQuestion(trimmedQuestion),
+        title: titleFromUserMessages([trimmedQuestion]),
         modelId: currentModelId,
         countryCode: currentCountryCode,
         messages: [userMessage],
