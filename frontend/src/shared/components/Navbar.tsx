@@ -150,14 +150,14 @@ export function Navbar({
               <small>{user.authProvider}</small>
               
               <div className="profile-token-summary">
-                <div className="profile-token-title">Token Usage</div>
+                <div className="profile-token-title">Token Usage <small style={{ opacity: 0.6, fontWeight: "normal" }}>(Placeholder)</small></div>
                 <div className="profile-token-row">
                   <span>Input / Output</span>
-                  <strong>{totalUsage.inputTokens.toLocaleString()} / {totalUsage.outputTokens.toLocaleString()}</strong>
+                  <strong>-- / --</strong>
                 </div>
                 <div className="profile-token-row">
                   <span>Cost</span>
-                  <strong className="profile-cost-value">${totalUsage.cost.toFixed(5)}</strong>
+                  <strong className="profile-cost-value">--</strong>
                 </div>
               </div>
 

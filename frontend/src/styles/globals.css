@@ -1735,20 +1735,141 @@ textarea:focus {
   padding: 0.45rem 0.75rem;
 }
 
+.user-row,
+.user-row > div,
+.user-bubble-container {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
 .user-row {
   display: flex;
   justify-content: flex-end;
   margin: 4px 0 24px;
 }
 
-.user-row > div {
+.user-bubble-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   max-width: 70%;
-  padding: 11px 14px;
-  border-radius: 8px 8px 2px 8px;
-  background: var(--gn-navy);
-  color: var(--gn-white);
-  font-size: 13px;
+}
+
+.user-bubble {
+  padding: 12px 18px;
+  border-radius: 16px;
+  background: #fdf2f8;
+  color: #1e40af;
+  font-size: 13.5px;
   line-height: 1.55;
+  word-break: break-word;
+  border: 1px solid rgba(244, 114, 182, 0.25);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+:root[data-theme="dark"] .user-bubble {
+  background: #2d1b28;
+  color: #93c5fd;
+  border-color: rgba(244, 114, 182, 0.3);
+}
+
+.user-message-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.user-edit-card {
+  width: 100%;
+  max-width: 75%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--gn-white, #ffffff);
+  border: 1.5px solid var(--gn-navy, #0f172a);
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme="dark"] .user-edit-card {
+  background: var(--gn-surface, #1e293b);
+  border-color: var(--gn-accent, #38bdf8);
+}
+
+.user-edit-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--gn-border, #cbd5e1);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  background: var(--gn-bg, #f8fafc);
+  color: var(--gn-text-main, #0f172a);
+}
+
+:root[data-theme="dark"] .user-edit-textarea {
+  background: #0f172a;
+  color: #f8fafc;
+  border-color: #334155;
+}
+
+.user-edit-textarea:focus {
+  border-color: var(--gn-navy, #0f172a);
+}
+
+:root[data-theme="dark"] .user-edit-textarea:focus {
+  border-color: var(--gn-accent, #38bdf8);
+}
+
+.user-edit-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.user-edit-cancel {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--gn-text-muted, #64748b);
+  border: 1px solid var(--gn-border, #cbd5e1);
+  transition: all 0.15s ease;
+}
+
+.user-edit-cancel:hover {
+  background: var(--gn-bg, #f1f5f9);
+  color: var(--gn-text-main, #0f172a);
+}
+
+.user-edit-submit {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  background: var(--gn-navy, #0f172a);
+  color: #ffffff;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.user-edit-submit:hover:not(:disabled) {
+  background: #1e293b;
+}
+
+.user-edit-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .assistant-row {

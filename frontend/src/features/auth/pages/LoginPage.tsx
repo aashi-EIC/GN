@@ -108,9 +108,12 @@ export function LoginPage({
         });
       }
     } catch (caught) {
-      setProviderError(
-        caught instanceof Error ? caught.message : "Sign-in was not completed.",
-      );
+      const msg = caught instanceof Error ? caught.message : "";
+      if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+        setProviderError("Cannot connect to Auth Server (http://localhost:3000). Please ensure backend is running.");
+      } else {
+        setProviderError(msg || "Sign-in was not completed.");
+      }
     } finally {
       setLocalBusy(false);
     }
@@ -166,11 +169,10 @@ export function LoginPage({
         <header className="login-card-header">
           <div className="header-brand-wrap">
             <div className="header-text-brand">
-              <span className="brand-name">conversational bi</span>
+              <span className="brand-name"><h1>Conversational bi</h1></span>
               <span className="brand-sub">a nielsen company</span>
             </div>
           </div>
-          <h1 className="header-title">Conversational BI</h1>
           <p className="header-subtitle">
             Conversational BI/Nielsen users, continue with Microsoft.<br />
             All others, sign in with username &amp; password.

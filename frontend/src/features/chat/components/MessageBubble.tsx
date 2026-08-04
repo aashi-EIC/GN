@@ -1,5 +1,5 @@
-import { memo } from "react";
-import { Check, Code2, Copy, Sparkles, ThumbsDown, ThumbsUp, AlertTriangle } from "lucide-react";
+import { memo, useState } from "react";
+import { Check, Code2, Copy, Pencil, Sparkles, ThumbsDown, ThumbsUp, AlertTriangle } from "lucide-react";
 import type { FeedbackValue, Message, ToastState } from "../../../shared/types/app";
 import { BarChart } from "./charts/BarChart";
 import { HtmlPlot } from "./charts/HtmlPlot";
@@ -14,6 +14,7 @@ function MessageBubbleComponent({
   markFeedback,
   showToast,
   onReportError,
+  onEditUserMessage,
 }: {
   message: Message;
   debugOpen: boolean;
@@ -22,11 +23,68 @@ function MessageBubbleComponent({
   markFeedback: (messageId: string, value: FeedbackValue) => void;
   showToast: (message: string, tone?: ToastState["tone"]) => void;
   onReportError: () => void;
+  onEditUserMessage?: (messageId: string, newText: string) => void;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(message.text);
+
   if (message.role === "user") {
+    if (isEditing) {
+      return (
+        <div className="user-row editing">
+          <div className="user-edit-card">
+            <textarea
+              className="user-edit-textarea"
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              autoFocus
+              rows={Math.max(2, editText.split("\n").length)}
+            />
+            <div className="user-edit-footer">
+              <button
+                type="button"
+                className="user-edit-cancel"
+                onClick={() => {
+                  setIsEditing(false);
+                  setEditText(message.text);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="user-edit-submit"
+                disabled={!editText.trim() || editText.trim() === message.text}
+                onClick={() => {
+                  if (editText.trim() && onEditUserMessage) {
+                    onEditUserMessage(message.id, editText.trim());
+                    setIsEditing(false);
+                  }
+                }}
+              >
+                Save & Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="user-row">
-        <div>{message.text}</div>
+        <div className="user-bubble-container">
+          <div className="user-bubble">{message.text}</div>
+          <div className="user-message-actions response-actions">
+            <IconButton label="Copy message" onClick={() => copyMessage(message)}>
+              <Copy />
+            </IconButton>
+            {onEditUserMessage && (
+              <IconButton label="Edit message" onClick={() => setIsEditing(true)}>
+                <Pencil />
+              </IconButton>
+            )}
+          </div>
+        </div>
       </div>
     );
   }

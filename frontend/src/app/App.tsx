@@ -623,6 +623,148 @@ function Workspace({
     }
   };
 
+  const handleEditUserMessage = async (messageId: string, newText: string) => {
+    const trimmedQuestion = newText.trim();
+    if (!trimmedQuestion || isThinking || !activeConversation) {
+      return;
+    }
+
+    const currentModelId = normalizeModelId(activeConversation.modelId ?? selectedModelId);
+    const currentCountryCode = normalizeCountryCode(
+      activeConversation.countryCode ?? selectedCountryCode,
+    );
+    const createdAt = new Date().toISOString();
+    const conversationId = activeConversation.id;
+
+    const msgIndex = activeConversation.messages.findIndex((m) => m.id === messageId);
+    if (msgIndex === -1) return;
+
+    const previousMessages = activeConversation.messages.slice(0, msgIndex);
+    const updatedUserMessage: Message = {
+      ...activeConversation.messages[msgIndex],
+      text: trimmedQuestion,
+      createdAt,
+    };
+    const nextMessages = [...previousMessages, updatedUserMessage];
+
+    setIsThinking(true);
+
+    setConversations((current) =>
+      current.map((conversation) => {
+        if (conversation.id !== conversationId) return conversation;
+        const userMsgs = nextMessages
+          .filter((m) => m.role === "user")
+          .map((m) => m.text);
+        return {
+          ...conversation,
+          title: titleFromUserMessages(userMsgs),
+          messages: nextMessages,
+          updatedAt: createdAt,
+        };
+      }),
+    );
+
+    let requestAudit: McpRequestAudit | null = null;
+
+    try {
+      const token = await acquireToken();
+      const mcpRequest = buildMcpRequestPayload({
+        user,
+        conversationId,
+        modelId: currentModelId,
+        countryCode: currentCountryCode,
+        prompt: trimmedQuestion,
+        token,
+      });
+      requestAudit = mcpRequest.audit;
+      persistMcpRequestAudit(requestAudit);
+      const answer = await requestMcpInsight(mcpRequest.payload, requestAudit);
+      const tokenUsage = calculateTokenUsageAndCost(
+        currentModelId,
+        trimmedQuestion,
+        answer.text || ""
+      );
+      const responseMessage: Message = {
+        id: createId("msg"),
+        role: "assistant",
+        createdAt: new Date().toISOString(),
+        mcpRequest: requestAudit,
+        tokenUsage,
+        ...answer,
+      };
+
+      setConversations((current) =>
+        current.map((conversation) =>
+          conversation.id === conversationId
+            ? {
+                ...conversation,
+                messages: [...nextMessages, responseMessage],
+                updatedAt: responseMessage.createdAt,
+              }
+            : conversation,
+        ),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "The analytics engine could not complete this request.";
+      const tokenUsage = calculateTokenUsageAndCost(
+        currentModelId,
+        trimmedQuestion,
+        message
+      );
+      const responseMessage: Message = {
+        id: createId("msg"),
+        role: "assistant",
+        createdAt: new Date().toISOString(),
+        text: message,
+        metrics: [
+          {
+            label: "Request status",
+            value: "Needs review",
+            tone: "watch",
+          },
+        ],
+        debug: [
+          ...(requestAudit
+            ? [
+                {
+                  stage: "mcp_request_payload",
+                  status: "success" as const,
+                  detail: "Payload prepared for Node BFF",
+                  payload: requestAudit,
+                },
+              ]
+            : []),
+          {
+            stage: "request_error",
+            status: "warning",
+            detail: message,
+          },
+        ],
+        mcpRequest: requestAudit ?? undefined,
+        mcpResponseSource: "node-bff",
+        tokenUsage,
+      };
+
+      setConversations((current) =>
+        current.map((conversation) =>
+          conversation.id === conversationId
+            ? {
+                ...conversation,
+                messages: [...nextMessages, responseMessage],
+                updatedAt: responseMessage.createdAt,
+              }
+            : conversation,
+        ),
+      );
+      showToast("Unable to analyze request", "warning");
+    } finally {
+      setIsThinking(false);
+    }
+  };
+
   const saveSettings = (nextSettings: SettingsState) => {
     saveToStorage(storageKeys.settings, nextSettings);
     setSettings(nextSettings);
@@ -639,7 +781,7 @@ function Workspace({
 
   const copyMessage = async (message: Message) => {
     await copyText(messageToPlainText(message));
-    showToast("Response copied");
+    showToast(message.role === "user" ? "Message copied" : "Response copied");
   };
 
   const markFeedback = (messageId: string, value: FeedbackValue) => {
@@ -735,6 +877,7 @@ function Workspace({
                     markFeedback={markFeedback}
                     showToast={showToast}
                     onReportError={() => setIssueOpen(true)}
+                    onEditUserMessage={handleEditUserMessage}
                   />
                 ))}
                 {isThinking && (
