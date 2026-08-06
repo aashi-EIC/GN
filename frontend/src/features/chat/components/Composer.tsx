@@ -43,7 +43,6 @@ export function Composer({
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
           onKeyDown={(event) => handleEnter(event, () => submitPrompt())}
-          placeholder={locale.placeholder}
           aria-label={`Ask ${model.name}`}
         />
         <div className="composer-bottom">

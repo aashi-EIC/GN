@@ -117,22 +117,4 @@ export const semanticModels: SemanticModel[] = [
 
 export const countries: Array<{ code: CountryCode; name: string }> = [
   { code: "US", name: "United States" },
-  { code: "CA", name: "Canada" },
-  { code: "GB", name: "United Kingdom" },
-  { code: "AU", name: "Australia" },
-  { code: "ES", name: "Spain" },
-  { code: "BR", name: "Brazil" },
-  { code: "FR", name: "France" },
-  { code: "DE", name: "Germany" },
-  { code: "MX", name: "Mexico" },
-  { code: "JP", name: "Japan" },
-  { code: "KR", name: "South Korea" },
-  { code: "NL", name: "Netherlands" },
-  { code: "SE", name: "Sweden" },
-  { code: "BE", name: "Belgium" },
-  { code: "CH", name: "Switzerland" },
-  { code: "NO", name: "Norway" },
-  { code: "FI", name: "Finland" },
-  { code: "IE", name: "Ireland" },
-  { code: "IT", name: "Italy" },
 ];

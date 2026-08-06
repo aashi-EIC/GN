@@ -1,4 +1,4 @@
-import { Check, Settings } from "lucide-react";
+import { Check, Code2, LogOut, Moon, Settings, Sun } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import type { Density, SettingsState } from "../../../shared/types/app";
 import { Modal } from "../../../shared/components/Modal";
@@ -8,11 +8,21 @@ export function SettingsModal({
   settings,
   saveSettings,
   totalUsage,
+  debugOpen,
+  toggleDebug,
+  themeMode,
+  toggleTheme,
+  onSignOut,
 }: {
   close: () => void;
   settings: SettingsState;
   saveSettings: (settings: SettingsState) => void;
   totalUsage: { inputTokens: number; outputTokens: number; cost: number };
+  debugOpen?: boolean;
+  toggleDebug?: () => void;
+  themeMode?: "light" | "dark";
+  toggleTheme?: () => void;
+  onSignOut?: () => void;
 }) {
   const [draft, setDraft] = useState(settings);
 
@@ -27,7 +37,7 @@ export function SettingsModal({
       <span className="modal-icon">
         <Settings />
       </span>
-      <h2>Workspace settings</h2>
+      <h2>Workspace Settings</h2>
       <form className="modal-form" onSubmit={submit}>
         <label>
           Display name
@@ -39,6 +49,37 @@ export function SettingsModal({
             aria-label="Display name"
           />
         </label>
+
+        {/* Theme Appearance Setting */}
+        {toggleTheme && (
+          <div className="settings-field-group">
+            <span className="field-group-label">Appearance</span>
+            <button
+              type="button"
+              className="settings-toggle-btn"
+              onClick={toggleTheme}
+            >
+              {themeMode === "dark" ? <Sun /> : <Moon />}
+              <span>{themeMode === "dark" ? "Light Mode" : "Dark Mode"}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Debug Events Toggle */}
+        {toggleDebug && (
+          <div className="settings-field-group">
+            <span className="field-group-label">Developer Tools</span>
+            <button
+              type="button"
+              className={`settings-toggle-btn ${debugOpen ? "active" : ""}`}
+              onClick={toggleDebug}
+            >
+              <Code2 />
+              <span>Debug Mode: {debugOpen ? "ON" : "OFF"}</span>
+            </button>
+          </div>
+        )}
+
         <label>
           Region
           <select
@@ -68,35 +109,38 @@ export function SettingsModal({
             <option value="compact">Compact</option>
           </select>
         </label>
-        <label className="check-row">
-          <input
-            type="checkbox"
-            checked={draft.keepDebugOpen}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                keepDebugOpen: event.target.checked,
-              }))
-            }
-          />
-          Keep debug events visible
-        </label>
 
         <div className="settings-tokens-summary">
-          <h3>Token Usage Summary <span style={{ fontSize: "0.8em", opacity: 0.6, fontWeight: "normal" }}>(Placeholder)</span></h3>
+          <h3>Token Usage Summary</h3>
           <div className="settings-token-row">
             <span>Input Tokens</span>
-            <strong>--</strong>
+            <strong>{totalUsage.inputTokens.toLocaleString()}</strong>
           </div>
           <div className="settings-token-row">
             <span>Output Tokens</span>
-            <strong>--</strong>
+            <strong>{totalUsage.outputTokens.toLocaleString()}</strong>
           </div>
           <div className="settings-token-row">
             <span>Total Session Cost</span>
-            <strong className="cost-value">--</strong>
+            <strong className="cost-value">${totalUsage.cost.toFixed(4)}</strong>
           </div>
         </div>
+
+        {onSignOut && (
+          <div className="settings-signout-row">
+            <button
+              type="button"
+              className="settings-signout-btn"
+              onClick={() => {
+                close();
+                onSignOut();
+              }}
+            >
+              <LogOut />
+              <span>Sign out</span>
+            </button>
+          </div>
+        )}
 
         <div className="modal-actions">
           <button type="button" onClick={close}>
@@ -111,3 +155,4 @@ export function SettingsModal({
     </Modal>
   );
 }
+

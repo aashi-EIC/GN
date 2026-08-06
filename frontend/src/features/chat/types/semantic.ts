@@ -7,26 +7,7 @@ export type ModelId =
   | "linear_country_grading"
   | "usage_metrics_bia_dashboards";
 
-export type CountryCode =
-  | "US"
-  | "CA"
-  | "GB"
-  | "AU"
-  | "ES"
-  | "BR"
-  | "FR"
-  | "DE"
-  | "MX"
-  | "JP"
-  | "KR"
-  | "NL"
-  | "SE"
-  | "BE"
-  | "CH"
-  | "NO"
-  | "FI"
-  | "IE"
-  | "IT";
+export type CountryCode = "US";
 
 export type SemanticModel = {
   id: ModelId;

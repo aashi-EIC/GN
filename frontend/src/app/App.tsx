@@ -816,6 +816,7 @@ function Workspace({
     <div className={`app-shell density-${settings.density} theme-${themeMode}`}>
       <Sidebar
         open={sidebarOpen}
+        user={user}
         conversations={filteredConversations}
         activeConversationId={activeConversationId}
         historyQuery={historyQuery}
@@ -825,28 +826,15 @@ function Workspace({
         deleteConversation={deleteConversation}
         setGuideOpen={setGuideOpen}
         setSidebarOpen={(open) => dispatch(uiActions.setSidebarOpen(open))}
+        setSettingsOpen={setSettingsOpen}
+        onSignOut={onSignOut}
       />
 
       <section className="workspace">
         <Navbar
-          user={user}
           modelId={selectedModelId}
-          sidebarOpen={sidebarOpen}
-          profileOpen={profileOpen}
-          setProfileOpen={setProfileOpen}
-          debugOpen={debugOpen}
-          toggleDebug={() => dispatch(uiActions.setDebugOpen(!debugOpen))}
-          themeMode={themeMode}
-          toggleTheme={() => dispatch(uiActions.toggleThemeMode())}
-          setSidebarOpen={(open) => dispatch(uiActions.setSidebarOpen(open))}
           openGuide={openSelectedModelGuide}
-          setTourOpen={setTourOpen}
-          setIssueOpen={setIssueOpen}
-          setSettingsOpen={setSettingsOpen}
-          exportConversation={exportConversation}
-          onSignOut={onSignOut}
-          statusLabel={workspaceStatus.data?.label ?? "Ready"}
-          totalUsage={totalUsage}
+          sidebarOpen={sidebarOpen}
         />
 
         <main className={activeConversation ? "chat" : "welcome"}>
@@ -947,6 +935,11 @@ function Workspace({
           settings={settings}
           saveSettings={saveSettings}
           totalUsage={totalUsage}
+          debugOpen={debugOpen}
+          toggleDebug={() => dispatch(uiActions.setDebugOpen(!debugOpen))}
+          themeMode={themeMode}
+          toggleTheme={() => dispatch(uiActions.toggleThemeMode())}
+          onSignOut={onSignOut}
         />
       )}
       {toast && <div className={`toast ${toast.tone}`}>{toast.message}</div>}

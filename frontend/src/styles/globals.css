@@ -156,6 +156,10 @@ svg {
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
 }
 
+.login-modal-card.single-login {
+  width: min(460px, 94vw);
+}
+
 .login-card-header {
   padding: 34px 30px 28px;
   background: #041c36;
@@ -217,6 +221,27 @@ svg {
   align-items: start;
   background: #ffffff;
 }
+
+.login-card-body.single-login-body {
+  display: flex;
+  flex-direction: column;
+  padding: 36px 40px 40px;
+  align-items: center;
+}
+
+.single-login-col {
+  align-items: center;
+  text-align: center;
+}
+
+.single-login-col .col-heading {
+  text-align: center;
+}
+
+.single-login-col .col-footnote {
+  text-align: center;
+}
+
 
 .login-col {
   display: flex;
@@ -4594,6 +4619,435 @@ body {
 :root[data-theme="dark"] .profile-token-row {
   color: #94a3b8;
 }
+
+/* ==========================================
+   Glean-Inspired UI Scale Tweaks
+   ========================================== */
+
+/* 1. Welcome Message Hero */
+.welcome h1 {
+  font-size: clamp(24px, 2.4vw, 32px) !important;
+  font-weight: 600 !important;
+  line-height: 1.25 !important;
+  margin: 0 0 20px !important;
+  letter-spacing: -0.01em;
+}
+
+.welcome-inner {
+  width: min(780px, 100%) !important;
+  padding-top: 20px !important;
+}
+
+/* 2. Text Box / Chat Input (Composer) */
+.welcome-composer,
+.composer {
+  width: min(800px, 100%) !important;
+  min-height: 104px !important;
+  padding: 16px 18px 12px !important;
+  border-radius: 14px !important;
+  gap: 10px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.welcome-composer:focus-within,
+.composer:focus-within {
+  border-color: color-mix(in srgb, var(--gn-pink) 50%, var(--ui-border)) !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08), 0 0 0 2px color-mix(in srgb, var(--gn-pink) 20%, transparent) !important;
+}
+
+.welcome-composer textarea,
+.composer textarea {
+  font-size: 15px !important;
+  font-weight: 400 !important;
+  line-height: 1.45 !important;
+  min-height: 38px !important;
+  height: 38px !important;
+}
+
+.composer-bottom {
+  gap: 12px !important;
+}
+
+.composer-actions {
+  gap: 8px !important;
+}
+
+.send-btn {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 8px !important;
+}
+
+.send-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.mic-btn {
+  width: 32px !important;
+  height: 34px !important;
+}
+
+.mic-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+/* 3. Semantic Model Dropdown */
+.model-picker.compact > button {
+  min-height: 32px !important;
+  height: 32px !important;
+  padding: 0 10px !important;
+  border-radius: 8px !important;
+  gap: 8px !important;
+  border: 1px solid var(--ui-border) !important;
+  transition: all 0.15s ease;
+}
+
+.model-picker.compact .model-chip {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+.model-selected-name {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+.welcome-model-control .model-picker.compact,
+.composer-model-control .model-picker.compact {
+  width: auto !important;
+  min-width: 160px !important;
+  max-width: 220px !important;
+}
+
+.model-menu {
+  border-radius: 10px !important;
+  padding: 6px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12) !important;
+}
+
+.model-menu button {
+  height: 34px !important;
+  min-height: 34px !important;
+  border-radius: 6px !important;
+  padding: 0 10px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+/* 4. Sidebar Previous Chats */
+.sidebar {
+  width: 250px !important;
+  flex-basis: 250px !important;
+  padding: 12px 10px !important;
+}
+
+.new-chat {
+  min-height: 36px !important;
+  height: 36px !important;
+  margin: 12px 0 8px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  padding: 0 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.new-chat svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.history-search input {
+  height: 34px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  padding-left: 32px !important;
+}
+
+.history-label {
+  margin: 14px 6px 6px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+}
+
+.history-label strong {
+  font-size: 11px !important;
+}
+
+.history-item {
+  border-radius: 8px !important;
+  min-height: 38px !important;
+  transition: background 0.12s ease;
+}
+
+.history-item > button:first-child {
+  padding: 8px 10px !important;
+}
+
+.history-item span {
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  line-height: 1.35 !important;
+}
+
+.history-item.active span {
+  font-weight: 600 !important;
+}
+
+.history-item small {
+  font-size: 11px !important;
+  opacity: 0.75 !important;
+  margin-top: 2px !important;
+}
+
+.history-item .history-delete-btn {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.history-item:hover .history-delete-btn,
+.history-item.active .history-delete-btn {
+  opacity: 1;
+}
+
+/* ==========================================
+   Gemini Sidebar Footer & Settings Layout
+   ========================================== */
+
+.sidebar {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100vh !important;
+}
+
+.side-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 12px 6px 4px;
+  border-top: 1px solid var(--ui-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sidebar-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  cursor: default;
+}
+
+.sidebar-avatar {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  flex-shrink: 0;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-tier {
+  font-size: 11px;
+  color: var(--ui-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-settings-btn {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 8px !important;
+  color: var(--ui-muted) !important;
+  flex-shrink: 0;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.sidebar-settings-btn:hover {
+  color: var(--ui-text) !important;
+  background: var(--ui-control) !important;
+}
+
+.collapsed-footer {
+  margin-top: auto;
+  padding-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Collapsed Sidebar Strip Styles (Gemini layout) */
+.sidebar.closed {
+  width: 52px !important;
+  flex-basis: 52px !important;
+  padding: 12px 6px !important;
+}
+
+.sidebar-collapsed-nav {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 14px !important;
+  margin-top: 0 !important;
+}
+
+.collapsed-brand {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 4px;
+}
+
+.collapsed-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 8px;
+}
+
+.collapsed-avatar {
+  width: 28px !important;
+  height: 28px !important;
+  font-size: 11px !important;
+  cursor: pointer;
+}
+
+/* Settings Modal Elements */
+.settings-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.field-group-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-text);
+}
+
+.settings-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-control);
+  color: var(--ui-text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.settings-toggle-btn:hover {
+  border-color: color-mix(in srgb, var(--gn-pink) 40%, var(--ui-border));
+}
+
+.settings-toggle-btn.active {
+  border-color: var(--gn-pink);
+  background: color-mix(in srgb, var(--gn-pink) 12%, var(--ui-control));
+  color: var(--gn-pink);
+}
+
+.settings-signout-row {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ui-border);
+}
+
+.settings-signout-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.06);
+  color: #ef4444;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.settings-signout-btn:hover {
+  background: rgba(239, 68, 68, 0.14);
+}
+
+/* Seamless & Borderless Topbar (Gemini UI style) */
+.topbar {
+  background: transparent !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 12px 24px 0 !important;
+}
+
+:root[data-theme="dark"] .topbar {
+  background: transparent !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+}
+
+.model-guide-button {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: transparent !important;
+  color: var(--ui-muted) !important;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.model-guide-button:hover {
+  color: var(--ui-text) !important;
+  background: var(--ui-control) !important;
+}
+
+
+
 
 
 
