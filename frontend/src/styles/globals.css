@@ -7359,6 +7359,10 @@ body {
     height: 100%;
   }
 
+  .login-page-container {
+    min-height: 100%;
+  }
+
   .sidebar,
   .sidebar.open,
   .sidebar.closed {
