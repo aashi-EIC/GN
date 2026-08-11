@@ -4574,6 +4574,80 @@ body {
   border-color: rgba(255, 211, 90, 0.46) !important;
 }
 
+/* Settings Modal Dark Mode Overrides */
+:root[data-theme="dark"] .sidebar-settings-row {
+  color: var(--ui-text) !important;
+}
+
+:root[data-theme="dark"] .sidebar-settings-row:hover,
+:root[data-theme="dark"] .sidebar-settings-row:focus-within,
+:root[data-theme="dark"] .sidebar-settings-row.active {
+  background: var(--ui-control) !important;
+}
+
+:root[data-theme="dark"] .sidebar-settings-row svg {
+  color: var(--ui-text) !important;
+}
+
+:root[data-theme="dark"] .sidebar-settings-row > span {
+  color: var(--ui-text) !important;
+}
+
+:root[data-theme="dark"] .sidebar-settings-row small {
+  color: var(--ui-muted) !important;
+}
+
+:root[data-theme="dark"] .sidebar-settings-row input,
+:root[data-theme="dark"] .sidebar-settings-row select {
+  background: var(--ui-control) !important;
+  color: var(--ui-text) !important;
+  border-color: var(--ui-border) !important;
+}
+
+:root[data-theme="dark"] .sidebar-settings-row input:focus,
+:root[data-theme="dark"] .sidebar-settings-row select:focus {
+  border-color: var(--gn-pink) !important;
+}
+
+:root[data-theme="dark"] .sidebar-settings-usage {
+  background: var(--ui-panel-soft) !important;
+  border-color: var(--ui-border) !important;
+}
+
+:root[data-theme="dark"] .sidebar-settings-usage .usage-title {
+  color: var(--ui-text) !important;
+}
+
+:root[data-theme="dark"] .sidebar-settings-usage div:not(.usage-title) {
+  color: var(--ui-muted) !important;
+}
+
+:root[data-theme="dark"] .sidebar-settings-usage strong {
+  color: var(--ui-text) !important;
+}
+
+:root[data-theme="dark"] .sidebar-settings-actions button {
+  background: var(--ui-control) !important;
+  color: var(--ui-text) !important;
+  border-color: var(--ui-border) !important;
+}
+
+:root[data-theme="dark"] .sidebar-settings-actions button[type="submit"] {
+  background: var(--gn-pink) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+:root[data-theme="dark"] .sidebar-settings-actions button:hover {
+  background: var(--ui-panel-soft) !important;
+  border-color: var(--ui-muted) !important;
+}
+
+:root[data-theme="dark"] .sidebar-settings-actions button[type="submit"]:hover {
+  background: color-mix(in srgb, var(--gn-pink) 85%, #ffffff) !important;
+}
+
+
 /* Active chat layout: bottom-docked rectangular composer */
 .chat {
   min-height: calc(100vh - 48px);

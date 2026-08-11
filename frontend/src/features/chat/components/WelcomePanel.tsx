@@ -126,7 +126,7 @@ export function WelcomePanel({
           onChange={(event) => setPrompt(event.target.value)}
           onKeyDown={(event) => handleEnter(event, () => submitPrompt())}
           aria-label={`Ask ${model.name}`}
-          placeholder={locale.placeholder ?? `Ask ${model.name}`}
+          placeholder=""
         />
         <div className="composer-bottom">
           <ModelPicker
@@ -169,10 +169,6 @@ export function WelcomePanel({
       <section className="suggestion-section" aria-labelledby="suggested-prompts-title">
         <div className="suggestion-section-head">
           <h2 id="suggested-prompts-title">Suggested prompts</h2>
-          <span>
-            {String(activePromptIndex + 1).padStart(2, "0")} /{" "}
-            {String(localizedPrompts.length).padStart(2, "0")}
-          </span>
         </div>
         <div className="prompt-gallery-shell">
           <button
