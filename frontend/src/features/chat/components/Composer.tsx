@@ -45,7 +45,7 @@ export function Composer({
           onChange={(event) => setPrompt(event.target.value)}
           onKeyDown={(event) => handleEnter(event, () => submitPrompt())}
           aria-label={`Ask ${model.name}`}
-          placeholder={`Ask a follow-up about ${model.name}`}
+          placeholder=""
         />
         <div className="composer-bottom">
           <ModelPicker
