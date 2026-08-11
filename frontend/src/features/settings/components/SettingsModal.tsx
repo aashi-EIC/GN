@@ -74,15 +74,17 @@ export function SettingsModal({
           {toggleTheme && (
             <button type="button" className="sidebar-settings-row" onClick={toggleTheme}>
               {themeMode === "dark" ? <Sun /> : <Moon />}
-              <span>Theme</span>
-              <small>{themeMode === "dark" ? "Dark" : "Light"}</small>
+              <span>Dark theme</span>
+              <div className={`settings-switch ${themeMode === "dark" ? "active" : ""}`}>
+                <span className="settings-switch-thumb" />
+              </div>
             </button>
           )}
 
           {toggleDebug && (
             <button
               type="button"
-              className={`sidebar-settings-row ${draft.keepDebugOpen ? "active" : ""}`}
+              className="sidebar-settings-row"
               onClick={() => {
                 setDraft((current) => ({
                   ...current,
@@ -93,7 +95,9 @@ export function SettingsModal({
             >
               <Code2 />
               <span>Debug mode</span>
-              <small>{draft.keepDebugOpen ? "On" : "Off"}</small>
+              <div className={`settings-switch ${draft.keepDebugOpen ? "active" : ""}`}>
+                <span className="settings-switch-thumb" />
+              </div>
             </button>
           )}
 
