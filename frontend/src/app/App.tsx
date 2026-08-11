@@ -275,21 +275,6 @@ function Workspace({
   const [toast, setToast] = useState<ToastState | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  const totalUsage = useMemo(() => {
-    let inputTokens = 0;
-    let outputTokens = 0;
-    let cost = 0;
-    conversations.forEach((conv) => {
-      conv.messages.forEach((msg) => {
-        if (msg.tokenUsage) {
-          inputTokens += msg.tokenUsage.inputTokens;
-          outputTokens += msg.tokenUsage.outputTokens;
-          cost += msg.tokenUsage.cost;
-        }
-      });
-    });
-    return { inputTokens, outputTokens, cost };
-  }, [conversations]);
   const workspaceStatus = useQuery({
     queryKey: ["workspace-status", user.email],
     queryFn: async () => ({
@@ -979,7 +964,6 @@ function Workspace({
           }}
           settings={settings}
           saveSettings={saveSettings}
-          totalUsage={totalUsage}
           debugOpen={debugOpen}
           toggleDebug={() => dispatch(uiActions.setDebugOpen(!debugOpen))}
           themeMode={themeMode}
