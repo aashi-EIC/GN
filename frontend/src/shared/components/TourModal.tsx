@@ -7,7 +7,7 @@ export function TourModal({ close, modelId }: { close: () => void; modelId: Mode
   const model = getModel(modelId);
 
   return (
-    <Modal close={close}>
+    <Modal close={close} label="Application tour">
       <span className="modal-icon">
         <HelpCircle />
       </span>
@@ -22,8 +22,8 @@ export function TourModal({ close, modelId }: { close: () => void; modelId: Mode
           <p>{model.guide}</p>
         </div>
         <div>
-          <b>Last 10 sessions/chats</b>
-          <p>Use the left panel to start a new chat or reopen one of the 10 most recent chats.</p>
+          <b>Recent chats</b>
+          <p>Use the left panel to start a new chat or reopen chats grouped by date and topic.</p>
         </div>
         <div>
           <b>Example prompts</b>

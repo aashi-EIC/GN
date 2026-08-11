@@ -1,11 +1,6 @@
 export type ModelId =
-  | "metadata_stats_linear"
-  | "imagerystats_vod"
   | "mapping_stats_svc"
-  | "schedule_completeness_tsg"
-  | "program_gaps_svc"
-  | "linear_country_grading"
-  | "usage_metrics_bia_dashboards";
+  | "schedule_completeness_tsg";
 
 export type CountryCode = "US";
 

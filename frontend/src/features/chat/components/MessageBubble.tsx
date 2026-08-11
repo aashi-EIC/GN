@@ -1,5 +1,16 @@
-import { memo, useState } from "react";
-import { Check, Code2, Copy, Pencil, Sparkles, ThumbsDown, ThumbsUp, AlertTriangle } from "lucide-react";
+import { memo, useEffect, useRef, useState } from "react";
+import {
+  AlertTriangle,
+  Check,
+  Code2,
+  Copy,
+  MoreHorizontal,
+  Pencil,
+  RefreshCw,
+  Sparkles,
+  ThumbsDown,
+  ThumbsUp,
+} from "lucide-react";
 import type { FeedbackValue, Message, ToastState } from "../../../shared/types/app";
 import { BarChart } from "./charts/BarChart";
 import { HtmlPlot } from "./charts/HtmlPlot";
@@ -15,6 +26,8 @@ function MessageBubbleComponent({
   showToast,
   onReportError,
   onEditUserMessage,
+  onRegenerateResponse,
+  busy = false,
 }: {
   message: Message;
   debugOpen: boolean;
@@ -24,9 +37,34 @@ function MessageBubbleComponent({
   showToast: (message: string, tone?: ToastState["tone"]) => void;
   onReportError: () => void;
   onEditUserMessage?: (messageId: string, newText: string) => void;
+  onRegenerateResponse?: (messageId: string) => void;
+  busy?: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
+  const [copied, setCopied] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!moreOpen) return undefined;
+
+    const closeMenu = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && !moreMenuRef.current?.contains(target)) {
+        setMoreOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeMenu);
+    return () => document.removeEventListener("pointerdown", closeMenu);
+  }, [moreOpen]);
+
+  const handleCopy = async () => {
+    await copyMessage(message);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  };
 
   if (message.role === "user") {
     if (isEditing) {
@@ -75,8 +113,8 @@ function MessageBubbleComponent({
         <div className="user-bubble-container">
           <div className="user-bubble">{message.text}</div>
           <div className="user-message-actions response-actions">
-            <IconButton label="Copy message" onClick={() => copyMessage(message)}>
-              <Copy />
+            <IconButton label={copied ? "Copied" : "Copy message"} onClick={handleCopy}>
+              {copied ? <Check /> : <Copy />}
             </IconButton>
             {onEditUserMessage && (
               <IconButton label="Edit message" onClick={() => setIsEditing(true)}>
@@ -130,29 +168,56 @@ function MessageBubbleComponent({
 
 
         <div className="response-actions">
-          <IconButton label="Copy response" onClick={() => copyMessage(message)}>
-            <Copy />
-          </IconButton>
           <IconButton
-            label="Mark helpful"
+            label={feedback === "helpful" ? "Remove good response rating" : "Good response"}
             active={feedback === "helpful"}
             onClick={() => markFeedback(message.id, "helpful")}
           >
             <ThumbsUp />
           </IconButton>
           <IconButton
-            label="Mark not helpful"
+            label={feedback === "not-helpful" ? "Remove bad response rating" : "Bad response"}
             active={feedback === "not-helpful"}
             onClick={() => markFeedback(message.id, "not-helpful")}
           >
             <ThumbsDown />
           </IconButton>
-          <IconButton
-            label="Report an error"
-            onClick={onReportError}
-          >
-            <AlertTriangle />
+          {onRegenerateResponse && (
+            <IconButton
+              label="Regenerate response"
+              onClick={() => onRegenerateResponse(message.id)}
+              disabled={busy}
+            >
+              <RefreshCw />
+            </IconButton>
+          )}
+          <IconButton label={copied ? "Copied" : "Copy response"} onClick={handleCopy}>
+            {copied ? <Check /> : <Copy />}
           </IconButton>
+          <div className="response-more" ref={moreMenuRef}>
+            <IconButton
+              label="More options"
+              active={moreOpen}
+              onClick={() => setMoreOpen((open) => !open)}
+            >
+              <MoreHorizontal />
+            </IconButton>
+            {moreOpen && (
+              <div className="response-more-menu" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    onReportError();
+                  }}
+                >
+                  <AlertTriangle />
+                  Report response
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {debugOpen && message.debug && (

@@ -1,7 +1,16 @@
-import { Check, Code2, LogOut, Moon, Settings, Sun } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import {
+  Check,
+  CircleGauge,
+  Code2,
+  LogOut,
+  MapPin,
+  Moon,
+  SlidersHorizontal,
+  Sun,
+  UserRound,
+} from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { Density, SettingsState } from "../../../shared/types/app";
-import { Modal } from "../../../shared/components/Modal";
 
 export function SettingsModal({
   close,
@@ -26,6 +35,14 @@ export function SettingsModal({
 }) {
   const [draft, setDraft] = useState(settings);
 
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [close]);
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
     saveSettings(draft);
@@ -33,104 +50,105 @@ export function SettingsModal({
   };
 
   return (
-    <Modal close={close}>
-      <span className="modal-icon">
-        <Settings />
-      </span>
-      <h2>Workspace Settings</h2>
-      <form className="modal-form" onSubmit={submit}>
-        <label>
-          Display name
-          <input
-            value={draft.displayName}
-            onChange={(event) =>
-              setDraft((current) => ({ ...current, displayName: event.target.value }))
-            }
-            aria-label="Display name"
-          />
-        </label>
+    <div
+      className="settings-sidebar-backdrop"
+      onMouseDown={(event) => event.target === event.currentTarget && close()}
+    >
+      <aside
+        className="gemini-sidebar-settings-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Workspace settings"
+      >
+        <form className="sidebar-settings-form" onSubmit={submit}>
+          <label className="sidebar-settings-row">
+            <UserRound />
+            <span>Display name</span>
+            <input
+              value={draft.displayName}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, displayName: event.target.value }))
+              }
+              aria-label="Display name"
+            />
+          </label>
 
-        {/* Theme Appearance Setting */}
-        {toggleTheme && (
-          <div className="settings-field-group">
-            <span className="field-group-label">Appearance</span>
-            <button
-              type="button"
-              className="settings-toggle-btn"
-              onClick={toggleTheme}
-            >
+          {toggleTheme && (
+            <button type="button" className="sidebar-settings-row" onClick={toggleTheme}>
               {themeMode === "dark" ? <Sun /> : <Moon />}
-              <span>{themeMode === "dark" ? "Light Mode" : "Dark Mode"}</span>
+              <span>Theme</span>
+              <small>{themeMode === "dark" ? "Dark" : "Light"}</small>
             </button>
-          </div>
-        )}
+          )}
 
-        {/* Debug Events Toggle */}
-        {toggleDebug && (
-          <div className="settings-field-group">
-            <span className="field-group-label">Developer Tools</span>
+          {toggleDebug && (
             <button
               type="button"
-              className={`settings-toggle-btn ${debugOpen ? "active" : ""}`}
+              className={`sidebar-settings-row ${debugOpen ? "active" : ""}`}
               onClick={toggleDebug}
             >
               <Code2 />
-              <span>Debug Mode: {debugOpen ? "ON" : "OFF"}</span>
+              <span>Debug mode</span>
+              <small>{debugOpen ? "On" : "Off"}</small>
             </button>
-          </div>
-        )}
+          )}
 
-        <label>
-          Region
-          <select
-            value={draft.region}
-            onChange={(event) =>
-              setDraft((current) => ({ ...current, region: event.target.value }))
-            }
-          >
-            <option>Global</option>
-            <option>Americas</option>
-            <option>EMEA</option>
-            <option>Asia Pacific</option>
-          </select>
-        </label>
-        <label>
-          Density
-          <select
-            value={draft.density}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                density: event.target.value as Density,
-              }))
-            }
-          >
-            <option value="comfortable">Comfortable</option>
-            <option value="compact">Compact</option>
-          </select>
-        </label>
+          <label className="sidebar-settings-row">
+            <MapPin />
+            <span>Region</span>
+            <select
+              value={draft.region}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, region: event.target.value }))
+              }
+            >
+              <option>Global</option>
+              <option>Americas</option>
+              <option>EMEA</option>
+              <option>Asia Pacific</option>
+            </select>
+          </label>
 
-        <div className="settings-tokens-summary">
-          <h3>Token Usage Summary</h3>
-          <div className="settings-token-row">
-            <span>Input Tokens</span>
-            <strong>{totalUsage.inputTokens.toLocaleString()}</strong>
-          </div>
-          <div className="settings-token-row">
-            <span>Output Tokens</span>
-            <strong>{totalUsage.outputTokens.toLocaleString()}</strong>
-          </div>
-          <div className="settings-token-row">
-            <span>Total Session Cost</span>
-            <strong className="cost-value">${totalUsage.cost.toFixed(4)}</strong>
-          </div>
-        </div>
+          <label className="sidebar-settings-row">
+            <SlidersHorizontal />
+            <span>Density</span>
+            <select
+              value={draft.density}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  density: event.target.value as Density,
+                }))
+              }
+            >
+              <option value="comfortable">Comfortable</option>
+              <option value="compact">Compact</option>
+            </select>
+          </label>
 
-        {onSignOut && (
-          <div className="settings-signout-row">
+          <div className="sidebar-settings-usage">
+            <div className="usage-title">
+              <CircleGauge />
+              <span>Token usage</span>
+            </div>
+            <div>
+              <span>Input</span>
+              <strong>{totalUsage.inputTokens.toLocaleString()}</strong>
+            </div>
+            <div>
+              <span>Output</span>
+              <strong>{totalUsage.outputTokens.toLocaleString()}</strong>
+            </div>
+            <div>
+              <span>Cost</span>
+              <strong>${totalUsage.cost.toFixed(4)}</strong>
+            </div>
+          </div>
+
+          {onSignOut && (
             <button
               type="button"
-              className="settings-signout-btn"
+              className="sidebar-settings-row signout"
               onClick={() => {
                 close();
                 onSignOut();
@@ -139,20 +157,20 @@ export function SettingsModal({
               <LogOut />
               <span>Sign out</span>
             </button>
-          </div>
-        )}
+          )}
 
-        <div className="modal-actions">
-          <button type="button" onClick={close}>
-            Cancel
-          </button>
-          <button className="primary-action" type="submit">
-            <Check />
-            Save settings
-          </button>
-        </div>
-      </form>
-    </Modal>
+          <div className="sidebar-settings-actions">
+            <button type="button" onClick={close}>
+              Cancel
+            </button>
+            <button type="submit">
+              <Check />
+              Save
+            </button>
+          </div>
+        </form>
+      </aside>
+    </div>
   );
 }
 
