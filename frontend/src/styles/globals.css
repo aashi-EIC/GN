@@ -145,72 +145,79 @@ svg {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: #232326;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(247, 247, 249, 0.96)),
+    repeating-linear-gradient(0deg, transparent 0, transparent 31px, rgba(0, 32, 65, 0.06) 32px),
+    repeating-linear-gradient(90deg, transparent 0, transparent 31px, rgba(0, 32, 65, 0.06) 32px);
+}
+
+:root[data-theme="dark"] .login-page-container {
+  background:
+    linear-gradient(180deg, rgba(30, 36, 43, 0.88), rgba(18, 22, 26, 0.98)),
+    repeating-linear-gradient(0deg, transparent 0, transparent 31px, rgba(255, 255, 255, 0.04) 32px),
+    repeating-linear-gradient(90deg, transparent 0, transparent 31px, rgba(255, 255, 255, 0.04) 32px);
 }
 
 .login-modal-card {
   width: min(650px, 94vw);
-  border-radius: 4px;
+  border-radius: 12px;
   overflow: hidden;
-  background: #ffffff;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  background: var(--gn-white);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--gn-line);
 }
 
 .login-modal-card.single-login {
-  width: min(460px, 94vw);
+  width: min(480px, 94vw);
 }
 
 .login-card-header {
-  padding: 34px 30px 28px;
-  background: #041c36;
-  color: #ffffff;
+  padding: 36px 32px 28px;
+  background: var(--gn-surface);
+  border-bottom: 1px solid var(--gn-line);
+  color: var(--gn-navy);
   text-align: center;
+  position: relative;
+}
+
+:root[data-theme="dark"] .login-card-header {
+  background: var(--ui-panel);
 }
 
 .header-brand-wrap {
   display: flex;
   justify-content: center;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
-.header-text-brand {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1.15;
-}
-
-.header-text-brand .brand-name {
-  font-size: 26px;
+.header-brand-wrap .ask-brand {
+  font-size: 24px;
   font-weight: 700;
-  color: #ffffff;
-  letter-spacing: -0.5px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--gn-navy);
 }
 
-.header-text-brand .brand-sub {
-  font-size: 11px;
-  font-weight: 400;
-  color: #ffffff;
-  margin-top: 1px;
-  letter-spacing: 0.1px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+:root[data-theme="dark"] .header-brand-wrap .ask-brand {
+  color: var(--ui-text);
 }
 
 .header-title {
   margin: 16px 0 12px;
   font-size: 32px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.2px;
-  color: #ffffff;
+  color: var(--gn-navy);
 }
 
 .header-subtitle {
   margin: 0;
-  font-size: 15px;
-  line-height: 1.45;
-  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--gn-text);
   font-weight: 400;
+}
+
+:root[data-theme="dark"] .header-subtitle {
+  color: var(--ui-muted);
 }
 
 .login-card-body {
@@ -219,7 +226,7 @@ svg {
   padding: 32px 34px 36px;
   gap: 24px;
   align-items: start;
-  background: #ffffff;
+  background: var(--gn-white);
 }
 
 .login-card-body.single-login-body {
@@ -238,11 +245,6 @@ svg {
   text-align: center;
 }
 
-.single-login-col .col-footnote {
-  text-align: center;
-}
-
-
 .login-col {
   display: flex;
   flex-direction: column;
@@ -250,57 +252,93 @@ svg {
 }
 
 .col-heading {
-  margin: 0 0 16px;
+  margin: 0 0 20px;
   font-size: 14px;
-  font-weight: 400;
-  color: #333333;
+  font-weight: 500;
+  color: var(--gn-navy);
   line-height: 1.35;
+}
+
+:root[data-theme="dark"] .col-heading {
+  color: var(--ui-text);
 }
 
 .microsoft-login-btn {
   display: flex;
   align-items: center;
   width: 100%;
-  height: 40px;
-  border: none;
-  border-radius: 3px;
-  background: #3b82f6;
-  color: #ffffff;
+  height: 48px;
+  border: 1px solid var(--gn-line);
+  border-radius: 10px;
+  background: var(--gn-white);
+  color: var(--gn-navy);
   cursor: pointer;
   padding: 0;
   overflow: hidden;
-  transition: background 0.15s ease;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 2px 8px rgba(0, 32, 65, 0.05);
 }
 
-.microsoft-login-btn:hover {
-  background: #2563eb;
+:root[data-theme="dark"] .microsoft-login-btn {
+  background: var(--ui-panel-soft);
+  color: var(--ui-text);
+}
+
+.microsoft-login-btn:hover:not(:disabled) {
+  border-color: var(--gn-pink);
+  color: var(--gn-pink);
+  background: var(--gn-white);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(244, 9, 83, 0.12);
+}
+
+:root[data-theme="dark"] .microsoft-login-btn:hover:not(:disabled) {
+  background: var(--gn-soft-pink);
 }
 
 .btn-icon-sq {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  background: #ffffff;
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  width: 48px;
+  height: 48px;
+  background: rgba(0, 32, 65, 0.03);
+  border-right: 1px solid var(--gn-line);
   flex-shrink: 0;
 }
+
+:root[data-theme="dark"] .btn-icon-sq {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+
+
 
 .btn-label {
   flex: 1;
   text-align: center;
-  font-size: 14px;
-  font-weight: 500;
-  padding-right: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  padding-right: 12px;
 }
 
-.col-footnote {
-  margin-top: 14px;
-  font-size: 11px;
-  color: #777777;
+.login-security-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+  font-size: 12px;
+  color: var(--gn-text);
   line-height: 1.35;
-  text-align: left;
 }
+
+.login-security-badge .security-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--gn-pink);
+  flex-shrink: 0;
+}
+
 
 .login-divider {
   display: flex;

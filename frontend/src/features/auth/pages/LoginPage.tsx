@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { MicrosoftMark } from "../../../shared/components/Brand";
+import { AskBrandMark, MicrosoftMark } from "../../../shared/components/Brand";
+import { ShieldCheck, Sparkles, Lock } from "lucide-react";
 
 export function LoginPage({
   entraAvailable,
@@ -34,13 +35,10 @@ export function LoginPage({
   return (
     <main className="login-page-container">
       <div className="login-modal-card single-login">
-        {/* Header dark blue banner */}
+        {/* Header banner aligned with Chatbot styling */}
         <header className="login-card-header">
           <div className="header-brand-wrap">
-            <div className="header-text-brand">
-              <span className="brand-name"><h1>Conversational BI</h1></span>
-              <span className="brand-sub">a nielsen company</span>
-            </div>
+            <AskBrandMark />
           </div>
           <p className="header-subtitle">
             Sign in with your Microsoft Entra ID account to access Conversational BI.
@@ -65,9 +63,10 @@ export function LoginPage({
               </span>
             </button>
 
-            <p className="col-footnote">
-              Single Sign-On (SSO) is enabled via Microsoft Entra ID.
-            </p>
+            <div className="login-security-badge">
+              <ShieldCheck className="security-icon" />
+              <span>Enterprise Single Sign-On (SSO) via Microsoft Entra ID</span>
+            </div>
           </div>
         </div>
 
@@ -76,6 +75,7 @@ export function LoginPage({
     </main>
   );
 }
+
 
 
 
