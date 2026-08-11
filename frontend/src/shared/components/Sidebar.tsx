@@ -158,7 +158,6 @@ export function Sidebar({
           <div className="history-label-row">
             <div className="history-label">
               <span>Recents</span>
-              <strong>{conversations.length}</strong>
             </div>
             <div className="history-toggle-group">
               <button
