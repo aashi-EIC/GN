@@ -2505,8 +2505,8 @@ tr:last-child td {
 
 .gemini-sidebar-settings-panel {
   position: fixed;
-  left: 62px;
-  top: 76px;
+  left: 12px;
+  bottom: 72px;
   width: min(342px, calc(100vw - 28px));
   max-height: min(640px, calc(100vh - 92px));
   overflow-y: auto;
