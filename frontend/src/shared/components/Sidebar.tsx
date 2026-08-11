@@ -5,25 +5,16 @@ import {
   PanelLeftOpen,
   Search,
   Settings,
+  Tags,
   Trash2,
 } from "lucide-react";
+import { useState } from "react";
 import type { Conversation, UserProfile } from "../types/app";
 import { formatRelativeDate } from "../utils/formatDate";
 import { getModel } from "../../features/chat/utils/semantic";
 import { IconButton } from "./ui/IconButton";
 import { initials } from "../utils/identity";
 import { AskBrandMark } from "./Brand";
-
-type HistoryTopicGroup = {
-  topic: string;
-  conversations: Conversation[];
-};
-
-type HistoryDateGroup = {
-  label: string;
-  conversations: Conversation[];
-  topics: HistoryTopicGroup[];
-};
 
 const clampText = (value: string, maxLength: number) => {
   const compact = value.replace(/\s+/g, " ").trim();
@@ -64,31 +55,44 @@ const dateBucketForConversation = (conversation: Conversation) => {
   });
 };
 
-const groupHistoryByDateAndTopic = (conversations: Conversation[]): HistoryDateGroup[] => {
-  const dateGroups = new Map<string, Map<string, Conversation[]>>();
+type DateGroup = {
+  label: string;
+  conversations: Conversation[];
+};
+
+const groupHistoryByDate = (conversations: Conversation[]): DateGroup[] => {
+  const dateGroups = new Map<string, Conversation[]>();
 
   conversations.forEach((conversation) => {
     const dateLabel = dateBucketForConversation(conversation);
+    const list = dateGroups.get(dateLabel) ?? [];
+    dateGroups.set(dateLabel, [...list, conversation]);
+  });
+
+  return [...dateGroups.entries()].map(([label, conversations]) => ({
+    label,
+    conversations,
+  }));
+};
+
+type TopicGroup = {
+  label: string;
+  conversations: Conversation[];
+};
+
+const groupHistoryByTopic = (conversations: Conversation[]): TopicGroup[] => {
+  const topicGroups = new Map<string, Conversation[]>();
+
+  conversations.forEach((conversation) => {
     const topic = topicFromConversation(conversation);
-    const topicGroups = dateGroups.get(dateLabel) ?? new Map<string, Conversation[]>();
-    const topicConversations = topicGroups.get(topic) ?? [];
-
-    topicGroups.set(topic, [...topicConversations, conversation]);
-    dateGroups.set(dateLabel, topicGroups);
+    const list = topicGroups.get(topic) ?? [];
+    topicGroups.set(topic, [...list, conversation]);
   });
 
-  return [...dateGroups.entries()].map(([label, topicGroups]) => {
-    const topics = [...topicGroups.entries()].map(([topic, topicConversations]) => ({
-      topic,
-      conversations: topicConversations,
-    }));
-
-    return {
-      label,
-      topics,
-      conversations: topics.flatMap((topic) => topic.conversations),
-    };
-  });
+  return [...topicGroups.entries()].map(([label, conversations]) => ({
+    label,
+    conversations,
+  }));
 };
 
 export function Sidebar({
@@ -119,7 +123,7 @@ export function Sidebar({
   setSettingsOpen: (open: boolean) => void;
   onSignOut?: () => void;
 }) {
-  const historyGroups = groupHistoryByDateAndTopic(conversations);
+  const [groupBy, setGroupBy] = useState<"date" | "topic">("date");
 
   return (
     <aside className={`sidebar ${open ? "open" : "closed"}`}>
@@ -151,56 +155,103 @@ export function Sidebar({
             />
           </label>
 
-          <div className="history-label">
-            <span>Recents</span>
-            <strong>{conversations.length}</strong>
+          <div className="history-label-row">
+            <div className="history-label">
+              <span>Recents</span>
+              <strong>{conversations.length}</strong>
+            </div>
+            <div className="history-toggle-group">
+              <button
+                type="button"
+                className={groupBy === "date" ? "active" : ""}
+                onClick={() => setGroupBy("date")}
+                title="Group by Date"
+              >
+                Date
+              </button>
+              <button
+                type="button"
+                className={groupBy === "topic" ? "active" : ""}
+                onClick={() => setGroupBy("topic")}
+                title="Group by Topic"
+              >
+                Topic
+              </button>
+            </div>
           </div>
 
           <nav className="history" aria-label="Conversation history">
-            {historyGroups.map((dateGroup) => (
-              <section className="history-date-section" key={dateGroup.label}>
-                <div className="history-date-heading">
-                  <CalendarDays />
-                  <span>{dateGroup.label}</span>
-                  <strong>{dateGroup.conversations.length}</strong>
-                </div>
-
-                {dateGroup.topics.map((topicGroup) => (
-                  <div className="history-topic-group" key={`${dateGroup.label}-${topicGroup.topic}`}>
-                    <div className="history-topic-heading">
-                      <span>{topicGroup.topic}</span>
-                      {topicGroup.conversations.length > 1 && (
-                        <small>{topicGroup.conversations.length}</small>
-                      )}
+            {groupBy === "date"
+              ? groupHistoryByDate(conversations).map((dateGroup) => (
+                  <section className="history-date-section" key={dateGroup.label}>
+                    <div className="history-date-heading">
+                      <CalendarDays />
+                      <span>{dateGroup.label}</span>
+                      <strong>{dateGroup.conversations.length}</strong>
                     </div>
 
-                    {topicGroup.conversations.map((conversation) => (
-                      <div
-                        className={`history-item ${
-                          activeConversationId === conversation.id ? "active" : ""
-                        }`}
-                        key={conversation.id}
-                      >
-                        <button onClick={() => openConversation(conversation)}>
-                          <span>{clampText(latestUserPrompt(conversation), 54)}</span>
-                          <small>
-                            {getModel(conversation.modelId).short} /{" "}
-                            {formatRelativeDate(conversation.updatedAt)}
-                          </small>
-                        </button>
-                        <IconButton
-                          label="Delete conversation"
-                          className="history-delete-btn"
-                          onClick={() => deleteConversation(conversation.id)}
+                    <div className="history-item-list">
+                      {dateGroup.conversations.map((conversation) => (
+                        <div
+                          className={`history-item ${
+                            activeConversationId === conversation.id ? "active" : ""
+                          }`}
+                          key={conversation.id}
                         >
-                          <Trash2 />
-                        </IconButton>
-                      </div>
-                    ))}
-                  </div>
+                          <button onClick={() => openConversation(conversation)}>
+                            <span>{clampText(latestUserPrompt(conversation), 54)}</span>
+                            <small>
+                              {getModel(conversation.modelId).short} /{" "}
+                              {formatRelativeDate(conversation.updatedAt)}
+                            </small>
+                          </button>
+                          <IconButton
+                            label="Delete conversation"
+                            className="history-delete-btn"
+                            onClick={() => deleteConversation(conversation.id)}
+                          >
+                            <Trash2 />
+                          </IconButton>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ))
+              : groupHistoryByTopic(conversations).map((topicGroup) => (
+                  <section className="history-date-section" key={topicGroup.label}>
+                    <div className="history-date-heading">
+                      <Tags />
+                      <span>{topicGroup.label}</span>
+                      <strong>{topicGroup.conversations.length}</strong>
+                    </div>
+
+                    <div className="history-item-list">
+                      {topicGroup.conversations.map((conversation) => (
+                        <div
+                          className={`history-item ${
+                            activeConversationId === conversation.id ? "active" : ""
+                          }`}
+                          key={conversation.id}
+                        >
+                          <button onClick={() => openConversation(conversation)}>
+                            <span>{clampText(latestUserPrompt(conversation), 54)}</span>
+                            <small>
+                              {getModel(conversation.modelId).short} /{" "}
+                              {formatRelativeDate(conversation.updatedAt)}
+                            </small>
+                          </button>
+                          <IconButton
+                            label="Delete conversation"
+                            className="history-delete-btn"
+                            onClick={() => deleteConversation(conversation.id)}
+                          >
+                            <Trash2 />
+                          </IconButton>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
                 ))}
-              </section>
-            ))}
             {conversations.length === 0 && <p className="empty-history">No saved conversations</p>}
           </nav>
 
