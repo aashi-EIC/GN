@@ -145,19 +145,13 @@ svg {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: 
-    radial-gradient(circle at 15% 15%, rgba(244, 9, 83, 0.06) 0%, transparent 45%),
-    radial-gradient(circle at 85% 85%, rgba(0, 32, 65, 0.08) 0%, transparent 50%),
-    linear-gradient(135deg, var(--gn-soft-pink) 0%, #f7f7f9 60%, #e0e7ff 100%);
+  background: var(--gn-surface);
   position: relative;
   overflow: hidden;
 }
 
 :root[data-theme="dark"] .login-page-container {
-  background: 
-    radial-gradient(circle at 15% 15%, rgba(255, 42, 109, 0.12) 0%, transparent 45%),
-    radial-gradient(circle at 85% 85%, rgba(0, 32, 65, 0.4) 0%, transparent 50%),
-    linear-gradient(135deg, #1a020b 0%, #12161a 60%, #001730 100%);
+  background: var(--ui-bg) !important;
 }
 
 
@@ -165,7 +159,10 @@ svg {
   width: min(650px, 94vw);
   border-radius: 12px;
   overflow: hidden;
-  background: var(--gn-white);
+  background: 
+    radial-gradient(circle at 15% 15%, rgba(244, 9, 83, 0.06) 0%, transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(0, 32, 65, 0.08) 0%, transparent 50%),
+    linear-gradient(135deg, var(--gn-soft-pink) 0%, #ffffff 60%, #e0e7ff 100%);
   box-shadow: var(--shadow);
   border: 1px solid var(--gn-line);
 }
@@ -177,7 +174,7 @@ svg {
 
 .login-card-header {
   padding: 56px 48px 36px;
-  background: var(--gn-surface);
+  background: transparent;
   border-bottom: 1px solid var(--gn-line);
   color: var(--gn-navy);
   text-align: center;
@@ -185,7 +182,7 @@ svg {
 }
 
 :root[data-theme="dark"] .login-card-header {
-  background: var(--ui-panel);
+  background: transparent !important;
 }
 
 .header-brand-wrap {
@@ -238,7 +235,7 @@ svg {
   padding: 32px 34px 36px;
   gap: 24px;
   align-items: start;
-  background: var(--gn-white);
+  background: transparent;
 }
 
 .login-card-body.single-login-body {
@@ -4450,9 +4447,17 @@ body {
 :root[data-theme="dark"] .metric,
 :root[data-theme="dark"] .chart-panel,
 :root[data-theme="dark"] .table-wrap,
-:root[data-theme="dark"] .html-plot,
-:root[data-theme="dark"] .login-modal-card {
+:root[data-theme="dark"] .html-plot {
   background: #1e242b !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #f8fafc !important;
+}
+
+:root[data-theme="dark"] .login-modal-card {
+  background: 
+    radial-gradient(circle at 15% 15%, rgba(255, 42, 109, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(0, 32, 65, 0.4) 0%, transparent 50%),
+    linear-gradient(135deg, #1a020b 0%, #1e242b 60%, #001730 100%) !important;
   border-color: rgba(255, 255, 255, 0.14) !important;
   color: #f8fafc !important;
 }
@@ -7482,7 +7487,8 @@ body {
     height: 100%;
   }
 
-  .login-page-container {
+  .login-page-container,
+  .loading-screen {
     min-height: 100%;
   }
 
