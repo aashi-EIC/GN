@@ -82,12 +82,18 @@ export function SettingsModal({
           {toggleDebug && (
             <button
               type="button"
-              className={`sidebar-settings-row ${debugOpen ? "active" : ""}`}
-              onClick={toggleDebug}
+              className={`sidebar-settings-row ${draft.keepDebugOpen ? "active" : ""}`}
+              onClick={() => {
+                setDraft((current) => ({
+                  ...current,
+                  keepDebugOpen: !current.keepDebugOpen,
+                }));
+                toggleDebug();
+              }}
             >
               <Code2 />
               <span>Debug mode</span>
-              <small>{debugOpen ? "On" : "Off"}</small>
+              <small>{draft.keepDebugOpen ? "On" : "Off"}</small>
             </button>
           )}
 
