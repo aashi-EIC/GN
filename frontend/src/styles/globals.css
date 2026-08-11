@@ -1095,7 +1095,6 @@ textarea:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin: 18px 4px 8px;
   color: #d9e2ee;
   font-size: 11px;
   font-weight: 700;
@@ -1104,6 +1103,55 @@ textarea:focus {
 .history-label strong {
   color: var(--gn-pink);
 }
+
+.history-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 18px 4px 8px;
+}
+
+.history-toggle-group {
+  display: inline-flex;
+  padding: 2px;
+  background: rgba(0, 32, 65, 0.04);
+  border-radius: 999px;
+  border: 1px solid var(--gn-line);
+}
+
+:root[data-theme="dark"] .history-toggle-group {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.history-toggle-group button {
+  border: 0;
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--gn-text);
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+:root[data-theme="dark"] .history-toggle-group button {
+  color: var(--ui-muted);
+}
+
+.history-toggle-group button.active {
+  background: var(--gn-navy);
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 32, 65, 0.12);
+}
+
+:root[data-theme="dark"] .history-toggle-group button.active {
+  background: var(--gn-pink);
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
 
 .history {
   display: grid;
@@ -1158,7 +1206,8 @@ textarea:focus {
   font-size: 11px;
 }
 
-.history-topic-group {
+.history-topic-group,
+.history-item-list {
   display: grid;
   gap: 3px;
   min-width: 0;
