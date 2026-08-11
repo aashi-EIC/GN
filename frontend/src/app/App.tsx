@@ -200,6 +200,13 @@ function IntelligenceApp({
     loadFromStorage(storageKeys.settings, defaultSettings),
   );
 
+  useEffect(() => {
+    if (!user) {
+      document.documentElement.dataset.theme = "light";
+      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#ffffff");
+    }
+  }, [user]);
+
   if (!user) {
     return (
       <LoginPage
