@@ -973,7 +973,10 @@ function Workspace({
       )}
       {settingsOpen && (
         <SettingsModal
-          close={() => setSettingsOpen(false)}
+          close={() => {
+            setSettingsOpen(false);
+            dispatch(uiActions.setDebugOpen(settings.keepDebugOpen));
+          }}
           settings={settings}
           saveSettings={saveSettings}
           totalUsage={totalUsage}
