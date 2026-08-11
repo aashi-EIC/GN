@@ -44,13 +44,13 @@ const dateBucketForConversation = (conversation: Conversation) => {
     (startOfToday.getTime() - startOfUpdated.getTime()) / (24 * 60 * 60 * 1000),
   );
 
-  if (dayDiff <= 0) return "Today";
+  if (dayDiff === 0) return "Today";
+  if (dayDiff === -1) return "Tomorrow";
   if (dayDiff === 1) return "Yesterday";
-  if (dayDiff < 7) return "Past 7 Days";
-  if (dayDiff < 30) return "Past 30 Days";
 
   return updated.toLocaleDateString(undefined, {
     month: "long",
+    day: "numeric",
     year: "numeric",
   });
 };
