@@ -3,14 +3,12 @@ import {
   CircleGauge,
   Code2,
   LogOut,
-  MapPin,
   Moon,
-  SlidersHorizontal,
   Sun,
   UserRound,
 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
-import type { Density, SettingsState } from "../../../shared/types/app";
+import type { SettingsState } from "../../../shared/types/app";
 
 export function SettingsModal({
   close,
@@ -92,39 +90,6 @@ export function SettingsModal({
               <small>{debugOpen ? "On" : "Off"}</small>
             </button>
           )}
-
-          <label className="sidebar-settings-row">
-            <MapPin />
-            <span>Region</span>
-            <select
-              value={draft.region}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, region: event.target.value }))
-              }
-            >
-              <option>Global</option>
-              <option>Americas</option>
-              <option>EMEA</option>
-              <option>Asia Pacific</option>
-            </select>
-          </label>
-
-          <label className="sidebar-settings-row">
-            <SlidersHorizontal />
-            <span>Density</span>
-            <select
-              value={draft.density}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  density: event.target.value as Density,
-                }))
-              }
-            >
-              <option value="comfortable">Comfortable</option>
-              <option value="compact">Compact</option>
-            </select>
-          </label>
 
           <div className="sidebar-settings-usage">
             <div className="usage-title">
