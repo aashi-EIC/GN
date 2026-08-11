@@ -145,18 +145,21 @@ svg {
   display: grid;
   place-items: center;
   padding: 24px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(247, 247, 249, 0.96)),
-    repeating-linear-gradient(0deg, transparent 0, transparent 31px, rgba(0, 32, 65, 0.06) 32px),
-    repeating-linear-gradient(90deg, transparent 0, transparent 31px, rgba(0, 32, 65, 0.06) 32px);
+  background: 
+    radial-gradient(circle at 15% 15%, rgba(244, 9, 83, 0.06) 0%, transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(0, 32, 65, 0.08) 0%, transparent 50%),
+    linear-gradient(135deg, var(--gn-soft-pink) 0%, #f7f7f9 60%, #e0e7ff 100%);
+  position: relative;
+  overflow: hidden;
 }
 
 :root[data-theme="dark"] .login-page-container {
-  background:
-    linear-gradient(180deg, rgba(30, 36, 43, 0.88), rgba(18, 22, 26, 0.98)),
-    repeating-linear-gradient(0deg, transparent 0, transparent 31px, rgba(255, 255, 255, 0.04) 32px),
-    repeating-linear-gradient(90deg, transparent 0, transparent 31px, rgba(255, 255, 255, 0.04) 32px);
+  background: 
+    radial-gradient(circle at 15% 15%, rgba(255, 42, 109, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(0, 32, 65, 0.4) 0%, transparent 50%),
+    linear-gradient(135deg, #1a020b 0%, #12161a 60%, #001730 100%);
 }
+
 
 .login-modal-card {
   width: min(650px, 94vw);
@@ -168,11 +171,12 @@ svg {
 }
 
 .login-modal-card.single-login {
-  width: min(480px, 94vw);
+  width: min(580px, 94vw);
 }
 
+
 .login-card-header {
-  padding: 36px 32px 28px;
+  padding: 56px 48px 36px;
   background: var(--gn-surface);
   border-bottom: 1px solid var(--gn-line);
   color: var(--gn-navy);
@@ -187,13 +191,21 @@ svg {
 .header-brand-wrap {
   display: flex;
   justify-content: center;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
 }
 
 .header-brand-wrap .ask-brand {
-  font-size: 24px;
+  font-size: 30px;
   font-weight: 700;
   color: var(--gn-navy);
+  gap: 14px;
+}
+
+.header-brand-wrap .ask-brand-icon,
+.header-brand-wrap .ask-brand-icon img {
+  width: 42px;
+  height: 42px;
+  opacity: 1;
 }
 
 :root[data-theme="dark"] .header-brand-wrap .ask-brand {
@@ -210,8 +222,8 @@ svg {
 
 .header-subtitle {
   margin: 0;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.6;
   color: var(--gn-text);
   font-weight: 400;
 }
@@ -232,7 +244,7 @@ svg {
 .login-card-body.single-login-body {
   display: flex;
   flex-direction: column;
-  padding: 36px 40px 40px;
+  padding: 48px 56px 56px;
   align-items: center;
 }
 
@@ -252,8 +264,8 @@ svg {
 }
 
 .col-heading {
-  margin: 0 0 20px;
-  font-size: 14px;
+  margin: 0 0 32px;
+  font-size: 16px;
   font-weight: 500;
   color: var(--gn-navy);
   line-height: 1.35;
@@ -267,7 +279,7 @@ svg {
   display: flex;
   align-items: center;
   width: 100%;
-  height: 48px;
+  height: 56px;
   border: 1px solid var(--gn-line);
   border-radius: 10px;
   background: var(--gn-white);
@@ -299,8 +311,8 @@ svg {
 .btn-icon-sq {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   background: rgba(0, 32, 65, 0.03);
   border-right: 1px solid var(--gn-line);
   flex-shrink: 0;
@@ -316,7 +328,7 @@ svg {
 .btn-label {
   flex: 1;
   text-align: center;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   padding-right: 12px;
 }
@@ -326,15 +338,15 @@ svg {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-top: 20px;
-  font-size: 12px;
+  margin-top: 36px;
+  font-size: 14px;
   color: var(--gn-text);
   line-height: 1.35;
 }
 
 .login-security-badge .security-icon {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   color: var(--gn-pink);
   flex-shrink: 0;
 }
