@@ -14,7 +14,6 @@ export function SettingsModal({
   close,
   settings,
   saveSettings,
-  totalUsage,
   debugOpen,
   toggleDebug,
   themeMode,
@@ -24,7 +23,6 @@ export function SettingsModal({
   close: () => void;
   settings: SettingsState;
   saveSettings: (settings: SettingsState) => void;
-  totalUsage: { inputTokens: number; outputTokens: number; cost: number };
   debugOpen?: boolean;
   toggleDebug?: () => void;
   themeMode?: "light" | "dark";
@@ -107,16 +105,8 @@ export function SettingsModal({
               <span>Token usage</span>
             </div>
             <div>
-              <span>Input</span>
-              <strong>{totalUsage.inputTokens.toLocaleString()}</strong>
-            </div>
-            <div>
-              <span>Output</span>
-              <strong>{totalUsage.outputTokens.toLocaleString()}</strong>
-            </div>
-            <div>
-              <span>Cost</span>
-              <strong>${totalUsage.cost.toFixed(4)}</strong>
+              <span>Input tokens</span>
+              <strong>-</strong>
             </div>
           </div>
 
