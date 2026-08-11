@@ -62,7 +62,7 @@ export function ErrorReportModal({
   };
 
   return (
-    <Modal close={close}>
+    <Modal close={close} label="Report an issue">
       <span className="modal-icon warning">
         <AlertTriangle />
       </span>

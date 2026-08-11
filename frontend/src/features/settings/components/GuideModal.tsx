@@ -7,7 +7,7 @@ export function GuideModal({ close, modelId }: { close: () => void; modelId: Mod
   const activeModel = getModel(modelId);
 
   return (
-    <Modal close={close}>
+    <Modal close={close} label={`${activeModel.name} guide`}>
       <span className="modal-icon">
         <BookOpen />
       </span>

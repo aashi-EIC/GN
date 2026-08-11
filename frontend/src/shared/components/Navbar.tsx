@@ -7,17 +7,23 @@ import { IconButton } from "./ui/IconButton";
 export function Navbar({
   modelId,
   openGuide,
+  conversationTitle,
 }: {
   modelId?: ModelId;
   openGuide: () => void;
+  conversationTitle?: string;
   sidebarOpen?: boolean;
 }) {
   const [guideHovered, setGuideHovered] = useState(false);
-  const activeModel = getModel(modelId ?? "metadata_stats_linear");
+  const activeModel = getModel(modelId ?? "schedule_completeness_tsg");
 
   return (
     <header className="topbar">
-      <div className="topbar-left" />
+      <div className="topbar-left">
+        {conversationTitle && (
+          <span className="active-chat-title">{conversationTitle}</span>
+        )}
+      </div>
 
       <div className="header-actions">
         <div

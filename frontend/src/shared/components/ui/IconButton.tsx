@@ -7,12 +7,14 @@ export function IconButton({
   children,
   className = "",
   active = false,
+  disabled = false,
 }: {
   label: string;
   onClick: () => void;
   children: ReactNode;
   className?: string;
   active?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <Button
@@ -20,8 +22,10 @@ export function IconButton({
       size="icon"
       className={`icon-btn ${className} ${active ? "active" : ""}`}
       onClick={onClick}
-      title={label}
       aria-label={label}
+      aria-pressed={active || undefined}
+      data-tooltip={label}
+      disabled={disabled}
       type="button"
     >
       {children}

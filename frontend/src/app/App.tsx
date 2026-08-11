@@ -1,7 +1,7 @@
 import { InteractionRequiredAuthError, InteractionStatus } from "@azure/msal-browser";
 import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { useQuery } from "@tanstack/react-query";
-import { Bug, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppRouter } from "./router";
 import { uiActions, useAppDispatch, useAppSelector } from "./store";
@@ -297,29 +297,31 @@ function Workspace({
   );
   const lastMessage = activeConversation?.messages.at(-1);
   const selectedModel = getModel(selectedModelId);
-  const recentConversations = useMemo(
+  const sortedConversations = useMemo(
     () =>
       [...conversations]
         .sort(
           (left, right) =>
             new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
-        )
-        .slice(0, 10),
+        ),
     [conversations],
   );
   const filteredConversations = useMemo(() => {
     const query = historyQuery.trim().toLowerCase();
     if (!query) {
-      return recentConversations;
+      return sortedConversations;
     }
-    return recentConversations.filter((conversation) => {
+    return sortedConversations.filter((conversation) => {
       const titleMatches = conversation.title.toLowerCase().includes(query);
       const model = getModel(conversation.modelId);
       const modelNameMatches = model.name.toLowerCase().includes(query);
       const modelShortMatches = model.short.toLowerCase().includes(query);
-      return titleMatches || modelNameMatches || modelShortMatches;
+      const messageMatches = conversation.messages.some((message) =>
+        message.text.toLowerCase().includes(query),
+      );
+      return titleMatches || modelNameMatches || modelShortMatches || messageMatches;
     });
-  }, [recentConversations, historyQuery]);
+  }, [sortedConversations, historyQuery]);
 
   useEffect(() => {
     saveToStorage(storageKeys.conversations, conversations);
@@ -367,13 +369,6 @@ function Workspace({
       }
       if (profileOpen && !target.closest(".profile-wrap")) {
         setProfileOpen(false);
-      }
-      if (
-        sidebarOpen &&
-        !target.closest(".sidebar") &&
-        !target.closest(".brand-trigger, .mobile-menu")
-      ) {
-        dispatch(uiActions.setSidebarOpen(false));
       }
     };
 
@@ -765,6 +760,33 @@ function Workspace({
     }
   };
 
+  const regenerateResponse = (messageId: string) => {
+    if (!activeConversation || isThinking) return;
+
+    const responseIndex = activeConversation.messages.findIndex(
+      (message) => message.id === messageId && message.role === "assistant",
+    );
+    if (responseIndex < 0) return;
+
+    const precedingUserMessage = [...activeConversation.messages]
+      .slice(0, responseIndex)
+      .reverse()
+      .find((message) => message.role === "user");
+
+    if (!precedingUserMessage) {
+      showToast("No prompt found for this response", "warning");
+      return;
+    }
+
+    setFeedback((current) => {
+      const next = { ...current };
+      delete next[messageId];
+      return next;
+    });
+    showToast("Regenerating response");
+    void handleEditUserMessage(precedingUserMessage.id, precedingUserMessage.text);
+  };
+
   const saveSettings = (nextSettings: SettingsState) => {
     saveToStorage(storageKeys.settings, nextSettings);
     setSettings(nextSettings);
@@ -785,8 +807,23 @@ function Workspace({
   };
 
   const markFeedback = (messageId: string, value: FeedbackValue) => {
-    setFeedback((current) => ({ ...current, [messageId]: value }));
-    showToast(value === "helpful" ? "Marked helpful" : "Feedback recorded");
+    const removing = feedback[messageId] === value;
+    setFeedback((current) => {
+      const next = { ...current };
+      if (next[messageId] === value) {
+        delete next[messageId];
+      } else {
+        next[messageId] = value;
+      }
+      return next;
+    });
+    showToast(
+      removing
+        ? "Feedback removed"
+        : value === "helpful"
+          ? "Marked as a good response"
+          : "Marked as a bad response",
+    );
   };
 
   const exportConversation = () => {
@@ -834,6 +871,7 @@ function Workspace({
         <Navbar
           modelId={selectedModelId}
           openGuide={openSelectedModelGuide}
+          conversationTitle={activeConversation?.title}
           sidebarOpen={sidebarOpen}
         />
 
@@ -866,6 +904,8 @@ function Workspace({
                     showToast={showToast}
                     onReportError={() => setIssueOpen(true)}
                     onEditUserMessage={handleEditUserMessage}
+                    onRegenerateResponse={regenerateResponse}
+                    busy={isThinking}
                   />
                 ))}
                 {isThinking && (
@@ -873,7 +913,7 @@ function Workspace({
                     <div className="ai-mark">
                       <Sparkles />
                     </div>
-                    <div className="thinking">
+                    <div className="thinking" role="status" aria-live="polite">
                       <i />
                       <i />
                       <i />
@@ -903,11 +943,6 @@ function Workspace({
           )}
         </main>
       </section>
-
-      <button className="report-fab" onClick={() => setIssueOpen(true)} type="button">
-        <Bug />
-        <span>Report errors</span>
-      </button>
 
       {tourOpen && <TourModal close={closeTour} modelId={selectedModelId} />}
       {guideOpen && (

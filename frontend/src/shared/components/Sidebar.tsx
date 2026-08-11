@@ -1,4 +1,5 @@
 import {
+  CalendarDays,
   MessageSquarePlus,
   PanelLeftClose,
   PanelLeftOpen,
@@ -12,6 +13,83 @@ import { getModel } from "../../features/chat/utils/semantic";
 import { IconButton } from "./ui/IconButton";
 import { initials } from "../utils/identity";
 import { AskBrandMark } from "./Brand";
+
+type HistoryTopicGroup = {
+  topic: string;
+  conversations: Conversation[];
+};
+
+type HistoryDateGroup = {
+  label: string;
+  conversations: Conversation[];
+  topics: HistoryTopicGroup[];
+};
+
+const clampText = (value: string, maxLength: number) => {
+  const compact = value.replace(/\s+/g, " ").trim();
+  if (compact.length <= maxLength) {
+    return compact;
+  }
+  return `${compact.slice(0, maxLength - 3).trim()}...`;
+};
+
+const latestUserPrompt = (conversation: Conversation) =>
+  [...conversation.messages].reverse().find((message) => message.role === "user")?.text ??
+  conversation.title;
+
+const topicFromConversation = (conversation: Conversation) => {
+  const topic = conversation.title && conversation.title !== "New Chat"
+    ? conversation.title
+    : latestUserPrompt(conversation);
+  return clampText(topic, 30) || "General analysis";
+};
+
+const dateBucketForConversation = (conversation: Conversation) => {
+  const updated = new Date(conversation.updatedAt);
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const startOfUpdated = new Date(updated.getFullYear(), updated.getMonth(), updated.getDate());
+  const dayDiff = Math.floor(
+    (startOfToday.getTime() - startOfUpdated.getTime()) / (24 * 60 * 60 * 1000),
+  );
+
+  if (dayDiff <= 0) return "Today";
+  if (dayDiff === 1) return "Yesterday";
+  if (dayDiff < 7) return "Past 7 Days";
+  if (dayDiff < 30) return "Past 30 Days";
+
+  return updated.toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
+};
+
+const groupHistoryByDateAndTopic = (conversations: Conversation[]): HistoryDateGroup[] => {
+  const dateGroups = new Map<string, Map<string, Conversation[]>>();
+
+  conversations.forEach((conversation) => {
+    const dateLabel = dateBucketForConversation(conversation);
+    const topic = topicFromConversation(conversation);
+    const topicGroups = dateGroups.get(dateLabel) ?? new Map<string, Conversation[]>();
+    const topicConversations = topicGroups.get(topic) ?? [];
+
+    topicGroups.set(topic, [...topicConversations, conversation]);
+    dateGroups.set(dateLabel, topicGroups);
+  });
+
+  return [...dateGroups.entries()].map(([label, topicGroups]) => {
+    const topics = [...topicGroups.entries()].map(([topic, topicConversations]) => ({
+      topic,
+      conversations: topicConversations,
+    }));
+
+    return {
+      label,
+      topics,
+      conversations: topics.flatMap((topic) => topic.conversations),
+    };
+  });
+};
 
 export function Sidebar({
   open,
@@ -41,6 +119,8 @@ export function Sidebar({
   setSettingsOpen: (open: boolean) => void;
   onSignOut?: () => void;
 }) {
+  const historyGroups = groupHistoryByDateAndTopic(conversations);
+
   return (
     <aside className={`sidebar ${open ? "open" : "closed"}`}>
       {open && (
@@ -72,49 +152,77 @@ export function Sidebar({
           </label>
 
           <div className="history-label">
-            <span>Previous chats</span>
+            <span>Recents</span>
             <strong>{conversations.length}</strong>
           </div>
 
           <nav className="history" aria-label="Conversation history">
-            {conversations.map((conversation) => (
-              <div
-                className={`history-item ${
-                  activeConversationId === conversation.id ? "active" : ""
-                }`}
-                key={conversation.id}
-              >
-                <button onClick={() => openConversation(conversation)}>
-                  <span>{conversation.title}</span>
-                  <small>
-                    {getModel(conversation.modelId).short} /{" "}
-                    {formatRelativeDate(conversation.updatedAt)}
-                  </small>
-                </button>
-                <IconButton
-                  label="Delete conversation"
-                  className="history-delete-btn"
-                  onClick={() => deleteConversation(conversation.id)}
-                >
-                  <Trash2 />
-                </IconButton>
-              </div>
+            {historyGroups.map((dateGroup) => (
+              <section className="history-date-section" key={dateGroup.label}>
+                <div className="history-date-heading">
+                  <CalendarDays />
+                  <span>{dateGroup.label}</span>
+                  <strong>{dateGroup.conversations.length}</strong>
+                </div>
+
+                {dateGroup.topics.map((topicGroup) => (
+                  <div className="history-topic-group" key={`${dateGroup.label}-${topicGroup.topic}`}>
+                    <div className="history-topic-heading">
+                      <span>{topicGroup.topic}</span>
+                      {topicGroup.conversations.length > 1 && (
+                        <small>{topicGroup.conversations.length}</small>
+                      )}
+                    </div>
+
+                    {topicGroup.conversations.map((conversation) => (
+                      <div
+                        className={`history-item ${
+                          activeConversationId === conversation.id ? "active" : ""
+                        }`}
+                        key={conversation.id}
+                      >
+                        <button onClick={() => openConversation(conversation)}>
+                          <span>{clampText(latestUserPrompt(conversation), 54)}</span>
+                          <small>
+                            {getModel(conversation.modelId).short} /{" "}
+                            {formatRelativeDate(conversation.updatedAt)}
+                          </small>
+                        </button>
+                        <IconButton
+                          label="Delete conversation"
+                          className="history-delete-btn"
+                          onClick={() => deleteConversation(conversation.id)}
+                        >
+                          <Trash2 />
+                        </IconButton>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </section>
             ))}
             {conversations.length === 0 && <p className="empty-history">No saved conversations</p>}
           </nav>
 
-          {/* Bottom Sidebar Footer: User profile & Settings Gear Icon */}
-          <div className="sidebar-footer">
-            <div className="sidebar-user-info" title={user.email}>
-              <div className="avatar sidebar-avatar">{initials(user.name)}</div>
-              <div className="user-details">
-                <span className="user-name">{user.name}</span>
-                <span className="user-tier">Conversational BI</span>
+          <div className="sidebar-footer gemini-account-footer">
+            <div className="sidebar-account-wrap expanded-account-wrap">
+              <button
+                className="sidebar-account-trigger"
+                type="button"
+                aria-label={`${user.name} account`}
+              >
+                <span className="avatar sidebar-avatar">{initials(user.name)}</span>
+                <span className="sidebar-account-name">{user.name}</span>
+              </button>
+              <div className="sidebar-account-card" role="tooltip">
+                <strong>{user.authProvider}</strong>
+                <span>{user.name}</span>
+                <span>{user.email}</span>
               </div>
             </div>
             <IconButton
               label="Settings"
-              className="sidebar-settings-btn"
+              className="sidebar-settings-btn gemini-footer-icon"
               onClick={() => setSettingsOpen(true)}
             >
               <Settings />
@@ -123,12 +231,18 @@ export function Sidebar({
         </>
       ) : (
         <div className="sidebar-collapsed-nav">
-          <div className="collapsed-brand" title="Conversational BI">
-            <AskBrandMark />
-          </div>
-          <IconButton label="Expand sidebar" onClick={() => setSidebarOpen(true)}>
-            <PanelLeftOpen />
-          </IconButton>
+          <button
+            className="collapsed-brand-trigger"
+            type="button"
+            aria-label="Open sidebar"
+            data-tooltip="Open sidebar"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <span className="collapsed-brand-default">
+              <AskBrandMark />
+            </span>
+            <PanelLeftOpen className="collapsed-brand-open-icon" />
+          </button>
           <IconButton label="New Chat" onClick={startConversation}>
             <MessageSquarePlus />
           </IconButton>
@@ -137,11 +251,26 @@ export function Sidebar({
           </IconButton>
 
           <div className="collapsed-footer">
-            <IconButton label="Settings" onClick={() => setSettingsOpen(true)}>
+            <IconButton
+              label="Settings"
+              className="gemini-footer-icon"
+              onClick={() => setSettingsOpen(true)}
+            >
               <Settings />
             </IconButton>
-            <div className="avatar sidebar-avatar collapsed-avatar" title={user.name}>
-              {initials(user.name)}
+            <div className="sidebar-account-wrap">
+              <button
+                className="avatar sidebar-avatar collapsed-avatar"
+                type="button"
+                aria-label={`${user.name} account`}
+              >
+                {initials(user.name)}
+              </button>
+              <div className="sidebar-account-card collapsed-account-card" role="tooltip">
+                <strong>{user.authProvider}</strong>
+                <span>{user.name}</span>
+                <span>{user.email}</span>
+              </div>
             </div>
           </div>
         </div>

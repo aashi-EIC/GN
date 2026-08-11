@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Micro dots and ambient studies</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #eef1f5; color: #06284a; font: 14px Inter, Arial, sans-serif; }
+    main { width: 680px; margin: 0 auto; padding: 24px 20px 42px; }
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    .intro { margin: 0 0 26px; color: #63758a; }
+    .study { margin: 0 0 26px; }
+    body:has(.study:target) .study:not(:target) { display: none; }
+    .label { margin: 0 0 8px 4px; font-weight: 700; }
+    .preview { position: relative; width: 640px; height: 420px; overflow: hidden; border: 1px solid #dfe5ec; border-radius: 8px; background: #fbfcfe; }
+    .rail { position: absolute; z-index: 4; inset: 0 auto 0 0; width: 58px; border-right: 1px solid #e5e9ef; background: #fff; }
+    .logo { position: absolute; top: 16px; left: 15px; width: 28px; height: 28px; border-radius: 50%; background: #ff0054; }
+    .logo::after { content: ""; position: absolute; width: 10px; height: 10px; top: 7px; left: 9px; border-radius: 50%; background: white; }
+    .help { position: absolute; z-index: 5; top: 18px; right: 28px; font-weight: 700; }
+    .content { position: absolute; z-index: 3; inset: 0 0 0 58px; }
+    h2 { margin: 90px 0 2px; text-align: center; font-size: 24px; letter-spacing: 0; }
+    .sub { margin: 0; text-align: center; color: #63758a; font-size: 11px; }
+    .composer { position: relative; width: 420px; height: 73px; margin: 17px auto 0; border: 1px solid #dfe5ec; border-radius: 18px; background: #fff; box-shadow: 0 8px 22px rgba(6,40,74,.07); }
+    .placeholder { padding: 18px 19px; color: #63758a; font-size: 12px; }
+    .chip { position: absolute; left: 19px; bottom: 8px; min-width: 156px; height: 20px; padding: 5px 10px 4px 22px; border-radius: 10px; background: #f6f8fb; font-size: 7px; font-weight: 700; }
+    .chip::before { content: ""; position: absolute; left: 9px; top: 7px; width: 6px; height: 6px; border-radius: 50%; background: #ff0054; }
+    .send { position: absolute; right: 9px; bottom: 8px; width: 28px; height: 28px; border: 0; border-radius: 50%; color: white; background: #ff0054; font-size: 17px; }
+    .suggested { width: 402px; margin: 31px auto 10px; color: #63758a; font-size: 8px; font-weight: 700; }
+    .cards { display: flex; gap: 12px; width: 402px; margin: 0 auto; }
+    .card { width: 126px; height: 95px; padding: 11px 10px; border: 1px solid #dfe5ec; border-radius: 8px; background: white; box-shadow: 0 5px 12px rgba(6,40,74,.04); }
+    .cat { color: #ff0054; font-size: 6px; font-weight: 700; }
+    .title { margin-top: 16px; font-size: 9px; font-weight: 700; }
+    .wash { position: absolute; z-index: 0; border-radius: 50%; filter: blur(18px); }
+    .wash-a { width: 480px; height: 480px; left: -240px; bottom: -250px; background: radial-gradient(circle, rgba(255,0,84,.15), rgba(255,146,182,.06) 44%, transparent 72%); }
+    .wash-b { width: 440px; height: 440px; right: -245px; top: -240px; background: radial-gradient(circle, rgba(255,0,84,.11), rgba(255,181,205,.04) 46%, transparent 72%); }
+    .dots { position: absolute; z-index: 1; inset: 0 0 0 58px; overflow: hidden; pointer-events: none; }
+    .star { position: absolute; width: var(--size); height: var(--size); border-radius: 50%; background: var(--color); opacity: var(--opacity); box-shadow: 0 0 var(--glow) color-mix(in srgb, var(--color) 55%, transparent); animation: starlight var(--duration) ease-in-out var(--delay) infinite alternate; }
+    .lower .wash-a { width: 580px; height: 400px; left: 72px; bottom: -300px; }
+    .lower .wash-b { display: none; }
+    .constellation .wash-a { opacity: .5; }
+    @keyframes starlight { from { opacity: var(--low-opacity); transform: scale(.86); } to { opacity: var(--opacity); transform: scale(1); } }
+    @media (prefers-reduced-motion: reduce) { .star { animation: none; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Micro dots + ambient light</h1>
+    <p class="intro">Tiny low-contrast dots, protected content space, and red light entering from outside the canvas.</p>
+    <div id="studies"></div>
+  </main>
+  <script>
+    const variants = [
+      ["01 Edge Starlight", "edge"],
+      ["02 Starlight Horizon", "lower"],
+      ["03 Soft Constellation", "constellation"]
+    ];
+    document.querySelector('#studies').innerHTML = variants.map(([name, cls]) => `
+      <section class="study" id="${cls}">
+        <div class="label">${name}</div>
+        <div class="preview ${cls}">
+          <div class="wash wash-a"></div><div class="wash wash-b"></div><div class="dots"></div>
+          <aside class="rail"><div class="logo"></div></aside><div class="help">?</div>
+          <div class="content">
+            <h2>Hello, Divyansh. How can I help?</h2><p class="sub">Ask about governed schedule and mapping data</p>
+            <div class="composer"><div class="placeholder">Ask Schedule Completeness TSG</div><div class="chip">Schedule Completeness</div><button class="send">&#8593;</button></div>
+            <div class="suggested">Suggested prompts</div>
+            <div class="cards">
+              <div class="card"><div class="cat">TOMORROW</div><div class="title">Tomorrow's TBA slots</div></div>
+              <div class="card"><div class="cat">COVERAGE</div><div class="title">Next week coverage</div></div>
+              <div class="card"><div class="cat">GAPS</div><div class="title">Largest schedule gaps</div></div>
+            </div>
+          </div>
+        </div>
+      </section>`).join('');
+
+    const palette = ['#ff0054', '#ff4f86', '#ff8caf', '#d7185d', '#8ea4ba'];
+    const settings = { edge: 62, lower: 70, constellation: 82 };
+    const random = seed => () => ((seed = Math.imul(48271, seed) % 2147483647) & 2147483647) / 2147483647;
+
+    document.querySelectorAll('.preview').forEach((preview, index) => {
+      const field = preview.querySelector('.dots');
+      const type = variants[index][1];
+      const rand = random(7127 + index * 997);
+      for (let i = 0; i < settings[type]; i++) {
+        let x;
+        let y;
+        if (type === 'edge') {
+          x = rand() < .5 ? rand() * 112 : 470 + rand() * 112;
+          y = 18 + rand() * 384;
+        } else if (type === 'lower') {
+          x = 16 + rand() * 550;
+          y = 252 + rand() * 148;
+        } else {
+          do {
+            x = 14 + rand() * 554;
+            y = 16 + rand() * 386;
+          } while (x > 78 && x < 510 && y > 66 && y < 366);
+        }
+        const rare = rand() > .9;
+        const star = document.createElement('i');
+        star.className = 'star';
+        star.style.left = `${x}px`;
+        star.style.top = `${y}px`;
+        star.style.setProperty('--size', `${rare ? 2.2 + rand() * .8 : .8 + rand() * 1.15}px`);
+        star.style.setProperty('--color', palette[Math.floor(rand() * palette.length)]);
+        const opacity = rare ? .55 + rand() * .2 : .18 + rand() * .3;
+        star.style.setProperty('--opacity', `${opacity}`);
+        star.style.setProperty('--low-opacity', `${opacity * .62}`);
+        star.style.setProperty('--glow', `${rare ? 5 : 2}px`);
+        star.style.setProperty('--duration', `${4.8 + rand() * 5.2}s`);
+        star.style.setProperty('--delay', `${-rand() * 8}s`);
+        field.appendChild(star);
+      }
+    });
+  </script>
+</body>
+</html>

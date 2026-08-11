@@ -40,10 +40,12 @@ export function Composer({
     <div className="composer-wrap">
       <div className="composer">
         <textarea
+          rows={1}
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
           onKeyDown={(event) => handleEnter(event, () => submitPrompt())}
           aria-label={`Ask ${model.name}`}
+          placeholder={`Ask a follow-up about ${model.name}`}
         />
         <div className="composer-bottom">
           <ModelPicker
