@@ -2709,7 +2709,7 @@ tr:last-child td {
   padding: 14px 12px;
   color: var(--gn-navy);
   background: var(--gn-white);
-  border-right: 1px solid #edf0f5;
+  border-right: none;
   transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), flex-basis 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
@@ -3409,9 +3409,7 @@ body {
   border-radius: 8px;
 }
 
-.sidebar {
-  border-right-color: #e8edf3;
-}
+/* Removed sidebar border color */
 
 .topbar {
   min-height: 52px;
@@ -3674,7 +3672,7 @@ body {
   width: 56px;
   padding: 14px 8px;
   overflow: hidden;
-  border-right: 1px solid #edf0f5;
+  border-right: none;
   transform: none;
 }
 
@@ -4492,7 +4490,7 @@ body {
 
 :root[data-theme="dark"] .sidebar {
   background: #181d24 !important;
-  border-right-color: rgba(255, 255, 255, 0.1) !important;
+  border-right: none !important;
 }
 
 :root[data-theme="dark"] .history-search input {
