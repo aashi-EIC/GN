@@ -15,6 +15,7 @@ import type { FeedbackValue, Message, ToastState } from "../../../shared/types/a
 import { BarChart } from "./charts/BarChart";
 import { HtmlPlot } from "./charts/HtmlPlot";
 import { InsightTable } from "./charts/InsightTable";
+import { VisualizationRenderer } from "./charts/VisualizationRenderer";
 import { IconButton } from "../../../shared/components/ui/IconButton";
 
 function MessageBubbleComponent({
@@ -151,6 +152,8 @@ function MessageBubbleComponent({
         )}
 
         {message.table && <InsightTable table={message.table} />}
+
+        {message.visualizations && <VisualizationRenderer blocks={message.visualizations} />}
 
         {message.plot && <HtmlPlot plot={message.plot} showToast={showToast} />}
 

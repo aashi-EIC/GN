@@ -6,6 +6,7 @@ import type {
   McpResponseSource,
   Message,
   UserProfile,
+  VisualizationBlock,
 } from "../../../shared/types/app";
 import type { CountryCode, ModelId } from "../types/semantic";
 import { getCountryLocale } from "../../../shared/constants/locales";
@@ -65,9 +66,12 @@ export async function requestMcpInsight(
     Pick<McpRequestPayload, "session_id" | "semantic_model_id" | "prompt">,
     {
       answer?: unknown;
+      blocks?: unknown;
       data?: unknown;
       debug_events?: unknown;
+      visualizations?: unknown;
       visualization?: unknown;
+      message_id?: unknown;
     } & Partial<Omit<Message, "id" | "role" | "createdAt">>
   >(
     bffChatUrl,
@@ -77,6 +81,7 @@ export async function requestMcpInsight(
       prompt: payload.prompt,
     },
     payload.bearer_token_for_rls,
+    audit.request_id,
   );
 
   const normalizedResponse = normalizeMcpResponse(hostResponse);
@@ -91,26 +96,44 @@ export function persistMcpRequestAudit(audit: McpRequestAudit) {
 function normalizeMcpResponse(
   response: {
     answer?: unknown;
+    blocks?: unknown;
     data?: unknown;
     debug_events?: unknown;
+    visualizations?: unknown;
     visualization?: unknown;
+    message_id?: unknown;
   } & Partial<Omit<Message, "id" | "role" | "createdAt">>,
 ): Omit<Message, "id" | "role" | "createdAt"> {
+  const answerObject =
+    response.answer && typeof response.answer === "object" && !Array.isArray(response.answer)
+      ? (response.answer as Record<string, unknown>)
+      : undefined;
+  const visualizations = normalizeVisualizationBlocks(
+    response.visualizations ?? response.blocks ?? answerObject?.blocks,
+  );
   const text =
     typeof response.text === "string"
       ? response.text
       : typeof response.answer === "string"
         ? response.answer
+        : typeof answerObject?.text === "string"
+          ? answerObject.text
+          : typeof answerObject?.content === "string"
+            ? answerObject.content
         : typeof response.data === "string"
           ? response.data
-        : "MCP response received without answer text.";
+        : visualizations
+          ? "Here are the requested insights."
+          : "MCP response received without answer text.";
 
   return {
     text,
+    backendId: typeof response.message_id === "string" ? response.message_id : undefined,
     chartTitle: response.chartTitle,
     chart: response.chart,
     metrics: response.metrics,
     table: response.table,
+    visualizations,
     actions: response.actions,
     debug: Array.isArray(response.debug)
       ? response.debug
@@ -125,6 +148,18 @@ function normalizeMcpResponse(
         ? (response.visualization as Message["plot"])
         : undefined),
   };
+}
+
+function normalizeVisualizationBlocks(value: unknown): VisualizationBlock[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+
+  const blocks = value.filter((block): block is VisualizationBlock => {
+    if (!block || typeof block !== "object") return false;
+    const candidate = block as { type?: unknown };
+    return candidate.type === "text" || candidate.type === "table" || candidate.type === "chart";
+  });
+
+  return blocks.length ? blocks : undefined;
 }
 
 function withMcpRuntime(

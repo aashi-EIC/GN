@@ -36,6 +36,11 @@ const schema = z.object({
   ENTRA_REQUIRED_SCOPE: optionalText,
   ENTRA_ALLOWED_ROLES: optionalText,
 
+  SEMANTIC_MODELS_JSON: optionalText,
+  FEATURE_FLAGS_JSON: optionalText,
+  MAX_PROMPT_LENGTH: integer(20_000),
+  MAX_HISTORY_ITEMS: integer(10),
+
   REDIS_URL: optionalText,
   RATE_LIMIT_WINDOW_MS: integer(60_000),
   RATE_LIMIT_MAX: integer(30),

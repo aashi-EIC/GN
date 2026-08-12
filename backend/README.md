@@ -18,9 +18,21 @@ This service is the only backend called by React. All application endpoints are 
 |---|---|---|---|
 | GET | `/api/v1/health/live` | No | Process liveness |
 | GET | `/api/v1/health/ready` | No | Configuration, PostgreSQL and optional Redis readiness |
-| GET | `/api/v1/sessions?limit=10` | Entra | List the caller's sessions |
+| GET | `/api/v1/me` | Entra | Current user, scopes, roles and effective permissions |
+| GET | `/api/v1/bootstrap` | Entra | User, accessible models, feature flags and UI limits |
+| GET | `/api/v1/semantic-models` | Entra | Accessible semantic-model catalogue |
+| GET | `/api/v1/semantic-models/:modelId` | Entra | One accessible model |
+| GET | `/api/v1/semantic-models/:modelId/prompts` | Entra | Example prompts for one model |
+| POST | `/api/v1/sessions` | Entra | Create an owned session and server-generated UUID |
+| GET | `/api/v1/sessions?limit=10&cursor=&search=&semantic_model_id=` | Entra | Search and paginate the caller's sessions |
 | GET | `/api/v1/sessions/:sessionId` | Entra | Read one owned session and its messages |
+| PATCH | `/api/v1/sessions/:sessionId` | Entra | Rename one owned session |
+| DELETE | `/api/v1/sessions/:sessionId` | Entra | Soft-delete one owned session |
 | POST | `/api/v1/chat` | Entra | Send a prompt through the BFF to MCP |
+| POST | `/api/v1/chat/:requestId/cancel` | Entra | Cancel an active owned prompt request |
+| POST | `/api/v1/messages/:messageId/feedback` | Entra | Create or update message feedback |
+| DELETE | `/api/v1/messages/:messageId/feedback` | Entra | Remove message feedback |
+| POST | `/api/v1/issues` | Entra | Persist an issue report with ownership context |
 
 The stable BFF request is:
 
@@ -33,6 +45,29 @@ The stable BFF request is:
 ```
 
 No user email, owner ID, API key or downstream token is accepted in the body.
+
+## Frontend configuration
+
+`SEMANTIC_MODELS_JSON` is the temporary client-owned catalogue source until a dedicated configuration service is available. The BFF validates it at startup and filters models by the caller's Entra roles. An empty array keeps the current frontend fallback catalogue available during integration.
+
+Example structure using placeholders only:
+
+```json
+[
+  {
+    "id": "client-provided-model-id",
+    "name": "Client model name",
+    "short": "CM",
+    "description": "Client-provided description",
+    "examplePrompts": ["Client-provided example prompt"],
+    "supportedVisualizations": ["kpi", "bar", "line", "table"],
+    "enabled": true,
+    "allowedRoles": ["ClientConfiguredAnalystRole"]
+  }
+]
+```
+
+`FEATURE_FLAGS_JSON`, `MAX_PROMPT_LENGTH` and `MAX_HISTORY_ITEMS` control non-secret UI behavior returned by `/api/v1/bootstrap`. Secrets are never returned by configuration endpoints.
 
 ## Setup
 

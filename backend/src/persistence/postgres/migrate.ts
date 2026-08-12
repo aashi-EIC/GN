@@ -1,9 +1,17 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { getPool, closeDatabase } from './pool.js';
 
-const migration = fileURLToPath(new URL('./migrations/001_init.sql', import.meta.url));
+const migrationsDirectory = fileURLToPath(new URL('./migrations/', import.meta.url));
 try {
-  await getPool().query(await readFile(migration, 'utf8'));
+  const migrations = (await readdir(migrationsDirectory))
+    .filter((file) => file.endsWith('.sql'))
+    .sort();
+
+  for (const migration of migrations) {
+    await getPool().query(await readFile(`${migrationsDirectory}/${migration}`, 'utf8'));
+  }
   process.stdout.write('Database migration completed.\n');
-} finally { await closeDatabase(); }
+} finally {
+  await closeDatabase();
+}

@@ -41,6 +41,11 @@ export const semanticModels: SemanticModel[] = [
   },
 ];
 
+export function replaceSemanticModels(models: SemanticModel[]) {
+  if (!models.length) return;
+  semanticModels.splice(0, semanticModels.length, ...models);
+}
+
 export const countries: Array<{ code: CountryCode; name: string }> = [
   { code: "US", name: "United States" },
 ];

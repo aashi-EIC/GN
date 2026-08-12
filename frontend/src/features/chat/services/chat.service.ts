@@ -4,6 +4,7 @@ export async function postBffPrompt<TPayload, TResponse>(
   url: string,
   payload: TPayload,
   bearerToken: string,
+  correlationId?: string,
 ) {
   const authorization = bearerToken.startsWith("Bearer ")
     ? bearerToken
@@ -13,6 +14,7 @@ export async function postBffPrompt<TPayload, TResponse>(
     headers: {
       "Content-Type": "application/json",
       Authorization: authorization,
+      ...(correlationId ? { "X-Correlation-ID": correlationId } : {}),
     },
   });
 

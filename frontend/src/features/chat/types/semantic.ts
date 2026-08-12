@@ -1,6 +1,4 @@
-export type ModelId =
-  | "mapping_stats_svc"
-  | "schedule_completeness_tsg";
+export type ModelId = string;
 
 export type CountryCode = "US";
 

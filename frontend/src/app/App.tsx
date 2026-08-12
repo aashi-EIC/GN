@@ -16,6 +16,7 @@ import { TourModal } from "../shared/components/TourModal";
 import { Navbar } from "../shared/components/Navbar";
 import { Sidebar } from "../shared/components/Sidebar";
 import { defaultSettings, storageKeys } from "../shared/config/storage";
+import { replaceSemanticModels } from "../shared/constants/semanticModels";
 import { apiScope } from "../features/auth/lib/msal";
 import { LoginPage } from "../features/auth/pages/LoginPage";
 import { buildMcpRequestPayload, persistMcpRequestAudit, requestMcpInsight } from "../features/chat/services/mcp.service";
@@ -32,10 +33,18 @@ import type {
 import type { CountryCode, ModelId } from "../features/chat/types/semantic";
 import { copyText, downloadJson, messageToPlainText } from "../shared/utils/clipboard";
 import { accountToProfile } from "../shared/utils/identity";
-import { createId, titleFromUserMessages } from "../shared/utils/session";
+import { createId, createSessionId, isSessionId, titleFromUserMessages } from "../shared/utils/session";
 import { getModel, normalizeCountryCode, normalizeModelId } from "../features/chat/utils/semantic";
 import { loadFromStorage, saveToStorage } from "../shared/utils/storage";
 import { calculateTokenUsageAndCost } from "../features/chat/utils/tokenCost";
+import {
+  deleteSession,
+  fetchBootstrap,
+  removeMessageFeedback,
+  submitIssueReport,
+  submitMessageFeedback,
+  toFrontendModel,
+} from "../shared/services/platform.service";
 
 function AppRoot({ msalEnabled }: { msalEnabled: boolean }) {
   return <AppRouter shell={msalEnabled ? <MsalBackedShell /> : <LocalShell />} />;
@@ -251,7 +260,10 @@ function Workspace({
   const debugOpen = useAppSelector((state) => state.ui.debugOpen);
   const themeMode = useAppSelector((state) => state.ui.themeMode);
   const [conversations, setConversations] = useState<Conversation[]>(() =>
-    loadFromStorage<Conversation[]>(storageKeys.conversations, []),
+    loadFromStorage<Conversation[]>(storageKeys.conversations, []).map((conversation) => ({
+      ...conversation,
+      id: isSessionId(conversation.id) ? conversation.id : createSessionId(),
+    })),
   );
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [selectedModelId, setSelectedModelId] = useState<ModelId>(() =>
@@ -273,6 +285,7 @@ function Workspace({
     loadFromStorage<Record<string, FeedbackValue>>(storageKeys.feedback, {}),
   );
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [, refreshModelCatalog] = useState(0);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const workspaceStatus = useQuery({
@@ -282,6 +295,17 @@ function Workspace({
       checkedAt: new Date().toISOString(),
     }),
     staleTime: 60_000,
+  });
+  const bootstrap = useQuery({
+    queryKey: ["workspace-bootstrap", user.email],
+    queryFn: async () => {
+      const token = await acquireToken();
+      if (!token) throw new Error("An Entra access token is required");
+      return fetchBootstrap(token);
+    },
+    enabled: user.authProvider === "Microsoft Entra ID",
+    retry: false,
+    staleTime: 5 * 60_000,
   });
 
   const activeConversation = conversations.find(
@@ -314,6 +338,19 @@ function Workspace({
       return titleMatches || modelNameMatches || modelShortMatches || messageMatches;
     });
   }, [sortedConversations, historyQuery]);
+
+  useEffect(() => {
+    const configuredModels = bootstrap.data?.semantic_models.map(toFrontendModel) ?? [];
+    if (!configuredModels.length) return;
+
+    replaceSemanticModels(configuredModels);
+    refreshModelCatalog((version) => version + 1);
+    setSelectedModelId((current) =>
+      configuredModels.some((model) => model.id === current)
+        ? current
+        : configuredModels[0]!.id,
+    );
+  }, [bootstrap.data]);
 
   useEffect(() => {
     saveToStorage(storageKeys.conversations, conversations);
@@ -442,6 +479,7 @@ function Workspace({
   };
 
   const deleteConversation = (conversationId: string) => {
+    const deleting = conversations.find((conversation) => conversation.id === conversationId);
     const nextConversations = conversations.filter(
       (conversation) => conversation.id !== conversationId,
     );
@@ -453,6 +491,17 @@ function Workspace({
       setSelectedCountryCode(normalizeCountryCode(nextActive?.countryCode ?? selectedCountryCode));
     }
     showToast("Conversation removed");
+    void (async () => {
+      const token = await acquireToken();
+      if (!token || !isSessionId(conversationId) || !deleting?.messages.some((message) => message.backendId)) {
+        return;
+      }
+      try {
+        await deleteSession(token, conversationId);
+      } catch {
+        showToast("Removed locally; server deletion is pending", "warning");
+      }
+    })();
   };
 
   const submitPrompt = async (question = prompt) => {
@@ -466,7 +515,7 @@ function Workspace({
       activeConversation?.countryCode ?? selectedCountryCode,
     );
     const createdAt = new Date().toISOString();
-    const conversationId = activeConversation?.id ?? createId("conv");
+    const conversationId = activeConversation?.id ?? createSessionId();
     const userMessage: Message = {
       id: createId("msg"),
       role: "user",
@@ -791,6 +840,16 @@ function Workspace({
     saveToStorage(storageKeys.issues, [issue, ...issues]);
     setIssueOpen(false);
     showToast(`Issue ${issue.id} saved`);
+    void (async () => {
+      try {
+        const token = await acquireToken();
+        if (!token) return;
+        const saved = await submitIssueReport(token, issue, lastMessage?.backendId);
+        showToast(`Issue ${saved.id} submitted`);
+      } catch {
+        showToast("Issue saved locally; server submission is pending", "warning");
+      }
+    })();
   };
 
   const copyMessage = async (message: Message) => {
@@ -816,6 +875,29 @@ function Workspace({
           ? "Marked as a good response"
           : "Marked as a bad response",
     );
+    const message = conversations
+      .flatMap((conversation) => conversation.messages)
+      .find((entry) => entry.id === messageId);
+    if (message?.backendId) {
+        const backendMessageId = message.backendId;
+        void (async () => {
+          try {
+            const token = await acquireToken();
+            if (!token) return;
+            if (removing) {
+              await removeMessageFeedback(token, backendMessageId);
+            } else {
+              await submitMessageFeedback(
+                token,
+                backendMessageId,
+                value === "helpful" ? "helpful" : "not_helpful",
+              );
+            }
+          } catch {
+            showToast("Feedback saved locally; server submission is pending", "warning");
+          }
+        })();
+    }
   };
 
   const exportConversation = () => {
@@ -870,7 +952,6 @@ function Workspace({
         <main className={activeConversation ? "chat" : "welcome"}>
           {!activeConversation ? (
             <WelcomePanel
-              user={user}
               model={selectedModel}
               modelId={selectedModelId}
               setModelId={setSelectedModelId}

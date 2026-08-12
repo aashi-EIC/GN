@@ -44,6 +44,54 @@ export type TableData = {
   rows: string[][];
 };
 
+export type ChartType =
+  | "line"
+  | "area"
+  | "bar"
+  | "stacked-bar"
+  | "horizontal-bar"
+  | "pie"
+  | "donut"
+  | "scatter"
+  | "bubble"
+  | "heatmap"
+  | "radar"
+  | "funnel"
+  | "gauge";
+
+export type ChartEncoding = {
+  x?: string;
+  y?: string;
+  name?: string;
+  value?: string;
+  color?: string;
+  size?: string;
+};
+
+export type ChartBlock = {
+  type: "chart";
+  chart_type: ChartType;
+  title?: string;
+  description?: string;
+  data?: Array<Record<string, string | number | boolean | null>>;
+  encoding?: ChartEncoding;
+  option?: Record<string, unknown>;
+};
+
+export type TableBlock = {
+  type: "table";
+  title?: string;
+  columns: Array<string | { key: string; label?: string }>;
+  rows: Array<Record<string, string | number | boolean | null> | Array<string | number | boolean | null>>;
+};
+
+export type TextBlock = {
+  type: "text";
+  content: string;
+};
+
+export type VisualizationBlock = ChartBlock | TableBlock | TextBlock;
+
 export type PlotSpec = {
   title: string;
   description: string;
@@ -76,6 +124,7 @@ export type TokenUsage = {
 
 export type Message = {
   id: string;
+  backendId?: string;
   role: MessageRole;
   text: string;
   createdAt: string;
@@ -83,6 +132,7 @@ export type Message = {
   chart?: ChartDatum[];
   metrics?: InsightMetric[];
   table?: TableData;
+  visualizations?: VisualizationBlock[];
   actions?: string[];
   debug?: DebugEvent[];
   plot?: PlotSpec;

@@ -2,15 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUp, ChevronLeft, ChevronRight, Mic, Plus } from "lucide-react";
 import { animate, motion, useReducedMotion } from "framer-motion";
 import { getCountryLocale } from "../../../shared/constants/locales";
-import type { UserProfile } from "../../../shared/types/app";
 import type { CountryCode, ModelId, SemanticModel } from "../types/semantic";
-import { firstName } from "../../../shared/utils/identity";
 import { handleEnter } from "../../../shared/utils/keyboard";
 import { startVoiceInput } from "../utils/speech";
 import { ModelPicker } from "./ModelPicker";
 
 export function WelcomePanel({
-  user,
   model,
   modelId,
   setModelId,
@@ -22,7 +19,6 @@ export function WelcomePanel({
   setPrompt,
   submitPrompt,
 }: {
-  user: UserProfile;
   model: SemanticModel;
   modelId: ModelId;
   setModelId: (modelId: ModelId) => void;
@@ -113,7 +109,7 @@ export function WelcomePanel({
     >
       <h1>
         <span className="welcome-greeting-accent">
-          Hello, {firstName(user.name)}!
+          Hello, Aditya!
         </span>{" "}
         <span className="welcome-greeting-question">
           How can I help you today?
