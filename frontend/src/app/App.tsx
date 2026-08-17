@@ -25,13 +25,8 @@ import {
   requestMcpInsight,
 } from "../features/chat/services/mcp.service";
 import {
-  getSessions,
-  getSessionDetails,
-  deleteSession,
   getUserSettings,
   updateUserSettings,
-  submitFeedback,
-  submitIssueReport,
 } from "../features/chat/services/chat.service";
 import type {
   Conversation,
@@ -46,15 +41,9 @@ import type {
 import type { CountryCode, ModelId } from "../features/chat/types/semantic";
 import { copyText, messageToPlainText } from "../shared/utils/clipboard";
 import { accountToProfile } from "../shared/utils/identity";
-import { createId, createSessionId, isSessionId, titleFromUserMessages } from "../shared/utils/session";
+import { createId, createSessionId, titleFromUserMessages } from "../shared/utils/session";
 import { getModel, normalizeCountryCode, normalizeModelId } from "../features/chat/utils/semantic";
 import { calculateTokenUsageAndCost } from "../features/chat/utils/tokenCost";
-import {
-  fetchBootstrap,
-  removeMessageFeedback,
-  submitMessageFeedback,
-  toFrontendModel,
-} from "../shared/services/platform.service";
 
 function AppRoot({ msalEnabled }: { msalEnabled: boolean }) {
   return <AppRouter shell={msalEnabled ? <MsalBackedShell /> : <LocalShell />} />;
@@ -184,6 +173,7 @@ function MsalBackedShell() {
       user={activeUser}
       entraAvailable
       onEntraSignIn={signIn}
+      onLocalSignIn={localSignIn}
       onSignOut={signOut}
       acquireToken={acquireToken}
     />
@@ -338,7 +328,6 @@ function Workspace({
   const [historyQuery, setHistoryQuery] = useState("");
   const [feedback, setFeedback] = useState<Record<string, FeedbackValue>>({});
   const [toast, setToast] = useState<ToastState | null>(null);
-  const [, refreshModelCatalog] = useState(0);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {

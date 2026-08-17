@@ -1,5 +1,3 @@
-import { bffClient } from "../../../shared/services/axios";
-
 async function makeRequest<T>(
   _method: "get" | "post" | "put" | "delete",
   url: string,
