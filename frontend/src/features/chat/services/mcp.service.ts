@@ -1,10 +1,6 @@
 import { storageKeys } from "../../../shared/config/storage";
 import { getModel } from "../utils/semantic";
-import type {
-  McpRequestAudit,
-  McpRequestPayload,
-  Message,
-} from "../../../shared/types/app";
+import type { McpRequestAudit, McpRequestPayload, Message } from "../../../shared/types/app";
 import type { ModelId } from "../types/semantic";
 import { createId } from "../../../shared/utils/session";
 import { loadFromStorage, saveToStorage } from "../../../shared/utils/storage";

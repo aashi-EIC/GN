@@ -5692,10 +5692,12 @@ body {
   transform: translateX(-50%) scaleX(0);
   width: 22px;
   height: 3px;
-  background: #F40953;
+  background: #f40953;
   border-radius: 2px;
   opacity: 0;
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.22s ease;
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.22s ease;
   box-shadow: 0 0 8px rgba(244, 9, 83, 0.5);
   pointer-events: none;
 }
@@ -5711,7 +5713,7 @@ body {
   border-radius: 50% !important;
   border: 1px solid rgba(244, 9, 83, 0.2) !important;
   background: rgba(244, 9, 83, 0.05) !important;
-  color: #F40953 !important;
+  color: #f40953 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -5724,8 +5726,8 @@ body {
 
 .model-guide-button:hover {
   color: #ffffff !important;
-  background: #F40953 !important;
-  border-color: #F40953 !important;
+  background: #f40953 !important;
+  border-color: #f40953 !important;
   transform: scale(1.06);
   box-shadow: 0 2px 10px rgba(244, 9, 83, 0.35);
 }
@@ -5743,10 +5745,12 @@ body {
   right: 0;
   width: 320px;
   background: var(--ui-panel, #ffffff);
-  border: 1px solid color-mix(in srgb, var(--ui-border) 80%, #F40953 20%);
+  border: 1px solid color-mix(in srgb, var(--ui-border) 80%, #f40953 20%);
   border-radius: 14px;
   padding: 16px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(244, 9, 83, 0.08);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.18),
+    0 2px 8px rgba(244, 9, 83, 0.08);
   z-index: 100;
   animation: popoverFadeIn 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -5825,8 +5829,8 @@ body {
 
 .guide-prompt-btn:hover {
   background: rgba(244, 9, 83, 0.08) !important;
-  border-color: #F40953 !important;
-  color: #F40953 !important;
+  border-color: #f40953 !important;
+  color: #f40953 !important;
   transform: translateX(2px);
   box-shadow: 0 3px 10px rgba(244, 9, 83, 0.12);
 }
@@ -5836,9 +5840,8 @@ body {
   height: 15px;
   flex-shrink: 0;
   margin-top: 2px;
-  color: #F40953;
+  color: #f40953;
 }
-
 
 /* Gemini-inspired sidebar, retaining Gracenote branding and app actions. */
 .sidebar.open {
@@ -7602,14 +7605,13 @@ body {
 
 /* Vibrant Gracenote Gradient ONLY for user name in welcome heading */
 .welcome-name-gradient {
-  background: linear-gradient(135deg, #F40953 0%, #FF4B82 50%, #7928CA 100%) !important;
+  background: linear-gradient(135deg, #f40953 0%, #ff4b82 50%, #7928ca 100%) !important;
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
   font-weight: 700 !important;
   display: inline !important;
 }
-
 
 /* Ensure model dropdown opens float as absolute overlay without realigning parent elements */
 .welcome-inner.model-menu-open .suggestion-section,
@@ -7647,7 +7649,13 @@ body {
 }
 
 .welcome h1 {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif !important;
   font-size: 30px !important;
   font-weight: 550 !important;
   line-height: 1.3 !important;
@@ -7663,7 +7671,13 @@ body {
 
 .welcome-composer textarea,
 .composer textarea {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif !important;
   font-size: 14.5px !important;
   line-height: 1.5 !important;
   letter-spacing: -0.01em !important;
@@ -7802,7 +7816,10 @@ body {
   color: var(--ui-muted);
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .history-item:hover .history-menu-trigger,
@@ -7851,7 +7868,9 @@ body {
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .history-popover-menu button:hover {
@@ -7873,7 +7892,7 @@ body {
   width: 12px;
   height: 12px;
   margin-right: 5px;
-  color: #F40953;
+  color: #f40953;
   display: inline-block;
   flex-shrink: 0;
 }
@@ -7881,7 +7900,7 @@ body {
 .pinned-heading-icon {
   width: 14px;
   height: 14px;
-  color: #F40953;
+  color: #f40953;
 }
 
 /* History Item Inline Rename */
@@ -7892,10 +7911,9 @@ body {
   padding: 4px 6px;
   background: var(--ui-control);
   border-radius: 8px;
-  border: 1px solid #F40953;
+  border: 1px solid #f40953;
   min-height: 38px;
 }
-
 
 .history-rename-input {
   flex: 1;

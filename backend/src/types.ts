@@ -27,29 +27,29 @@ export type McpRequestContext = {
 export type McpScalar = string | number | boolean | null;
 
 export type McpContentBlock =
-  | { type: 'text'; content: string }
+  | { type: "text"; content: string }
   | {
-      type: 'table';
+      type: "table";
       title?: string;
       columns: Array<string | { key: string; label?: string }>;
       rows: Array<Record<string, McpScalar> | McpScalar[]>;
     }
   | {
-      type: 'chart';
+      type: "chart";
       chart_type:
-        | 'line'
-        | 'area'
-        | 'bar'
-        | 'stacked-bar'
-        | 'horizontal-bar'
-        | 'pie'
-        | 'donut'
-        | 'scatter'
-        | 'bubble'
-        | 'heatmap'
-        | 'radar'
-        | 'funnel'
-        | 'gauge';
+        | "line"
+        | "area"
+        | "bar"
+        | "stacked-bar"
+        | "horizontal-bar"
+        | "pie"
+        | "donut"
+        | "scatter"
+        | "bubble"
+        | "heatmap"
+        | "radar"
+        | "funnel"
+        | "gauge";
       title?: string;
       description?: string;
       data?: Array<Record<string, McpScalar>>;

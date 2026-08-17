@@ -24,10 +24,7 @@ import {
   persistMcpRequestAudit,
   requestMcpInsight,
 } from "../features/chat/services/mcp.service";
-import {
-  getUserSettings,
-  updateUserSettings,
-} from "../features/chat/services/chat.service";
+import { getUserSettings, updateUserSettings } from "../features/chat/services/chat.service";
 import type {
   Conversation,
   FeedbackValue,

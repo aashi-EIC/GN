@@ -93,7 +93,13 @@ function buildChartOption(block: ChartBlock): EChartsOption {
     const first = data[0] ?? {};
     return {
       ...base,
-      series: [{ type: "gauge", progress: { show: true }, data: [{ value: Number(first[fields.value] ?? 0) }] }],
+      series: [
+        {
+          type: "gauge",
+          progress: { show: true },
+          data: [{ value: Number(first[fields.value] ?? 0) }],
+        },
+      ],
     };
   }
 
@@ -121,8 +127,14 @@ function buildChartOption(block: ChartBlock): EChartsOption {
 
   return {
     ...base,
-    xAxis: block.chart_type === "horizontal-bar" ? { type: "value" } : { type: "category", data: categories },
-    yAxis: block.chart_type === "horizontal-bar" ? { type: "category", data: categories } : { type: "value" },
+    xAxis:
+      block.chart_type === "horizontal-bar"
+        ? { type: "value" }
+        : { type: "category", data: categories },
+    yAxis:
+      block.chart_type === "horizontal-bar"
+        ? { type: "category", data: categories }
+        : { type: "value" },
     series: seriesNames.map((name) => {
       const values = categories.map((category) => {
         const row = data.find((item) => {

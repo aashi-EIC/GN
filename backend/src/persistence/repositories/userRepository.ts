@@ -15,14 +15,16 @@ const issueStore = new Map<string, { title: string; description: string; debugCo
 
 export async function getUserSettings(user: AuthenticatedUser) {
   const key = `${user.tenantId}:${user.objectId}`;
-  return userSettingsStore.get(key) || {
-    displayName: "",
-    region: "Global",
-    density: "comfortable",
-    keepDebugOpen: false,
-    theme: "light",
-    tourSeen: false,
-  };
+  return (
+    userSettingsStore.get(key) || {
+      displayName: "",
+      region: "Global",
+      density: "comfortable",
+      keepDebugOpen: false,
+      theme: "light",
+      tourSeen: false,
+    }
+  );
 }
 
 export interface UserSettingsInput {

@@ -1,34 +1,44 @@
-import { Router } from 'express';
-import { z } from 'zod';
-import { cancelChatRequest, registerChatRequest, releaseChatRequest } from '../../application/services/chatRequestRegistry.js';
-import { processChat } from '../../application/services/chatService.js';
-import { getAccessibleModel } from '../../config/catalog.js';
-import { config } from '../../config/env.js';
-import { NotFoundError } from '../../errors.js';
+import { Router } from "express";
+import { z } from "zod";
+import {
+  cancelChatRequest,
+  registerChatRequest,
+  releaseChatRequest,
+} from "../../application/services/chatRequestRegistry.js";
+import { processChat } from "../../application/services/chatService.js";
+import { getAccessibleModel } from "../../config/catalog.js";
+import { config } from "../../config/env.js";
+import { NotFoundError } from "../../errors.js";
 import {
   createOwnedSession,
   deleteOwnedSession,
   getOwnedSession,
   listOwnedSessions,
   renameOwnedSession,
-} from '../../persistence/repositories/sessionRepository.js';
-import type { AuthenticatedRequest } from '../../types.js';
-import { rateLimit } from '../middleware/rateLimit.js';
+} from "../../persistence/repositories/sessionRepository.js";
+import type { AuthenticatedRequest } from "../../types.js";
+import { rateLimit } from "../middleware/rateLimit.js";
 
-const chatBody = z.object({
-  session_id: z.string().uuid(),
-  semantic_model_id: z.string().trim().min(1).max(256),
-  prompt: z.string().trim().min(1).max(config.MAX_PROMPT_LENGTH),
-}).strict();
+const chatBody = z
+  .object({
+    session_id: z.string().uuid(),
+    semantic_model_id: z.string().trim().min(1).max(256),
+    prompt: z.string().trim().min(1).max(config.MAX_PROMPT_LENGTH),
+  })
+  .strict();
 
-const createSessionBody = z.object({
-  semantic_model_id: z.string().trim().min(1).max(256),
-  title: z.string().trim().min(1).max(120).optional(),
-}).strict();
+const createSessionBody = z
+  .object({
+    semantic_model_id: z.string().trim().min(1).max(256),
+    title: z.string().trim().min(1).max(120).optional(),
+  })
+  .strict();
 
-const updateSessionBody = z.object({
-  title: z.string().trim().min(1).max(120),
-}).strict();
+const updateSessionBody = z
+  .object({
+    title: z.string().trim().min(1).max(120),
+  })
+  .strict();
 
 const sessionParams = z.object({ sessionId: z.string().uuid() });
 const requestParams = z.object({ requestId: z.string().trim().min(1).max(128) });
@@ -41,59 +51,61 @@ const listQuery = z.object({
 
 export const chatRouter = Router();
 
-chatRouter.post('/sessions', async (request, res) => {
+chatRouter.post("/sessions", async (request, res) => {
   const req = request as AuthenticatedRequest;
   const body = createSessionBody.parse(req.body);
   getAccessibleModel(req.user, body.semantic_model_id);
   const session = await createOwnedSession({
     semanticModelId: body.semantic_model_id,
-    title: body.title ?? 'New conversation',
+    title: body.title ?? "New conversation",
     user: req.user,
   });
   res.status(201).json({ session });
 });
 
-chatRouter.get('/sessions', async (request, res) => {
+chatRouter.get("/sessions", async (request, res) => {
   const req = request as AuthenticatedRequest;
   const query = listQuery.parse(req.query);
   if (query.semantic_model_id) getAccessibleModel(req.user, query.semantic_model_id);
-  res.json(await listOwnedSessions({
-    user: req.user,
-    limit: query.limit,
-    ...(query.cursor ? { cursor: query.cursor } : {}),
-    ...(query.search ? { search: query.search } : {}),
-    ...(query.semantic_model_id ? { semanticModelId: query.semantic_model_id } : {}),
-  }));
+  res.json(
+    await listOwnedSessions({
+      user: req.user,
+      limit: query.limit,
+      ...(query.cursor ? { cursor: query.cursor } : {}),
+      ...(query.search ? { search: query.search } : {}),
+      ...(query.semantic_model_id ? { semanticModelId: query.semantic_model_id } : {}),
+    }),
+  );
 });
 
-chatRouter.get('/sessions/:sessionId', async (request, res) => {
+chatRouter.get("/sessions/:sessionId", async (request, res) => {
   const req = request as unknown as AuthenticatedRequest;
   const { sessionId } = sessionParams.parse(req.params);
   res.json(await getOwnedSession(req.user, sessionId));
 });
 
-chatRouter.patch('/sessions/:sessionId', async (request, res) => {
+chatRouter.patch("/sessions/:sessionId", async (request, res) => {
   const req = request as unknown as AuthenticatedRequest;
   const { sessionId } = sessionParams.parse(req.params);
   const { title } = updateSessionBody.parse(req.body);
   res.json({ session: await renameOwnedSession(req.user, sessionId, title) });
 });
 
-chatRouter.delete('/sessions/:sessionId', async (request, res) => {
+chatRouter.delete("/sessions/:sessionId", async (request, res) => {
   const req = request as unknown as AuthenticatedRequest;
   const { sessionId } = sessionParams.parse(req.params);
   await deleteOwnedSession(req.user, sessionId);
   res.status(204).end();
 });
 
-chatRouter.post('/chat/:requestId/cancel', async (request, res) => {
+chatRouter.post("/chat/:requestId/cancel", async (request, res) => {
   const req = request as unknown as AuthenticatedRequest;
   const { requestId } = requestParams.parse(req.params);
-  if (!cancelChatRequest(requestId, req.user)) throw new NotFoundError('Active request not found');
-  res.status(202).json({ request_id: requestId, status: 'cancelling' });
+  if (!cancelChatRequest(requestId, req.user)) throw new NotFoundError("Active request not found");
+  res.status(202).json({ request_id: requestId, status: "cancelling" });
 });
 
-chatRouter.post('/chat', rateLimit, async (request, res) => {
+chatRouter.post("/chat", rateLimit, async (request, res) => {
   const req = request as AuthenticatedRequest;
   const body = chatBody.parse(req.body);
   getAccessibleModel(req.user, body.semantic_model_id);

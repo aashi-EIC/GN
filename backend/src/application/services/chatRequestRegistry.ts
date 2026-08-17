@@ -1,4 +1,4 @@
-import type { AuthenticatedUser } from '../../types.js';
+import type { AuthenticatedUser } from "../../types.js";
 
 type ActiveRequest = {
   controller: AbortController;
@@ -27,7 +27,7 @@ export function cancelChatRequest(requestId: string, user: AuthenticatedUser) {
   if (!active || active.ownerTenantId !== user.tenantId || active.ownerObjectId !== user.objectId) {
     return false;
   }
-  active.controller.abort(new Error('Request cancelled by user'));
+  active.controller.abort(new Error("Request cancelled by user"));
   activeRequests.delete(requestId);
   return true;
 }

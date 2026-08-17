@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto';
-import { ConflictError, NotFoundError } from '../../errors.js';
-import type { AuthenticatedUser, McpHostResponse } from '../../types.js';
+import { randomUUID } from "node:crypto";
+import { ConflictError, NotFoundError } from "../../errors.js";
+import type { AuthenticatedUser, McpHostResponse } from "../../types.js";
 
 type SessionRecord = {
   id: string;
@@ -16,7 +16,7 @@ type SessionRecord = {
 type MessageRecord = {
   id: string;
   session_id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   normalized_response: McpHostResponse | null;
   correlation_id: string;
@@ -44,12 +44,12 @@ function sessionView(session: SessionRecord) {
 export async function assertOwnedSession({ id, user }: SessionOwnerInput) {
   const session = sessions.get(id);
   if (
-    !session
-    || session.deleted_at
-    || session.owner_tenant_id !== user.tenantId
-    || session.owner_object_id !== user.objectId
+    !session ||
+    session.deleted_at ||
+    session.owner_tenant_id !== user.tenantId ||
+    session.owner_object_id !== user.objectId
   ) {
-    throw new NotFoundError('Session not found');
+    throw new NotFoundError("Session not found");
   }
   return sessionView(session);
 }
@@ -96,21 +96,21 @@ export async function ensureOwnedSession(input: {
   }
 
   if (
-    session.deleted_at
-    || session.owner_tenant_id !== input.user.tenantId
-    || session.owner_object_id !== input.user.objectId
+    session.deleted_at ||
+    session.owner_tenant_id !== input.user.tenantId ||
+    session.owner_object_id !== input.user.objectId
   ) {
-    throw new NotFoundError('Session not found');
+    throw new NotFoundError("Session not found");
   }
   if (session.semantic_model_id !== input.semanticModelId) {
-    throw new ConflictError('A session cannot change its semantic model');
+    throw new ConflictError("A session cannot change its semantic model");
   }
 
   const messageId = randomUUID();
   messages.set(messageId, {
     id: messageId,
     session_id: session.id,
-    role: 'user',
+    role: "user",
     content: input.prompt,
     normalized_response: null,
     correlation_id: input.correlationId,
@@ -125,13 +125,13 @@ export async function saveAssistantMessage(
   correlationId: string,
   response: McpHostResponse,
 ) {
-  if (!sessions.has(sessionId)) throw new NotFoundError('Session not found');
+  if (!sessions.has(sessionId)) throw new NotFoundError("Session not found");
 
   const id = randomUUID();
   messages.set(id, {
     id,
     session_id: sessionId,
-    role: 'assistant',
+    role: "assistant",
     content: response.answer.text,
     normalized_response: response,
     correlation_id: correlationId,
@@ -150,21 +150,22 @@ export async function listOwnedSessions(input: {
   const cursor = input.cursor ? new Date(input.cursor).getTime() : undefined;
   const search = input.search?.toLocaleLowerCase();
   const matches = [...sessions.values()]
-    .filter((session) => (
-      !session.deleted_at
-      && session.owner_tenant_id === input.user.tenantId
-      && session.owner_object_id === input.user.objectId
-      && (cursor === undefined || session.updated_at.getTime() < cursor)
-      && (!search || session.title.toLocaleLowerCase().includes(search))
-      && (!input.semanticModelId || session.semantic_model_id === input.semanticModelId)
-    ))
+    .filter(
+      (session) =>
+        !session.deleted_at &&
+        session.owner_tenant_id === input.user.tenantId &&
+        session.owner_object_id === input.user.objectId &&
+        (cursor === undefined || session.updated_at.getTime() < cursor) &&
+        (!search || session.title.toLocaleLowerCase().includes(search)) &&
+        (!input.semanticModelId || session.semantic_model_id === input.semanticModelId),
+    )
     .sort((left, right) => right.updated_at.getTime() - left.updated_at.getTime());
 
   const hasMore = matches.length > input.limit;
   const page = matches.slice(0, input.limit);
   return {
     sessions: page.map(sessionView),
-    next_cursor: hasMore ? page.at(-1)?.updated_at.toISOString() ?? null : null,
+    next_cursor: hasMore ? (page.at(-1)?.updated_at.toISOString() ?? null) : null,
   };
 }
 
@@ -193,7 +194,7 @@ export async function deleteOwnedSession(user: AuthenticatedUser, id: string) {
 
 export async function assertOwnedMessage(user: AuthenticatedUser, messageId: string) {
   const message = messages.get(messageId);
-  if (!message) throw new NotFoundError('Message not found');
+  if (!message) throw new NotFoundError("Message not found");
   const session = await assertOwnedSession({ id: message.session_id, user });
   return {
     id: message.id,

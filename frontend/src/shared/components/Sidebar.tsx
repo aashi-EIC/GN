@@ -70,7 +70,6 @@ const groupHistoryByDate = (conversations: Conversation[]): DateGroup[] => {
   }));
 };
 
-
 type ModelGroup = {
   label: string;
   short: string;
@@ -449,4 +448,3 @@ export function Sidebar({
     </aside>
   );
 }
-

@@ -67,7 +67,9 @@ export type TableBlock = {
   type: "table";
   title?: string;
   columns: Array<string | { key: string; label?: string }>;
-  rows: Array<Record<string, string | number | boolean | null> | Array<string | number | boolean | null>>;
+  rows: Array<
+    Record<string, string | number | boolean | null> | Array<string | number | boolean | null>
+  >;
 };
 
 export type TextBlock = {

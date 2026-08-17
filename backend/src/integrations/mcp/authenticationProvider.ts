@@ -1,7 +1,7 @@
-import { ConfidentialClientApplication } from '@azure/msal-node';
-import { config, getDownstreamScopes, getOboTenantId, getRequired } from '../../config/env.js';
-import { ConfigurationError, UpstreamError } from '../../errors.js';
-import type { AuthenticatedUser } from '../../types.js';
+import { ConfidentialClientApplication } from "@azure/msal-node";
+import { config, getDownstreamScopes, getOboTenantId, getRequired } from "../../config/env.js";
+import { ConfigurationError, UpstreamError } from "../../errors.js";
+import type { AuthenticatedUser } from "../../types.js";
 
 export type OutboundAuthenticationProvider = {
   getHeaders(user: AuthenticatedUser, signal: AbortSignal): Promise<Record<string, string>>;
@@ -9,11 +9,11 @@ export type OutboundAuthenticationProvider = {
 
 class ApiKeyAuthenticationProvider implements OutboundAuthenticationProvider {
   async getHeaders() {
-    const header = getRequired('MCP_API_KEY_HEADER');
-    const value = getRequired('MCP_API_KEY_VALUE');
+    const header = getRequired("MCP_API_KEY_HEADER");
+    const value = getRequired("MCP_API_KEY_VALUE");
 
     if (/^(cookie|host|content-length)$/i.test(header)) {
-      throw new ConfigurationError('MCP_API_KEY_HEADER uses a prohibited header name');
+      throw new ConfigurationError("MCP_API_KEY_HEADER uses a prohibited header name");
     }
 
     return { [header]: value };
@@ -31,8 +31,8 @@ class OboAuthenticationProvider implements OutboundAuthenticationProvider {
 
   async getHeaders(user: AuthenticatedUser) {
     const tenantId = getOboTenantId();
-    const clientId = getRequired('OBO_CLIENT_ID');
-    const clientSecret = getRequired('OBO_CLIENT_SECRET');
+    const clientId = getRequired("OBO_CLIENT_ID");
+    const clientSecret = getRequired("OBO_CLIENT_SECRET");
     const scopes = getDownstreamScopes();
 
     this.application ??= new ConfidentialClientApplication({
@@ -50,7 +50,7 @@ class OboAuthenticationProvider implements OutboundAuthenticationProvider {
     });
 
     if (!result?.accessToken) {
-      throw new UpstreamError('OBO token acquisition failed');
+      throw new UpstreamError("OBO token acquisition failed");
     }
 
     return { authorization: `Bearer ${result.accessToken}` };
@@ -58,7 +58,7 @@ class OboAuthenticationProvider implements OutboundAuthenticationProvider {
 }
 
 export function createAuthenticationProvider(): OutboundAuthenticationProvider {
-  if (config.MCP_AUTH_MODE === 'obo') return new OboAuthenticationProvider();
-  if (config.MCP_AUTH_MODE === 'api-key') return new ApiKeyAuthenticationProvider();
+  if (config.MCP_AUTH_MODE === "obo") return new OboAuthenticationProvider();
+  if (config.MCP_AUTH_MODE === "api-key") return new ApiKeyAuthenticationProvider();
   return new NoAuthenticationProvider();
 }

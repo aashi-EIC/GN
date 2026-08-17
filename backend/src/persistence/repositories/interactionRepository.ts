@@ -1,14 +1,14 @@
-import { randomUUID } from 'node:crypto';
-import { ConflictError } from '../../errors.js';
-import type { AuthenticatedUser } from '../../types.js';
-import { assertOwnedMessage, assertOwnedSession } from './sessionRepository.js';
+import { randomUUID } from "node:crypto";
+import { ConflictError } from "../../errors.js";
+import type { AuthenticatedUser } from "../../types.js";
+import { assertOwnedMessage, assertOwnedSession } from "./sessionRepository.js";
 
 type FeedbackRecord = {
   id: string;
   message_id: string;
   owner_tenant_id: string;
   owner_object_id: string;
-  rating: 'helpful' | 'not_helpful';
+  rating: "helpful" | "not_helpful";
   reason: string | null;
   created_at: Date;
   updated_at: Date;
@@ -23,7 +23,7 @@ function feedbackKey(user: AuthenticatedUser, messageId: string) {
 
 export async function saveMessageFeedback(input: {
   messageId: string;
-  rating: 'helpful' | 'not_helpful';
+  rating: "helpful" | "not_helpful";
   reason?: string;
   user: AuthenticatedUser;
 }) {
@@ -63,16 +63,16 @@ export async function createIssueReport(input: {
   if (input.sessionId) {
     const session = await assertOwnedSession({ id: input.sessionId, user: input.user });
     if (session.semantic_model_id !== input.semanticModelId) {
-      throw new ConflictError('The issue semantic model does not match the selected session');
+      throw new ConflictError("The issue semantic model does not match the selected session");
     }
   }
   if (input.messageId) {
     const message = await assertOwnedMessage(input.user, input.messageId);
     if (input.sessionId && message.session_id !== input.sessionId) {
-      throw new ConflictError('The selected message does not belong to the selected session');
+      throw new ConflictError("The selected message does not belong to the selected session");
     }
     if (message.semantic_model_id !== input.semanticModelId) {
-      throw new ConflictError('The issue semantic model does not match the selected message');
+      throw new ConflictError("The issue semantic model does not match the selected message");
     }
   }
 
