@@ -93,7 +93,11 @@ export function ErrorReportModal({
         {lastMessage && (
           <label>
             Last message sent
-            <textarea value={messageToPlainText(lastMessage)} readOnly aria-label="Last message sent" />
+            <textarea
+              value={messageToPlainText(lastMessage)}
+              readOnly
+              aria-label="Last message sent"
+            />
             <div className="response-actions">
               <IconButton label="Copy response" onClick={() => copyMessage(lastMessage)}>
                 <Copy />

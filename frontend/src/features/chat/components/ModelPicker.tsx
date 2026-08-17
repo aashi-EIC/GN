@@ -4,7 +4,6 @@ import type { ModelId } from "../types/semantic";
 import { getModel } from "../utils/semantic";
 import { Tooltip } from "../../../shared/components/Tooltip";
 
-
 export function ModelPicker({
   modelId,
   setModelId,
@@ -83,4 +82,3 @@ export function ModelPicker({
 
   return pickerContent;
 }
-

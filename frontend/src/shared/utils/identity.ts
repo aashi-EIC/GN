@@ -23,7 +23,6 @@ export function nameFromEmail(email: string) {
     .join(" ");
 }
 
-
 export function initials(name: string) {
   const parts = name.split(" ").filter(Boolean);
   if (parts.length === 0) {

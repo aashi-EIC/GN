@@ -41,5 +41,3 @@ export const countryLocales: Record<CountryCode, CountryLocale> = {
 export function getCountryLocale(_countryCode?: CountryCode): CountryLocale {
   return countryLocales.US;
 }
-
-

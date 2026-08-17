@@ -1,5 +1,4 @@
-import { HelpCircle } from "lucide-react";
-import { useState } from "react";
+import { SlidersHorizontal } from "lucide-react";
 import type { ModelId } from "../../features/chat/types/semantic";
 import { getModel } from "../../features/chat/utils/semantic";
 import { IconButton } from "./ui/IconButton";
@@ -7,66 +6,33 @@ import { IconButton } from "./ui/IconButton";
 export function Navbar({
   modelId,
   openGuide,
-  conversationTitle,
 }: {
   modelId?: ModelId;
   openGuide: () => void;
   conversationTitle?: string;
   sidebarOpen?: boolean;
+  onSelectPrompt?: (prompt: string) => void;
 }) {
-  const [guideHovered, setGuideHovered] = useState(false);
   const activeModel = getModel(modelId ?? "schedule_completeness_tsg");
 
   return (
     <header className="topbar">
-      <div className="topbar-left">
-        {conversationTitle && (
-          <span className="active-chat-title">{conversationTitle}</span>
-        )}
-      </div>
+      <div className="topbar-left" />
 
       <div className="header-actions">
-        <div
-          className="guide-button-wrap"
-          onMouseEnter={() => setGuideHovered(true)}
-          onMouseLeave={() => setGuideHovered(false)}
-        >
+        <div className="guide-button-wrap">
           <IconButton
-            label={`User Guide for ${activeModel.name}`}
+            label={`Prompts & Guide for ${activeModel.name}`}
             className="model-guide-button"
-            onClick={() => {
-              setGuideHovered(!guideHovered);
-              openGuide();
-            }}
+            onClick={openGuide}
           >
-            <HelpCircle />
+            <SlidersHorizontal className="gn-prompt-icon" />
           </IconButton>
-          {guideHovered && (
-            <div className="header-guide-popover">
-              <div className="guide-popover-head">
-                <span className="model-chip" style={{ backgroundColor: activeModel.color }}>
-                  {activeModel.short}
-                </span>
-                <div>
-                  <strong>{activeModel.name}</strong>
-                  {activeModel.nickname && <small>{activeModel.nickname}</small>}
-                </div>
-              </div>
-              <p className="guide-popover-desc">{activeModel.guide ?? activeModel.description}</p>
-              <div className="guide-popover-prompts">
-                <b>Try asking:</b>
-                <ul>
-                  {activeModel.prompts.map((prompt) => (
-                    <li key={prompt}>{prompt}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </header>
   );
 }
+
 
 

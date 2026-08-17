@@ -1,11 +1,30 @@
-import { useEffect, useRef, useState } from "react";
-import { ArrowUp, ChevronLeft, ChevronRight, Mic, Plus } from "lucide-react";
-import { animate, motion, useReducedMotion } from "framer-motion";
+import { useMemo, useState } from "react";
+import { ArrowUp, Mic } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { getCountryLocale } from "../../../shared/constants/locales";
 import type { CountryCode, ModelId, SemanticModel } from "../types/semantic";
 import { handleEnter } from "../../../shared/utils/keyboard";
 import { startVoiceInput } from "../utils/speech";
 import { ModelPicker } from "./ModelPicker";
+
+const WELCOME_MESSAGES = [
+  "Hola {Name}! Ready to talk to your metrics in plain english?",
+  "Bring a smart question, {Name} , and let the data do the flex!",
+  "Ending spreadsheet civil wars one question at a time - welcome back, {Name}!",
+  "Ask away, {Name}-get real facts before your coffee gets cold!",
+  "Numbers never lie-they were just waiting for someone to ask, {Name}!",
+  "Welcome {Name}! Your dashboards can now talk. What do you want to ask today?",
+  "Connecting you directly with data, {Name}. What’s on your mind?",
+  "Welcome, {Name}! Let’s uncover some great insights today. Your query?",
+  "Ready to spot some outliers, {Name}? Ask your toughest questions",
+  "Ask away, {Name} - no question is too niche when data is on the line",
+  "My favorite seeker of truth is here, {Name}! What trends or metrics are we analyzing today?",
+  "Good to see you, {Name}! Fair warning: I take data very seriously. Let's dig in",
+  "Coffee? Check. Metrics? Calibrated. Let's see what the data is telling us today, {Name}",
+  "The data's ready, {Name}. The real question is-are you? Let's find out",
+  "Welcome back, {Name}! Virtual magnifying glasses ready. What metrics are we looking at today?",
+  "Hey {Name}, let's uncover the insights hidden in data",
+];
 
 export function WelcomePanel({
   model,
@@ -29,84 +48,31 @@ export function WelcomePanel({
   submitPrompt: (prompt?: string) => void;
 }) {
   const [isRecording, setIsRecording] = useState(false);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-  const promptTrackRef = useRef<HTMLDivElement | null>(null);
-  const scrollAnimationRef = useRef<ReturnType<typeof animate> | null>(null);
   const reduceMotion = useReducedMotion();
   const locale = getCountryLocale(countryCode);
-  const localizedPrompts = locale.prompts[modelId] ?? model.prompts;
-  const promptTopics =
-    modelId === "schedule_completeness_tsg"
-      ? ["Tomorrow", "Coverage", "Gaps", "Markets", "Channels", "Priority"]
-      : ["Latency", "Sources", "Match rate", "Alerts", "Trends", "Providers"];
 
-  const updateCarouselState = () => {
-    const track = promptTrackRef.current;
-    if (!track) return;
+  const selectedTemplate = useMemo(() => {
+    const randomIndex = Math.floor(Math.random() * WELCOME_MESSAGES.length);
+    return WELCOME_MESSAGES[randomIndex];
+  }, []);
 
-    const maxScroll = Math.max(0, track.scrollWidth - track.clientWidth);
+  const messageParts = useMemo(() => {
+    return selectedTemplate.split("{Name}");
+  }, [selectedTemplate]);
 
-    setCanScrollLeft(track.scrollLeft > 2);
-    setCanScrollRight(track.scrollLeft < maxScroll - 2);
-  };
-
-  const moveCarousel = (direction: -1 | 1) => {
-    const track = promptTrackRef.current;
-    const firstCard = track?.querySelector<HTMLElement>("button");
-    if (!track || !firstCard) return;
-
-    const gap = Number.parseFloat(getComputedStyle(track).columnGap) || 0;
-    const step = firstCard.offsetWidth + gap;
-    const maxScroll = Math.max(0, track.scrollWidth - track.clientWidth);
-    const target = Math.max(0, Math.min(track.scrollLeft + direction * step, maxScroll));
-
-    scrollAnimationRef.current?.stop();
-    if (reduceMotion) {
-      track.scrollLeft = target;
-      updateCarouselState();
-      return;
-    }
-
-    scrollAnimationRef.current = animate(track.scrollLeft, target, {
-      duration: 0.56,
-      ease: [0.22, 1, 0.36, 1],
-      onUpdate: (value) => {
-        track.scrollLeft = value;
-      },
-      onComplete: updateCarouselState,
-    });
-  };
-
-  useEffect(() => {
-    const track = promptTrackRef.current;
-    if (!track) return undefined;
-
-    track.scrollLeft = 0;
-    updateCarouselState();
-    const resizeObserver = new ResizeObserver(updateCarouselState);
-    resizeObserver.observe(track);
-
-    return () => {
-      scrollAnimationRef.current?.stop();
-      resizeObserver.disconnect();
-    };
-  }, [modelId, localizedPrompts.length]);
+  const userName = firstName(user.name);
 
   return (
     <motion.div
-      className={`welcome-inner ${modelsOpen ? "model-menu-open" : ""}`}
+      className="welcome-inner"
       initial={reduceMotion ? false : { opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
     >
       <h1>
-        <span className="welcome-greeting-accent">
-          Hello, Aditya!
-        </span>{" "}
-        <span className="welcome-greeting-question">
-          How can I help you today?
-        </span>
+        {messageParts[0]}
+        <span className="welcome-name-gradient">{userName}</span>
+        {messageParts[1]}
       </h1>
       <div className="welcome-composer">
         <textarea
@@ -154,73 +120,8 @@ export function WelcomePanel({
           </div>
         </div>
       </div>
-
-      <section className="suggestion-section" aria-labelledby="suggested-prompts-title">
-        <div className="suggestion-section-head">
-          <h2 id="suggested-prompts-title">Suggested prompts</h2>
-        </div>
-        <div className="prompt-gallery-shell">
-          <button
-            className="prompt-gallery-control previous"
-            type="button"
-            aria-label="Show previous prompts"
-            disabled={!canScrollLeft}
-            onClick={() => moveCarousel(-1)}
-          >
-            <ChevronLeft />
-          </button>
-          <div
-            className="suggestions"
-            ref={promptTrackRef}
-            onScroll={updateCarouselState}
-            onKeyDown={(event) => {
-              if (event.key === "ArrowLeft") {
-                event.preventDefault();
-                moveCarousel(-1);
-              }
-              if (event.key === "ArrowRight") {
-                event.preventDefault();
-                moveCarousel(1);
-              }
-            }}
-            role="region"
-            aria-label="Suggested prompt gallery"
-            tabIndex={0}
-          >
-          {localizedPrompts.map((suggestion, index) => (
-            <motion.button
-              key={suggestion}
-              type="button"
-              onClick={() => submitPrompt(suggestion)}
-              initial={reduceMotion ? false : { opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.3,
-                delay: reduceMotion ? 0 : 0.08 + index * 0.055,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              whileTap={reduceMotion ? undefined : { scale: 0.985 }}
-            >
-              <span className="prompt-card-meta">
-                <span>{promptTopics[index] ?? model.short}</span>
-                <Plus aria-hidden="true" />
-              </span>
-              <span className="prompt-card-text">{suggestion}</span>
-            </motion.button>
-          ))}
-          </div>
-          <button
-            className="prompt-gallery-control next"
-            type="button"
-            aria-label="Show more prompts"
-            disabled={!canScrollRight}
-            onClick={() => moveCarousel(1)}
-          >
-            <ChevronRight />
-          </button>
-        </div>
-      </section>
     </motion.div>
   );
 }
+
 

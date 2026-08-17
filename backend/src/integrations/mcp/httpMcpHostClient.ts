@@ -1,9 +1,9 @@
-import { setTimeout as delay } from 'node:timers/promises';
-import { config, getRequired } from '../../config/env.js';
-import { ConfigurationError, UpstreamError } from '../../errors.js';
-import { logger } from '../../observability/logger.js';
-import type { AuthenticatedUser } from '../../types.js';
-import type { OutboundAuthenticationProvider } from './authenticationProvider.js';
+import { setTimeout as delay } from "node:timers/promises";
+import { config, getRequired } from "../../config/env.js";
+import { ConfigurationError, UpstreamError } from "../../errors.js";
+import { logger } from "../../observability/logger.js";
+import type { AuthenticatedUser } from "../../types.js";
+import type { OutboundAuthenticationProvider } from "./authenticationProvider.js";
 
 const RETRYABLE_STATUSES = new Set([502, 503, 504]);
 
@@ -35,7 +35,7 @@ export class HttpMcpHostClient {
         lastError = error;
 
         if (callerSignal.aborted) {
-          throw new UpstreamError('Request was cancelled', undefined, 499);
+          throw new UpstreamError("Request was cancelled", undefined, 499);
         }
 
         if (error instanceof UpstreamError) {
@@ -43,7 +43,7 @@ export class HttpMcpHostClient {
         }
 
         if (attempt < attempts) {
-          logger.warn({ correlationId, attempt, err: error }, 'Retrying MCP request');
+          logger.warn({ correlationId, attempt, err: error }, "Retrying MCP request");
           await delay(backoff(attempt), undefined, { signal: callerSignal });
           continue;
         }
@@ -51,7 +51,7 @@ export class HttpMcpHostClient {
     }
 
     throw new UpstreamError(
-      'MCP host request failed',
+      "MCP host request failed",
       lastError instanceof Error ? { name: lastError.name } : undefined,
       504,
     );
@@ -68,11 +68,11 @@ export class HttpMcpHostClient {
     const signal = AbortSignal.any([callerSignal, timeoutSignal]);
 
     return fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'content-type': 'application/json',
-        accept: 'application/json',
-        'x-correlation-id': correlationId,
+        "content-type": "application/json",
+        accept: "application/json",
+        "x-correlation-id": correlationId,
         ...authHeaders,
       },
       body: JSON.stringify(body),
@@ -91,44 +91,51 @@ export class HttpMcpHostClient {
       return;
     }
 
-    throw new UpstreamError('MCP host returned an unsuccessful response', {
+    throw new UpstreamError("MCP host returned an unsuccessful response", {
       upstreamStatus: response.status,
     });
   }
 }
 
-function getMcpUrl() {
-  const baseUrl = new URL(getRequired('MCP_BASE_URL'));
-  const endpointUrl = new URL(getRequired('MCP_ENDPOINT_PATH'), baseUrl);
+let cachedMcpUrl: URL | undefined;
 
-  if (endpointUrl.origin !== baseUrl.origin) {
-    throw new ConfigurationError('MCP_ENDPOINT_PATH must remain on MCP_BASE_URL origin');
+function getMcpUrl() {
+  if (!cachedMcpUrl) {
+    const baseUrl = new URL(getRequired("MCP_BASE_URL"));
+    const endpointUrl = new URL(getRequired("MCP_ENDPOINT_PATH"), baseUrl);
+
+    if (endpointUrl.origin !== baseUrl.origin) {
+      throw new ConfigurationError("MCP_ENDPOINT_PATH must remain on MCP_BASE_URL origin");
+    }
+    cachedMcpUrl = endpointUrl;
   }
 
-  return endpointUrl;
+  return cachedMcpUrl;
 }
 
+const jsonDecoder = new TextDecoder();
+
 async function readJsonResponse(response: Response) {
-  const contentType = response.headers.get('content-type') ?? '';
-  if (!contentType.toLowerCase().includes('application/json')) {
-    throw new UpstreamError('MCP host returned a non-JSON response');
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    throw new UpstreamError("MCP host returned a non-JSON response");
   }
 
-  const contentLength = Number(response.headers.get('content-length') ?? 0);
+  const contentLength = Number(response.headers.get("content-length") ?? 0);
   if (contentLength > config.MCP_MAX_RESPONSE_BYTES) {
-    throw new UpstreamError('MCP response exceeded the configured size limit');
+    throw new UpstreamError("MCP response exceeded the configured size limit");
   }
 
   if (!response.body) {
-    throw new UpstreamError('MCP host returned an empty response');
+    throw new UpstreamError("MCP host returned an empty response");
   }
 
   const bytes = await readLimitedBody(response.body);
 
   try {
-    return JSON.parse(new TextDecoder().decode(bytes));
+    return JSON.parse(jsonDecoder.decode(bytes));
   } catch {
-    throw new UpstreamError('MCP host returned invalid JSON');
+    throw new UpstreamError("MCP host returned invalid JSON");
   }
 }
 
@@ -144,7 +151,7 @@ async function readLimitedBody(body: ReadableStream<Uint8Array>) {
     total += value.byteLength;
     if (total > config.MCP_MAX_RESPONSE_BYTES) {
       await reader.cancel();
-      throw new UpstreamError('MCP response exceeded the configured size limit');
+      throw new UpstreamError("MCP response exceeded the configured size limit");
     }
 
     chunks.push(value);

@@ -9,7 +9,7 @@ export function estimateTokens(_text: string): number {
 export function calculateTokenUsageAndCost(
   _modelId: ModelId,
   _promptText: string,
-  _responseText: string
+  _responseText: string,
 ): TokenUsage {
   // Placeholder token usage - formula removed
   return {

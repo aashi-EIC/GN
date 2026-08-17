@@ -1,12 +1,4 @@
-import {
-  Check,
-  CircleGauge,
-  Code2,
-  LogOut,
-  Moon,
-  Sun,
-  UserRound,
-} from "lucide-react";
+import { Check, CircleGauge, LogOut, UserRound } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import type { SettingsState } from "../../../shared/types/app";
 
@@ -66,36 +58,6 @@ export function SettingsModal({
               aria-label="Display name"
             />
           </label>
-
-          {toggleTheme && (
-            <button type="button" className="sidebar-settings-row" onClick={toggleTheme}>
-              {themeMode === "dark" ? <Sun /> : <Moon />}
-              <span>Dark theme</span>
-              <div className={`settings-switch ${themeMode === "dark" ? "active" : ""}`}>
-                <span className="settings-switch-thumb" />
-              </div>
-            </button>
-          )}
-
-          {toggleDebug && (
-            <button
-              type="button"
-              className="sidebar-settings-row"
-              onClick={() => {
-                setDraft((current) => ({
-                  ...current,
-                  keepDebugOpen: !current.keepDebugOpen,
-                }));
-                toggleDebug();
-              }}
-            >
-              <Code2 />
-              <span>Debug mode</span>
-              <div className={`settings-switch ${draft.keepDebugOpen ? "active" : ""}`}>
-                <span className="settings-switch-thumb" />
-              </div>
-            </button>
-          )}
 
           <div className="sidebar-settings-usage">
             <div className="usage-title">

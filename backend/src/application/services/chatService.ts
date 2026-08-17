@@ -1,10 +1,13 @@
-import { createAuthenticationProvider } from '../../integrations/mcp/authenticationProvider.js';
-import { HttpMcpHostClient } from '../../integrations/mcp/httpMcpHostClient.js';
-import { adaptMcpRequest } from '../../integrations/mcp/mcpRequestAdapter.js';
-import { adaptMcpResponse } from '../../integrations/mcp/mcpResponseAdapter.js';
-import { ensureOwnedSession, saveAssistantMessage } from '../../persistence/repositories/sessionRepository.js';
-import { assertSafeText } from '../../security/contentSafety.js';
-import type { AuthenticatedUser } from '../../types.js';
+import { createAuthenticationProvider } from "../../integrations/mcp/authenticationProvider.js";
+import { HttpMcpHostClient } from "../../integrations/mcp/httpMcpHostClient.js";
+import { adaptMcpRequest } from "../../integrations/mcp/mcpRequestAdapter.js";
+import { adaptMcpResponse } from "../../integrations/mcp/mcpResponseAdapter.js";
+import {
+  ensureOwnedSession,
+  saveAssistantMessage,
+} from "../../persistence/repositories/sessionRepository.js";
+import { assertSafeText } from "../../security/contentSafety.js";
+import type { AuthenticatedUser } from "../../types.js";
 
 const client = new HttpMcpHostClient(createAuthenticationProvider());
 
@@ -18,7 +21,7 @@ type ChatInput = {
 };
 
 export async function processChat(input: ChatInput) {
-  assertSafeText(input.prompt, 'Prompt');
+  assertSafeText(input.prompt, "Prompt");
 
   const userMessageId = await ensureOwnedSession({
     id: input.sessionId,
@@ -28,7 +31,12 @@ export async function processChat(input: ChatInput) {
     correlationId: input.correlationId,
   });
 
-  const external = await client.send(adaptMcpRequest(input), input.user, input.correlationId, input.signal);
+  const external = await client.send(
+    adaptMcpRequest(input),
+    input.user,
+    input.correlationId,
+    input.signal,
+  );
   const normalized = adaptMcpResponse(external);
 
   const messageId = await saveAssistantMessage(input.sessionId, input.correlationId, normalized);

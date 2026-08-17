@@ -1,4 +1,4 @@
-import type { Request } from 'express';
+import type { Request } from "express";
 
 export type AuthenticatedUser = {
   tenantId: string;
@@ -10,7 +10,11 @@ export type AuthenticatedUser = {
   rawAccessToken: string;
 };
 
-export type AuthenticatedRequest = Request & { user: AuthenticatedUser; correlationId: string; requestSignal: AbortSignal };
+export type AuthenticatedRequest = Request & {
+  user: AuthenticatedUser;
+  correlationId: string;
+  requestSignal: AbortSignal;
+};
 
 export type McpRequestContext = {
   prompt: string;

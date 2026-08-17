@@ -1,15 +1,15 @@
-import type { RequestHandler } from 'express';
-import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
-import { config, getRequired } from '../../config/env.js';
-import { AuthenticationError, AuthorizationError } from '../../errors.js';
+import type { RequestHandler } from "express";
+import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
+import { config, getRequired } from "../../config/env.js";
+import { AuthenticationError, AuthorizationError } from "../../errors.js";
 
 let cachedJwks: { tenant: string; jwks: ReturnType<typeof createRemoteJWKSet> } | undefined;
 
 export const authenticate: RequestHandler = async (req, _res, next) => {
   try {
-    const tenantId = getRequired('ENTRA_TENANT_ID');
-    const audience = getRequired('ENTRA_API_AUDIENCE');
-    const token = readBearerToken(req.header('authorization'));
+    const tenantId = getRequired("ENTRA_TENANT_ID");
+    const audience = getRequired("ENTRA_API_AUDIENCE");
+    const token = readBearerToken(req.header("authorization"));
     const jwks = getJwks(tenantId);
     const issuer = config.ENTRA_ACCEPT_V1_TOKENS
       ? [
@@ -21,7 +21,7 @@ export const authenticate: RequestHandler = async (req, _res, next) => {
     const { payload } = await jwtVerify(token, jwks, {
       issuer,
       audience,
-      algorithms: ['RS256'],
+      algorithms: ["RS256"],
     });
 
     const scopes = readScopes(payload);
@@ -32,10 +32,10 @@ export const authenticate: RequestHandler = async (req, _res, next) => {
 
     Object.assign(req, {
       user: {
-        tenantId: requiredClaim(payload, 'tid'),
-        objectId: requiredClaim(payload, 'oid'),
-        subject: requiredClaim(payload, 'sub'),
-        ...(typeof payload.preferred_username === 'string'
+        tenantId: requiredClaim(payload, "tid"),
+        objectId: requiredClaim(payload, "oid"),
+        subject: requiredClaim(payload, "sub"),
+        ...(typeof payload.preferred_username === "string"
           ? { preferredUsername: payload.preferred_username }
           : {}),
         scopes,
@@ -51,12 +51,12 @@ export const authenticate: RequestHandler = async (req, _res, next) => {
       return;
     }
 
-    next(new AuthenticationError('Invalid or expired access token'));
+    next(new AuthenticationError("Invalid or expired access token"));
   }
 };
 
 function readBearerToken(header?: string) {
-  const match = /^Bearer\s+(.+)$/i.exec(header ?? '');
+  const match = /^Bearer\s+(.+)$/i.exec(header ?? "");
   if (!match?.[1]) throw new AuthenticationError();
 
   return match[1];
@@ -66,7 +66,9 @@ function getJwks(tenantId: string) {
   if (!cachedJwks || cachedJwks.tenant !== tenantId) {
     cachedJwks = {
       tenant: tenantId,
-      jwks: createRemoteJWKSet(new URL(`https://login.microsoftonline.com/${tenantId}/discovery/v2.0/keys`)),
+      jwks: createRemoteJWKSet(
+        new URL(`https://login.microsoftonline.com/${tenantId}/discovery/v2.0/keys`),
+      ),
     };
   }
 
@@ -75,7 +77,7 @@ function getJwks(tenantId: string) {
 
 function requiredClaim(payload: JWTPayload, name: string) {
   const value = payload[name];
-  if (typeof value !== 'string' || !value) {
+  if (typeof value !== "string" || !value) {
     throw new AuthenticationError(`Required token claim is missing: ${name}`);
   }
 
@@ -83,26 +85,28 @@ function requiredClaim(payload: JWTPayload, name: string) {
 }
 
 function readScopes(payload: JWTPayload) {
-  return typeof payload.scp === 'string' ? payload.scp.split(' ').filter(Boolean) : [];
+  return typeof payload.scp === "string" ? payload.scp.split(" ").filter(Boolean) : [];
 }
 
 function readStringArray(value: unknown) {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 function enforceScope(scopes: string[]) {
   if (config.ENTRA_REQUIRED_SCOPE && !scopes.includes(config.ENTRA_REQUIRED_SCOPE)) {
-    throw new AuthorizationError('Required delegated scope is missing');
+    throw new AuthorizationError("Required delegated scope is missing");
   }
 }
 
 function enforceRoles(roles: string[]) {
-  const allowedRoles = config.ENTRA_ALLOWED_ROLES
-    ?.split(',')
-    .map((role) => role.trim())
-    .filter(Boolean) ?? [];
+  const allowedRoles =
+    config.ENTRA_ALLOWED_ROLES?.split(",")
+      .map((role) => role.trim())
+      .filter(Boolean) ?? [];
 
   if (allowedRoles.length && !roles.some((role) => allowedRoles.includes(role))) {
-    throw new AuthorizationError('Required application role is missing');
+    throw new AuthorizationError("Required application role is missing");
   }
 }

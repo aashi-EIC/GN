@@ -1,14 +1,18 @@
 import {
   CalendarDays,
+  Check,
   MessageSquarePlus,
+  MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
+  Pencil,
+  Pin,
   Search,
   Settings,
-  Tags,
   Trash2,
+  X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Conversation, UserProfile } from "../types/app";
 import { formatRelativeDate } from "../utils/formatDate";
 import { getModel } from "../../features/chat/utils/semantic";
@@ -28,13 +32,6 @@ const latestUserPrompt = (conversation: Conversation) =>
   [...conversation.messages].reverse().find((message) => message.role === "user")?.text ??
   conversation.title;
 
-const topicFromConversation = (conversation: Conversation) => {
-  const topic = conversation.title && conversation.title !== "New Chat"
-    ? conversation.title
-    : latestUserPrompt(conversation);
-  return clampText(topic, 30) || "General analysis";
-};
-
 const dateBucketForConversation = (conversation: Conversation) => {
   const updated = new Date(conversation.updatedAt);
   const today = new Date();
@@ -44,21 +41,19 @@ const dateBucketForConversation = (conversation: Conversation) => {
     (startOfToday.getTime() - startOfUpdated.getTime()) / (24 * 60 * 60 * 1000),
   );
 
-  if (dayDiff === 0) return "Today";
-  if (dayDiff === -1) return "Tomorrow";
+  if (dayDiff <= 0) return "Today";
   if (dayDiff === 1) return "Yesterday";
-
-  return updated.toLocaleDateString(undefined, {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  if (dayDiff > 1 && dayDiff <= 7) return "This Week";
+  if (dayDiff > 7 && dayDiff <= 14) return "Last Week";
+  return "Past Months";
 };
 
 type DateGroup = {
   label: string;
   conversations: Conversation[];
 };
+
+const BUCKET_ORDER = ["Today", "Yesterday", "This Week", "Last Week", "Past Months"];
 
 const groupHistoryByDate = (conversations: Conversation[]): DateGroup[] => {
   const dateGroups = new Map<string, Conversation[]>();
@@ -69,29 +64,39 @@ const groupHistoryByDate = (conversations: Conversation[]): DateGroup[] => {
     dateGroups.set(dateLabel, [...list, conversation]);
   });
 
-  return [...dateGroups.entries()].map(([label, conversations]) => ({
+  return BUCKET_ORDER.filter((label) => dateGroups.has(label)).map((label) => ({
     label,
-    conversations,
+    conversations: dateGroups.get(label)!,
   }));
 };
 
-type TopicGroup = {
+
+type ModelGroup = {
   label: string;
+  short: string;
+  color: string;
   conversations: Conversation[];
 };
 
-const groupHistoryByTopic = (conversations: Conversation[]): TopicGroup[] => {
-  const topicGroups = new Map<string, Conversation[]>();
+const groupHistoryByModel = (conversations: Conversation[]): ModelGroup[] => {
+  const modelGroups = new Map<string, { short: string; color: string; list: Conversation[] }>();
 
   conversations.forEach((conversation) => {
-    const topic = topicFromConversation(conversation);
-    const list = topicGroups.get(topic) ?? [];
-    topicGroups.set(topic, [...list, conversation]);
+    const model = getModel(conversation.modelId);
+    const label = model.name;
+    const existing = modelGroups.get(label) ?? { short: model.short, color: model.color, list: [] };
+    modelGroups.set(label, {
+      short: model.short,
+      color: model.color,
+      list: [...existing.list, conversation],
+    });
   });
 
-  return [...topicGroups.entries()].map(([label, conversations]) => ({
+  return [...modelGroups.entries()].map(([label, { short, color, list }]) => ({
     label,
-    conversations,
+    short,
+    color,
+    conversations: list,
   }));
 };
 
@@ -104,7 +109,8 @@ export function Sidebar({
   setHistoryQuery,
   startConversation,
   openConversation,
-  deleteConversation,
+  onRenameConversation,
+  onTogglePinConversation,
   setSidebarOpen,
   setSettingsOpen,
 }: {
@@ -117,11 +123,163 @@ export function Sidebar({
   startConversation: () => void;
   openConversation: (conversation: Conversation) => void;
   deleteConversation: (conversationId: string) => void;
+  onRenameConversation?: (id: string, newTitle: string) => void;
+  onTogglePinConversation?: (id: string) => void;
   setSidebarOpen: (open: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
   onSignOut?: () => void;
 }) {
   const [groupBy, setGroupBy] = useState<"date" | "topic">("date");
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+
+  useEffect(() => {
+    const closePopovers = (event: PointerEvent) => {
+      if (menuOpenId && !(event.target as HTMLElement).closest(".history-item-menu-wrap")) {
+        setMenuOpenId(null);
+      }
+    };
+    document.addEventListener("pointerdown", closePopovers);
+    return () => document.removeEventListener("pointerdown", closePopovers);
+  }, [menuOpenId]);
+
+  const startRename = (conversation: Conversation) => {
+    setEditingId(conversation.id);
+    setEditingTitle(conversation.title || latestUserPrompt(conversation));
+  };
+
+  const submitRename = () => {
+    if (editingId && editingTitle.trim()) {
+      onRenameConversation?.(editingId, editingTitle.trim());
+    }
+    setEditingId(null);
+    setEditingTitle("");
+  };
+
+  const cancelRename = () => {
+    setEditingId(null);
+    setEditingTitle("");
+  };
+
+  const pinnedConversations = conversations.filter((c) => c.pinned);
+  const unpinnedConversations = conversations.filter((c) => !c.pinned);
+
+  const renderHistoryItem = (conversation: Conversation) => {
+    const isEditing = editingId === conversation.id;
+    const isMenuActive = menuOpenId === conversation.id;
+    const isActive = activeConversationId === conversation.id;
+
+    if (isEditing) {
+      return (
+        <div className="history-item editing" key={conversation.id}>
+          <input
+            className="history-rename-input"
+            value={editingTitle}
+            onChange={(e) => setEditingTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submitRename();
+              if (e.key === "Escape") cancelRename();
+            }}
+            autoFocus
+          />
+          <div className="history-rename-actions">
+            <button
+              type="button"
+              className="rename-action-btn save"
+              onClick={submitRename}
+              title="Save title"
+            >
+              <Check size={14} />
+            </button>
+            <button
+              type="button"
+              className="rename-action-btn cancel"
+              onClick={cancelRename}
+              title="Cancel"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className={`history-item ${isActive ? "active" : ""} ${conversation.pinned ? "is-pinned" : ""} ${isMenuActive ? "menu-open" : ""}`}
+        key={conversation.id}
+      >
+        <button onClick={() => openConversation(conversation)}>
+          <span>
+            {conversation.pinned && <Pin className="history-pin-indicator" />}
+            {clampText(conversation.title || latestUserPrompt(conversation), 50)}
+          </span>
+          <small>
+            {groupBy === "date"
+              ? `${getModel(conversation.modelId).short} / ${formatRelativeDate(conversation.updatedAt)}`
+              : formatRelativeDate(conversation.updatedAt)}
+          </small>
+        </button>
+
+        <div className="history-item-menu-wrap">
+          <button
+            type="button"
+            className={`history-menu-trigger ${isMenuActive ? "active" : ""}`}
+            aria-label="Chat options"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpenId(isMenuActive ? null : conversation.id);
+            }}
+          >
+            <MoreHorizontal />
+          </button>
+
+          {isMenuActive && (
+            <div className="history-popover-menu" role="menu">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpenId(null);
+                  onTogglePinConversation?.(conversation.id);
+                }}
+              >
+                <Pin />
+                <span>{conversation.pinned ? "Unpin chat" : "Pin chat"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpenId(null);
+                  startRename(conversation);
+                }}
+              >
+                <Pencil />
+                <span>Edit title</span>
+              </button>
+
+              <button
+                type="button"
+                className="danger"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setMenuOpenId(null);
+                  deleteConversation(conversation.id);
+                }}
+              >
+                <Trash2 />
+                <span>Delete chat</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <aside className={`sidebar ${open ? "open" : "closed"}`}>
@@ -170,7 +328,7 @@ export function Sidebar({
                 type="button"
                 className={groupBy === "topic" ? "active" : ""}
                 onClick={() => setGroupBy("topic")}
-                title="Group by Topic"
+                title="Group by Model"
               >
                 Topic
               </button>
@@ -178,8 +336,21 @@ export function Sidebar({
           </div>
 
           <nav className="history" aria-label="Conversation history">
+            {pinnedConversations.length > 0 && (
+              <section className="history-date-section pinned-section">
+                <div className="history-date-heading">
+                  <Pin className="pinned-heading-icon" />
+                  <span>Pinned</span>
+                  <strong>{pinnedConversations.length}</strong>
+                </div>
+                <div className="history-item-list">
+                  {pinnedConversations.map(renderHistoryItem)}
+                </div>
+              </section>
+            )}
+
             {groupBy === "date"
-              ? groupHistoryByDate(conversations).map((dateGroup) => (
+              ? groupHistoryByDate(unpinnedConversations).map((dateGroup) => (
                   <section className="history-date-section" key={dateGroup.label}>
                     <div className="history-date-heading">
                       <CalendarDays />
@@ -188,64 +359,25 @@ export function Sidebar({
                     </div>
 
                     <div className="history-item-list">
-                      {dateGroup.conversations.map((conversation) => (
-                        <div
-                          className={`history-item ${
-                            activeConversationId === conversation.id ? "active" : ""
-                          }`}
-                          key={conversation.id}
-                        >
-                          <button onClick={() => openConversation(conversation)}>
-                            <span>{clampText(latestUserPrompt(conversation), 54)}</span>
-                            <small>
-                              {getModel(conversation.modelId).short} /{" "}
-                              {formatRelativeDate(conversation.updatedAt)}
-                            </small>
-                          </button>
-                          <IconButton
-                            label="Delete conversation"
-                            className="history-delete-btn"
-                            onClick={() => deleteConversation(conversation.id)}
-                          >
-                            <Trash2 />
-                          </IconButton>
-                        </div>
-                      ))}
+                      {dateGroup.conversations.map(renderHistoryItem)}
                     </div>
                   </section>
                 ))
-              : groupHistoryByTopic(conversations).map((topicGroup) => (
-                  <section className="history-date-section" key={topicGroup.label}>
+              : groupHistoryByModel(unpinnedConversations).map((modelGroup) => (
+                  <section className="history-date-section" key={modelGroup.label}>
                     <div className="history-date-heading">
-                      <Tags />
-                      <span>{topicGroup.label}</span>
-                      <strong>{topicGroup.conversations.length}</strong>
+                      <span
+                        className="history-model-badge"
+                        style={{ backgroundColor: modelGroup.color }}
+                      >
+                        {modelGroup.short}
+                      </span>
+                      <span>{modelGroup.label}</span>
+                      <strong>{modelGroup.conversations.length}</strong>
                     </div>
 
                     <div className="history-item-list">
-                      {topicGroup.conversations.map((conversation) => (
-                        <div
-                          className={`history-item ${
-                            activeConversationId === conversation.id ? "active" : ""
-                          }`}
-                          key={conversation.id}
-                        >
-                          <button onClick={() => openConversation(conversation)}>
-                            <span>{clampText(latestUserPrompt(conversation), 54)}</span>
-                            <small>
-                              {getModel(conversation.modelId).short} /{" "}
-                              {formatRelativeDate(conversation.updatedAt)}
-                            </small>
-                          </button>
-                          <IconButton
-                            label="Delete conversation"
-                            className="history-delete-btn"
-                            onClick={() => deleteConversation(conversation.id)}
-                          >
-                            <Trash2 />
-                          </IconButton>
-                        </div>
-                      ))}
+                      {modelGroup.conversations.map(renderHistoryItem)}
                     </div>
                   </section>
                 ))}
@@ -262,11 +394,6 @@ export function Sidebar({
                 <span className="avatar sidebar-avatar">{initials(user.name)}</span>
                 <span className="sidebar-account-name">{user.name}</span>
               </button>
-              <div className="sidebar-account-card" role="tooltip">
-                <strong>{user.authProvider}</strong>
-                <span>{user.name}</span>
-                <span>{user.email}</span>
-              </div>
             </div>
             <IconButton
               label="Settings"
@@ -314,11 +441,6 @@ export function Sidebar({
               >
                 {initials(user.name)}
               </button>
-              <div className="sidebar-account-card collapsed-account-card" role="tooltip">
-                <strong>{user.authProvider}</strong>
-                <span>{user.name}</span>
-                <span>{user.email}</span>
-              </div>
             </div>
           </div>
         </div>
@@ -326,5 +448,4 @@ export function Sidebar({
     </aside>
   );
 }
-
 

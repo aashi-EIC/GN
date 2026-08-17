@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AskBrandMark, MicrosoftMark } from "../../../shared/components/Brand";
-import { ShieldCheck, Sparkles, Lock } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 export function LoginPage({
   entraAvailable,
@@ -74,7 +74,3 @@ export function LoginPage({
     </main>
   );
 }
-
-
-
-

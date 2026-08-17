@@ -27,8 +27,7 @@ export function startVoiceInput(
     SpeechRecognition?: SpeechRecognitionConstructor;
     webkitSpeechRecognition?: SpeechRecognitionConstructor;
   };
-  const SpeechRecognition =
-    speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
+  const SpeechRecognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
     window.alert("Voice input is not supported in this browser.");
@@ -71,4 +70,3 @@ export function startVoiceInput(
 
   recognition.start();
 }
-

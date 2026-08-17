@@ -144,8 +144,6 @@ function MessageBubbleComponent({
 
         {message.visualizations && <VisualizationRenderer blocks={message.visualizations} />}
 
-
-
         <div className="response-actions">
           <IconButton
             label={feedback === "helpful" ? "Remove good response rating" : "Good response"}

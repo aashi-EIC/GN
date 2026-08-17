@@ -135,10 +135,13 @@ svg {
 }
 
 @keyframes spinRing {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
-
 
 .login-page-container {
   min-height: 100vh;
@@ -154,12 +157,11 @@ svg {
   background: var(--ui-bg) !important;
 }
 
-
 .login-modal-card {
   width: min(650px, 94vw);
   border-radius: 12px;
   overflow: hidden;
-  background: 
+  background:
     radial-gradient(circle at 15% 15%, rgba(244, 9, 83, 0.06) 0%, transparent 45%),
     radial-gradient(circle at 85% 85%, rgba(0, 32, 65, 0.08) 0%, transparent 50%),
     linear-gradient(135deg, var(--gn-soft-pink) 0%, #ffffff 60%, #e0e7ff 100%);
@@ -170,7 +172,6 @@ svg {
 .login-modal-card.single-login {
   width: min(580px, 94vw);
 }
-
 
 .login-card-header {
   padding: 56px 48px 36px;
@@ -319,9 +320,6 @@ svg {
   background: rgba(255, 255, 255, 0.04);
 }
 
-
-
-
 .btn-label {
   flex: 1;
   text-align: center;
@@ -347,7 +345,6 @@ svg {
   color: var(--gn-pink);
   flex-shrink: 0;
 }
-
 
 .login-divider {
   display: flex;
@@ -472,7 +469,13 @@ svg {
   font-weight: 400;
   color: #333333;
   line-height: 1.25;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
 }
 
 .forgot-card-subtext {
@@ -480,7 +483,13 @@ svg {
   font-size: 14px;
   line-height: 1.5;
   color: #555555;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
 }
 
 .forgot-card-subtext strong {
@@ -576,7 +585,6 @@ svg {
     min-height: 1px;
   }
 }
-
 
 .login-art {
   position: relative;
@@ -904,7 +912,9 @@ textarea:focus {
   padding: 22px 14px 14px;
   color: var(--gn-white);
   background: var(--gn-navy);
-  transition: width 0.22s ease, flex-basis 0.22s ease;
+  transition:
+    width 0.22s ease,
+    flex-basis 0.22s ease;
 }
 
 .sidebar.closed {
@@ -1069,7 +1079,6 @@ textarea:focus {
   color: #ffffff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
-
 
 .history {
   display: grid;
@@ -1604,7 +1613,9 @@ textarea:focus {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .model-menu button:hover,
@@ -1625,6 +1636,108 @@ textarea:focus {
   line-height: 1.35;
 }
 
+/* Country Picker Custom Dropdown */
+.country-picker-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.country-picker-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--gn-line);
+  border-radius: 8px;
+  background: #fbfcfe;
+  color: var(--gn-navy);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.country-picker-btn:hover {
+  border-color: var(--gn-pink);
+  background: var(--gn-white);
+}
+
+.country-picker-btn svg:not(.country-chevron) {
+  width: 14px;
+  height: 14px;
+  color: var(--gn-pink);
+  flex-shrink: 0;
+}
+
+.country-picker-btn .country-chevron {
+  width: 12px;
+  height: 12px;
+  color: var(--gn-navy);
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.country-selected-name {
+  max-width: 130px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.country-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  width: 200px;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--gn-line);
+  border-radius: 8px;
+  background: var(--gn-white);
+  box-shadow: var(--shadow);
+  scrollbar-width: thin;
+}
+
+.country-menu button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: var(--gn-white);
+  color: var(--gn-navy);
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.country-menu button:hover,
+.country-menu button.selected {
+  background: var(--gn-soft-pink);
+  color: var(--gn-pink);
+  font-weight: 700;
+}
+
+.country-menu .country-menu-text {
+  display: block;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .suggestions {
   display: flex;
   flex-wrap: wrap;
@@ -2090,7 +2203,10 @@ tr:last-child td {
   overflow: auto;
   padding: 14px;
   color: #c7d2fe;
-  font: 11px/1.6 "SFMono-Regular", Consolas, monospace;
+  font:
+    11px/1.6 "SFMono-Regular",
+    Consolas,
+    monospace;
 }
 
 .thinking {
@@ -2537,7 +2653,9 @@ tr:last-child td {
   color: var(--gn-navy);
   background: var(--gn-white);
   border-right: none;
-  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), flex-basis 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    flex-basis 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
 
@@ -4167,7 +4285,7 @@ body {
 }
 
 :root[data-theme="dark"] .login-modal-card {
-  background: 
+  background:
     radial-gradient(circle at 15% 15%, rgba(255, 42, 109, 0.12) 0%, transparent 45%),
     radial-gradient(circle at 85% 85%, rgba(0, 32, 65, 0.4) 0%, transparent 50%),
     linear-gradient(135deg, #1a020b 0%, #1e242b 60%, #001730 100%) !important;
@@ -4405,7 +4523,6 @@ body {
   background: color-mix(in srgb, var(--gn-pink) 85%, #ffffff) !important;
 }
 
-
 /* Active chat layout: bottom-docked rectangular composer */
 .chat {
   min-height: calc(100vh - 48px);
@@ -4574,7 +4691,9 @@ body {
   max-width: 250px;
   width: max-content;
   z-index: 1000;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.08);
   pointer-events: none;
   text-align: center;
@@ -4583,7 +4702,7 @@ body {
 }
 
 .tooltip-bubble::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 100%;
   left: 50%;
@@ -4782,14 +4901,20 @@ body {
   padding: 16px 18px 12px !important;
   border-radius: 14px !important;
   gap: 10px !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03) !important;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.05),
+    0 1px 3px rgba(0, 0, 0, 0.03) !important;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .welcome-composer:focus-within,
 .composer:focus-within {
   border-color: color-mix(in srgb, var(--gn-pink) 50%, var(--ui-border)) !important;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08), 0 0 0 2px color-mix(in srgb, var(--gn-pink) 20%, transparent) !important;
+  box-shadow:
+    0 6px 24px rgba(0, 0, 0, 0.08),
+    0 0 0 2px color-mix(in srgb, var(--gn-pink) 20%, transparent) !important;
 }
 
 .welcome-composer textarea,
@@ -5028,7 +5153,9 @@ body {
   border-radius: 8px !important;
   color: var(--ui-muted) !important;
   flex-shrink: 0;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
 .sidebar-settings-btn:hover {
@@ -5136,7 +5263,9 @@ body {
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.12s ease, transform 0.12s ease;
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
 }
 
 .sidebar-footer.gemini-account-footer .sidebar-account-card {
@@ -5215,7 +5344,9 @@ body {
   border-radius: 24px !important;
   border-color: rgba(0, 32, 65, 0.1) !important;
   background: rgba(255, 255, 255, 0.96) !important;
-  box-shadow: 0 10px 34px rgba(0, 32, 65, 0.1), 0 1px 2px rgba(0, 32, 65, 0.05) !important;
+  box-shadow:
+    0 10px 34px rgba(0, 32, 65, 0.1),
+    0 1px 2px rgba(0, 32, 65, 0.05) !important;
 }
 
 .welcome-composer textarea,
@@ -5250,7 +5381,10 @@ body {
   color: var(--gn-navy) !important;
   box-shadow: 0 8px 22px rgba(0, 32, 65, 0.06);
   text-align: left;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
 }
 
 .suggestions button span {
@@ -5346,7 +5480,9 @@ body {
   pointer-events: none;
   opacity: 0;
   transform: translate(-50%, -3px);
-  transition: opacity 120ms ease, transform 120ms ease;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
   white-space: nowrap;
 }
 
@@ -5542,20 +5678,167 @@ body {
   box-shadow: none !important;
 }
 
+.guide-button-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.guide-button-wrap::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%) scaleX(0);
+  width: 22px;
+  height: 3px;
+  background: #F40953;
+  border-radius: 2px;
+  opacity: 0;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.22s ease;
+  box-shadow: 0 0 8px rgba(244, 9, 83, 0.5);
+  pointer-events: none;
+}
+
+.guide-button-wrap:hover::after {
+  transform: translateX(-50%) scaleX(1);
+  opacity: 1;
+}
+
 .model-guide-button {
-  width: 32px !important;
-  height: 32px !important;
+  width: 34px !important;
+  height: 34px !important;
   border-radius: 50% !important;
-  border: none !important;
-  background: transparent !important;
-  color: var(--ui-muted) !important;
-  transition: color 0.15s ease, background 0.15s ease;
+  border: 1px solid rgba(244, 9, 83, 0.2) !important;
+  background: rgba(244, 9, 83, 0.05) !important;
+  color: #F40953 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition:
+    color 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .model-guide-button:hover {
-  color: var(--ui-text) !important;
-  background: var(--ui-control) !important;
+  color: #ffffff !important;
+  background: #F40953 !important;
+  border-color: #F40953 !important;
+  transform: scale(1.06);
+  box-shadow: 0 2px 10px rgba(244, 9, 83, 0.35);
 }
+
+.gn-prompt-icon {
+  width: 18px;
+  height: 18px;
+  color: inherit;
+  transition: transform 0.2s ease;
+}
+
+.header-guide-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 320px;
+  background: var(--ui-panel, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--ui-border) 80%, #F40953 20%);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(244, 9, 83, 0.08);
+  z-index: 100;
+  animation: popoverFadeIn 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes popoverFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.guide-popover-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ui-border, rgba(0, 0, 0, 0.08));
+}
+
+.guide-popover-head strong {
+  display: block;
+  font-size: 14px;
+  color: var(--ui-text);
+}
+
+.guide-popover-head small {
+  display: block;
+  font-size: 11px;
+  color: var(--ui-muted);
+}
+
+.guide-popover-desc {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ui-muted);
+  margin-bottom: 12px;
+}
+
+.guide-popover-prompts b,
+.guide-prompts b {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-text);
+  margin-bottom: 8px;
+}
+
+.guide-prompt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.guide-prompt-btn {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--ui-border) 70%, transparent);
+  background: var(--ui-control, rgba(0, 0, 0, 0.02));
+  color: var(--ui-text);
+  font-size: 12.5px;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.guide-prompt-btn:hover {
+  background: rgba(244, 9, 83, 0.08) !important;
+  border-color: #F40953 !important;
+  color: #F40953 !important;
+  transform: translateX(2px);
+  box-shadow: 0 3px 10px rgba(244, 9, 83, 0.12);
+}
+
+.guide-prompt-btn-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #F40953;
+}
+
 
 /* Gemini-inspired sidebar, retaining Gracenote branding and app actions. */
 .sidebar.open {
@@ -5994,13 +6277,17 @@ body {
   border: 1px solid color-mix(in srgb, var(--ui-border) 82%, transparent) !important;
   border-radius: 24px !important;
   background: var(--ui-panel) !important;
-  box-shadow: 0 8px 28px rgba(0, 32, 65, 0.08), 0 1px 2px rgba(0, 32, 65, 0.04) !important;
+  box-shadow:
+    0 8px 28px rgba(0, 32, 65, 0.08),
+    0 1px 2px rgba(0, 32, 65, 0.04) !important;
 }
 
 .welcome-composer:focus-within,
 .composer:focus-within {
   border-color: color-mix(in srgb, var(--gn-pink) 46%, var(--ui-border)) !important;
-  box-shadow: 0 10px 32px rgba(0, 32, 65, 0.1), 0 0 0 2px color-mix(in srgb, var(--gn-pink) 12%, transparent) !important;
+  box-shadow:
+    0 10px 32px rgba(0, 32, 65, 0.1),
+    0 0 0 2px color-mix(in srgb, var(--gn-pink) 12%, transparent) !important;
 }
 
 .welcome-composer textarea,
@@ -6528,7 +6815,9 @@ body {
   pointer-events: none;
   opacity: 0;
   transform: translate(-3px, -50%);
-  transition: opacity 120ms ease, transform 120ms ease;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
   white-space: nowrap;
 }
 
@@ -6760,14 +7049,22 @@ body {
   padding: 17px 18px 12px !important;
   border-color: color-mix(in srgb, var(--ui-border) 88%, transparent) !important;
   background: var(--ui-panel) !important;
-  box-shadow: 0 1px 2px rgba(0, 32, 65, 0.04), 0 12px 30px rgba(0, 32, 65, 0.07) !important;
-  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  box-shadow:
+    0 1px 2px rgba(0, 32, 65, 0.04),
+    0 12px 30px rgba(0, 32, 65, 0.07) !important;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .welcome-composer:focus-within,
 .composer:focus-within {
   border-color: color-mix(in srgb, var(--gn-pink) 48%, var(--ui-border)) !important;
-  box-shadow: 0 1px 2px rgba(0, 32, 65, 0.04), 0 15px 36px rgba(0, 32, 65, 0.09), 0 0 0 3px color-mix(in srgb, var(--gn-pink) 9%, transparent) !important;
+  box-shadow:
+    0 1px 2px rgba(0, 32, 65, 0.04),
+    0 15px 36px rgba(0, 32, 65, 0.09),
+    0 0 0 3px color-mix(in srgb, var(--gn-pink) 9%, transparent) !important;
   transform: translateY(-1px);
 }
 
@@ -6783,7 +7080,10 @@ body {
 
 .send-btn:not(:disabled) {
   box-shadow: 0 5px 14px color-mix(in srgb, var(--gn-pink) 24%, transparent);
-  transition: box-shadow 160ms ease, transform 160ms ease, filter 160ms ease;
+  transition:
+    box-shadow 160ms ease,
+    transform 160ms ease,
+    filter 160ms ease;
 }
 
 .send-btn:not(:disabled):hover {
@@ -6874,17 +7174,24 @@ body {
   border: 1px solid color-mix(in srgb, var(--ui-border) 92%, transparent) !important;
   border-radius: 8px !important;
   background: var(--ui-panel) !important;
-  box-shadow: 0 1px 2px rgba(0, 32, 65, 0.025), 0 6px 18px rgba(0, 32, 65, 0.045) !important;
+  box-shadow:
+    0 1px 2px rgba(0, 32, 65, 0.025),
+    0 6px 18px rgba(0, 32, 65, 0.045) !important;
   color: var(--ui-text) !important;
   text-align: left;
-  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease !important;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease !important;
 }
 
 .suggestion-section .suggestions button:hover,
 .suggestion-section .suggestions button:focus-visible {
   border-color: color-mix(in srgb, var(--gn-pink) 42%, var(--ui-border)) !important;
   background: var(--ui-panel) !important;
-  box-shadow: 0 2px 5px rgba(0, 32, 65, 0.05), 0 12px 26px rgba(0, 32, 65, 0.075) !important;
+  box-shadow:
+    0 2px 5px rgba(0, 32, 65, 0.05),
+    0 12px 26px rgba(0, 32, 65, 0.075) !important;
   transform: translateY(-2px);
 }
 
@@ -6949,7 +7256,12 @@ body {
   color: var(--ui-text);
   box-shadow: 0 6px 18px rgba(0, 32, 65, 0.1);
   transform: translateY(-58%);
-  transition: border-color 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    opacity 160ms ease;
 }
 
 .prompt-gallery-control.previous {
@@ -6997,7 +7309,10 @@ body {
 .sidebar-account-trigger,
 .sidebar.closed .icon-btn,
 .collapsed-brand-trigger {
-  transition: background 150ms ease, color 150ms ease, transform 150ms ease;
+  transition:
+    background 150ms ease,
+    color 150ms ease,
+    transform 150ms ease;
 }
 
 .sidebar.open .history-item:hover {
@@ -7014,13 +7329,18 @@ body {
   border: 1px solid color-mix(in srgb, var(--ui-border) 92%, transparent) !important;
   border-radius: 8px !important;
   background: var(--ui-panel) !important;
-  box-shadow: 0 1px 2px rgba(0, 32, 65, 0.025), 0 7px 20px rgba(0, 32, 65, 0.045) !important;
+  box-shadow:
+    0 1px 2px rgba(0, 32, 65, 0.025),
+    0 7px 20px rgba(0, 32, 65, 0.045) !important;
 }
 
 .metric {
   position: relative;
   overflow: hidden;
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
 }
 
 .metric::before {
@@ -7221,50 +7541,406 @@ body {
   box-shadow: none !important;
 }
 
-@media (max-width: 700px) {
-  /* The button still opens the full guide dialog; suppress its hover card when
-     there is not enough room to keep it clear of the welcome content. */
-  .header-guide-popover {
-    display: none !important;
-  }
+/* Center Align & Fixed Position for Welcome Message and Textbox */
+.welcome {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: calc(100vh - 52px) !important;
+  padding: 40px 24px !important;
+  box-sizing: border-box !important;
+}
 
-  .welcome {
-    align-items: stretch !important;
-    padding: 28px 18px 48px !important;
-  }
+.welcome-inner {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  width: min(1240px, 96%) !important;
+  margin: 0 auto !important;
+  position: relative !important;
+}
 
-  .welcome-inner {
-    min-width: 0;
-  }
+.welcome h1 {
+  text-align: center !important;
+  margin: 0 auto 32px !important;
+  max-width: 1080px !important;
+}
 
-  .welcome h1 {
-    width: 100%;
-    max-width: 100%;
-    font-size: clamp(27px, 8vw, 34px) !important;
-    overflow-wrap: anywhere;
-  }
+.welcome-composer,
+.composer,
+.chat .composer {
+  width: min(1200px, 100%) !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  position: relative !important;
+}
 
-  .welcome-composer {
-    min-width: 0;
-  }
+.chat .messages {
+  padding: 30px max(24px, calc((100% - 1280px) / 2)) 28px !important;
+}
 
-  .composer-bottom {
-    min-width: 0;
-    gap: 8px;
-  }
+.messages > .assistant-row,
+.messages > .user-row {
+  width: min(1280px, 100%) !important;
+  max-width: 1280px !important;
+}
 
-  .model-picker.compact {
-    min-width: 0;
-    max-width: calc(100% - 88px);
-  }
+.response {
+  width: min(1220px, calc(100% - 41px)) !important;
+}
 
-  .model-picker.compact > button {
-    max-width: 100% !important;
-  }
+.chat .composer-wrap {
+  padding: 12px max(24px, calc((100% - 1280px) / 2)) 18px !important;
+}
 
-  .model-selected-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.user-bubble-container {
+  max-width: min(80%, 960px) !important;
+}
+
+/* Vibrant Gracenote Gradient ONLY for user name in welcome heading */
+.welcome-name-gradient {
+  background: linear-gradient(135deg, #F40953 0%, #FF4B82 50%, #7928CA 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+  font-weight: 700 !important;
+  display: inline !important;
+}
+
+
+/* Ensure model dropdown opens float as absolute overlay without realigning parent elements */
+.welcome-inner.model-menu-open .suggestion-section,
+.welcome-inner.model-menu-open .welcome-composer {
+  margin-top: initial !important;
+}
+
+.welcome-composer .model-picker,
+.composer .model-picker {
+  position: relative !important;
+}
+
+.welcome-composer .model-picker .model-menu,
+.welcome-inner .model-picker .model-menu {
+  position: absolute !important;
+  top: calc(100% + 8px) !important;
+  left: 0 !important;
+  z-index: 9999 !important;
+  width: min(320px, calc(100vw - 34px)) !important;
+  max-height: 280px !important;
+  margin: 0 !important;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.22) !important;
+}
+
+/* Refined Typography Tweaks & Slight Zoom-out Scaling */
+.workspace {
+  zoom: 0.94;
+}
+
+@supports not (zoom: 0.94) {
+  .workspace {
+    transform: scale(0.94);
+    transform-origin: top center;
   }
+}
+
+.welcome h1 {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-size: 30px !important;
+  font-weight: 550 !important;
+  line-height: 1.3 !important;
+  letter-spacing: -0.022em !important;
+  margin: 0 auto 26px !important;
+  max-width: 960px !important;
+}
+
+.welcome-name-gradient {
+  font-weight: 700 !important;
+  letter-spacing: -0.015em !important;
+}
+
+.welcome-composer textarea,
+.composer textarea {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-size: 14.5px !important;
+  line-height: 1.5 !important;
+  letter-spacing: -0.01em !important;
+}
+
+/* Significantly Expanded Chat Window & Composer Box Width to maximize left and right space */
+.welcome-inner {
+  width: min(1500px, 96%) !important;
+  max-width: 1500px !important;
+}
+
+.welcome h1 {
+  max-width: 1200px !important;
+}
+
+.welcome-composer,
+.composer,
+.chat .composer {
+  width: min(1450px, 96%) !important;
+  max-width: 1450px !important;
+}
+
+.chat .messages {
+  padding: 30px max(24px, calc((100% - 1500px) / 2)) 28px !important;
+}
+
+.messages > .assistant-row,
+.messages > .user-row {
+  width: min(1500px, 100%) !important;
+  max-width: 1500px !important;
+}
+
+.response {
+  width: min(1440px, calc(100% - 41px)) !important;
+}
+
+.chat .composer-wrap {
+  padding: 12px max(24px, calc((100% - 1500px) / 2)) 18px !important;
+}
+
+.user-bubble-container {
+  max-width: min(85%, 1150px) !important;
+}
+
+/* Sidebar History Model Group Badges */
+.history-model-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 18px;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 800;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.history-date-section {
+  position: relative !important;
+  z-index: 1 !important;
+  overflow: visible !important;
+}
+
+.history-date-section:has(.menu-open),
+.history-date-section:has(.history-popover-menu) {
+  z-index: 500 !important;
+}
+
+/* Three-Dots Menu, Pinning & Inline Title Edit in Sidebar History */
+.sidebar.open .history-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  min-height: 38px !important;
+  border-radius: 8px !important;
+  position: relative !important;
+  z-index: 1 !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+  padding: 0 4px !important;
+}
+
+.sidebar.open .history-item.menu-open,
+.sidebar.open .history-item:has(.history-popover-menu) {
+  z-index: 1000 !important;
+}
+
+.sidebar.open .history-item > button:first-child {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  padding: 6px 8px !important;
+  text-align: left !important;
+  overflow: hidden !important;
+}
+
+.sidebar.open .history-item span {
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  font-size: 13px !important;
+  font-weight: 450 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.history-item-menu-wrap {
+  flex: 0 0 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  z-index: 2000 !important;
+}
+
+.history-item-menu-wrap:has(.history-popover-menu) {
+  z-index: 9999 !important;
+}
+
+.history-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ui-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.history-item:hover .history-menu-trigger,
+.history-menu-trigger.active {
+  opacity: 1;
+}
+
+.history-menu-trigger:hover,
+.history-menu-trigger.active {
+  background: var(--ui-control);
+  color: var(--ui-text);
+}
+
+.history-menu-trigger svg {
+  width: 15px;
+  height: 15px;
+}
+
+.history-popover-menu {
+  position: absolute !important;
+  top: calc(100% + 4px) !important;
+  right: 0 !important;
+  z-index: 99999 !important;
+  width: 145px !important;
+  padding: 4px !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: 10px !important;
+  background: var(--ui-panel) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  animation: popoverFadeIn 0.15s ease !important;
+}
+
+.history-popover-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ui-text);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.history-popover-menu button:hover {
+  background: var(--ui-control);
+}
+
+.history-popover-menu button.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.history-popover-menu svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.history-pin-indicator {
+  width: 12px;
+  height: 12px;
+  margin-right: 5px;
+  color: #F40953;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.pinned-heading-icon {
+  width: 14px;
+  height: 14px;
+  color: #F40953;
+}
+
+/* History Item Inline Rename */
+.history-item.editing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: var(--ui-control);
+  border-radius: 8px;
+  border: 1px solid #F40953;
+  min-height: 38px;
+}
+
+
+.history-rename-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  background: var(--ui-panel);
+  color: var(--ui-text);
+  font-size: 12px;
+  outline: none;
+}
+
+.history-rename-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.rename-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.rename-action-btn.save {
+  color: #10b981;
+}
+
+.rename-action-btn.cancel {
+  color: #ef4444;
+}
+
+.rename-action-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* Remove hover popover from user profile */
+.sidebar-account-card {
+  display: none !important;
 }

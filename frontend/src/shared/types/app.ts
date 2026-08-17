@@ -9,7 +9,6 @@ export type UserProfile = {
   authProvider: "Microsoft Entra ID";
 };
 
-
 export type SettingsState = {
   displayName: string;
   region: string;
@@ -116,6 +115,7 @@ export type Conversation = {
   messages: Message[];
   createdAt: string;
   updatedAt: string;
+  pinned?: boolean;
 };
 
 export type IssueReport = {

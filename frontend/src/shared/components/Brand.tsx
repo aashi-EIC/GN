@@ -1,4 +1,10 @@
-export function BrandMark({ light = false, compact = false }: { light?: boolean; compact?: boolean }) {
+export function BrandMark({
+  light = false,
+  compact = false,
+}: {
+  light?: boolean;
+  compact?: boolean;
+}) {
   return (
     <div className={`brand ${light ? "light" : ""} ${compact ? "compact" : ""}`}>
       <img

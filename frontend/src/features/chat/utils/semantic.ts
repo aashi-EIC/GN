@@ -11,14 +11,16 @@ export function normalizeModelId(value?: string): ModelId {
     schedule: "schedule_completeness_tsg",
   };
 
-  const mappedValue = value ? legacyMap[value] ?? value : undefined;
+  const mappedValue = value ? (legacyMap[value] ?? value) : undefined;
   return semanticModels.some((model) => model.id === mappedValue)
     ? (mappedValue as ModelId)
     : "schedule_completeness_tsg";
 }
 
 export function getModel(modelId: ModelId) {
-  return semanticModels.find((model) => model.id === normalizeModelId(modelId)) ?? semanticModels[0];
+  return (
+    semanticModels.find((model) => model.id === normalizeModelId(modelId)) ?? semanticModels[0]
+  );
 }
 
 export function normalizeCountryCode(value?: string): CountryCode {
@@ -27,5 +29,7 @@ export function normalizeCountryCode(value?: string): CountryCode {
 }
 
 export function getCountry(countryCode: CountryCode) {
-  return countries.find((country) => country.code === normalizeCountryCode(countryCode)) ?? countries[0];
+  return (
+    countries.find((country) => country.code === normalizeCountryCode(countryCode)) ?? countries[0]
+  );
 }

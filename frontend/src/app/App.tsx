@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppRouter } from "./router";
-import { uiActions, useAppDispatch, useAppSelector } from "./store";
+import { store, uiActions, useAppDispatch, useAppSelector } from "./store";
 import { Composer } from "../features/chat/components/Composer";
 import { MessageBubble } from "../features/chat/components/MessageBubble";
 import { WelcomePanel } from "../features/chat/components/WelcomePanel";
@@ -16,10 +16,23 @@ import { TourModal } from "../shared/components/TourModal";
 import { Navbar } from "../shared/components/Navbar";
 import { Sidebar } from "../shared/components/Sidebar";
 import { defaultSettings, storageKeys } from "../shared/config/storage";
-import { replaceSemanticModels } from "../shared/constants/semanticModels";
+import { loadFromStorage, saveToStorageDeferred } from "../shared/utils/storage";
 import { apiScope } from "../features/auth/lib/msal";
 import { LoginPage } from "../features/auth/pages/LoginPage";
-import { buildMcpRequestPayload, persistMcpRequestAudit, requestMcpInsight } from "../features/chat/services/mcp.service";
+import {
+  buildMcpRequestPayload,
+  persistMcpRequestAudit,
+  requestMcpInsight,
+} from "../features/chat/services/mcp.service";
+import {
+  getSessions,
+  getSessionDetails,
+  deleteSession,
+  getUserSettings,
+  updateUserSettings,
+  submitFeedback,
+  submitIssueReport,
+} from "../features/chat/services/chat.service";
 import type {
   Conversation,
   FeedbackValue,
@@ -35,19 +48,57 @@ import { copyText, messageToPlainText } from "../shared/utils/clipboard";
 import { accountToProfile } from "../shared/utils/identity";
 import { createId, createSessionId, isSessionId, titleFromUserMessages } from "../shared/utils/session";
 import { getModel, normalizeCountryCode, normalizeModelId } from "../features/chat/utils/semantic";
-import { loadFromStorage, saveToStorage } from "../shared/utils/storage";
 import { calculateTokenUsageAndCost } from "../features/chat/utils/tokenCost";
 import {
-  deleteSession,
   fetchBootstrap,
   removeMessageFeedback,
-  submitIssueReport,
   submitMessageFeedback,
   toFrontendModel,
 } from "../shared/services/platform.service";
 
 function AppRoot({ msalEnabled }: { msalEnabled: boolean }) {
-  return <AppRouter shell={msalEnabled ? <MsalBackedShell /> : <LoginPage entraAvailable={false} />} />;
+  return <AppRouter shell={msalEnabled ? <MsalBackedShell /> : <LocalShell />} />;
+}
+
+function LocalShell() {
+  const [localUser, setLocalUser] = useState<UserProfile | null>(null);
+  const [authStatus, setAuthStatus] = useState<"signing-in" | "signing-out" | null>(null);
+
+  const localSignIn = async (credentials: { username: string; name?: string }) => {
+    const displayName =
+      credentials.name || credentials.username.split("@")[0] || credentials.username;
+    const userProfile: UserProfile = {
+      name: displayName,
+      email: credentials.username,
+      authProvider: "Local Auth",
+    };
+    setLocalUser(userProfile);
+  };
+
+  const signOut = async () => {
+    setAuthStatus("signing-out");
+    try {
+      setLocalUser(null);
+    } finally {
+      setAuthStatus(null);
+    }
+  };
+
+  const acquireToken = async () => null;
+
+  if (authStatus === "signing-out") {
+    return <LoadingScreen text="Signing out..." />;
+  }
+
+  return (
+    <IntelligenceApp
+      user={localUser}
+      entraAvailable={false}
+      onLocalSignIn={localSignIn}
+      onSignOut={signOut}
+      acquireToken={acquireToken}
+    />
+  );
 }
 
 function MsalBackedShell() {
@@ -55,29 +106,39 @@ function MsalBackedShell() {
   const isAuthenticated = useIsAuthenticated();
   const account = instance.getActiveAccount() ?? accounts[0];
   const profile = accountToProfile(account);
-  const activeUser = isAuthenticated ? profile : null;
+  const [localUser, setLocalUser] = useState<UserProfile | null>(null);
+  const activeUser = (isAuthenticated ? profile : null) || localUser;
   const [authStatus, setAuthStatus] = useState<"signing-in" | "signing-out" | null>(null);
 
   const signIn = async () => {
     try {
       setAuthStatus("signing-in");
-      const result = await instance.loginPopup({
+      await instance.loginRedirect({
         scopes: ["openid", "profile", "email", apiScope],
       });
-      if (result.account) {
-        instance.setActiveAccount(result.account);
-      }
     } finally {
       setAuthStatus(null);
     }
   };
 
+  const localSignIn = async (credentials: { username: string; name?: string }) => {
+    const displayName =
+      credentials.name || credentials.username.split("@")[0] || credentials.username;
+    const userProfile: UserProfile = {
+      name: displayName,
+      email: credentials.username,
+      authProvider: "Local Auth",
+    };
+    setLocalUser(userProfile);
+  };
+
   const signOut = async () => {
     try {
       setAuthStatus("signing-out");
+      setLocalUser(null);
       if (isAuthenticated && account) {
         try {
-          await instance.logoutPopup({ account });
+          await instance.logoutRedirect({ account });
         } catch {
           instance.setActiveAccount(null);
         }
@@ -100,11 +161,11 @@ function MsalBackedShell() {
       return result.accessToken;
     } catch (error) {
       if (error instanceof InteractionRequiredAuthError) {
-        const result = await instance.acquireTokenPopup({
+        await instance.acquireTokenRedirect({
           account,
           scopes: [apiScope],
         });
-        return result.accessToken;
+        return null;
       }
       throw error;
     }
@@ -142,16 +203,67 @@ function IntelligenceApp({
   onSignOut: () => void;
   acquireToken: () => Promise<string | null>;
 }) {
-  const [settings, setSettings] = useState<SettingsState>(() =>
-    loadFromStorage(storageKeys.settings, defaultSettings),
-  );
+  const [settings, setSettings] = useState<SettingsState>(defaultSettings);
+  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
     if (!user) {
       document.documentElement.dataset.theme = "light";
       document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#ffffff");
+      setLoading(false);
+      return;
     }
-  }, [user]);
+
+    let active = true;
+    const fetchSettings = async () => {
+      try {
+        setLoading(true);
+        const token = await acquireToken();
+        if (!token) {
+          if (active) setLoading(false);
+          return;
+        }
+        const serverSettings = await getUserSettings(token);
+        if (active && serverSettings) {
+          setSettings({
+            displayName: serverSettings.displayName ?? "",
+            region: serverSettings.region ?? "Global",
+            density: serverSettings.density ?? "comfortable",
+            keepDebugOpen: serverSettings.keepDebugOpen ?? false,
+          });
+          if (serverSettings.theme) {
+            dispatch(uiActions.setThemeMode(serverSettings.theme));
+          }
+        }
+      } catch {
+        // Silently use local settings when unauthenticated
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchSettings();
+    return () => {
+      active = false;
+    };
+  }, [user, acquireToken, dispatch]);
+
+  const handleUpdateSettings = async (nextSettings: SettingsState) => {
+    setSettings(nextSettings);
+    try {
+      const token = await acquireToken();
+      const currentTheme = store.getState().ui.themeMode;
+      await updateUserSettings(
+        {
+          ...nextSettings,
+          theme: currentTheme,
+        },
+        token,
+      );
+    } catch (err) {
+      console.error("Failed to update settings:", err);
+    }
+  };
 
   if (!user) {
     return (
@@ -160,6 +272,10 @@ function IntelligenceApp({
         onEntraSignIn={onEntraSignIn}
       />
     );
+  }
+
+  if (loading) {
+    return <LoadingScreen text="Loading settings..." />;
   }
 
   const effectiveUser = {
@@ -171,7 +287,7 @@ function IntelligenceApp({
     <Workspace
       user={effectiveUser}
       settings={settings}
-      setSettings={setSettings}
+      setSettings={handleUpdateSettings}
       onSignOut={onSignOut}
       acquireToken={acquireToken}
     />
@@ -203,10 +319,10 @@ function Workspace({
   );
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [selectedModelId, setSelectedModelId] = useState<ModelId>(() =>
-    normalizeModelId(conversations[0]?.modelId),
+    normalizeModelId(undefined),
   );
   const [selectedCountryCode, setSelectedCountryCode] = useState<CountryCode>(() =>
-    normalizeCountryCode(conversations[0]?.countryCode),
+    normalizeCountryCode(undefined),
   );
   const [prompt, setPrompt] = useState("");
   const [isThinking, setIsThinking] = useState(false);
@@ -216,14 +332,16 @@ function Workspace({
   const [issueOpen, setIssueOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyQuery, setHistoryQuery] = useState("");
-  const [feedback, setFeedback] = useState<Record<string, FeedbackValue>>(() =>
-    loadFromStorage<Record<string, FeedbackValue>>(storageKeys.feedback, {}),
-  );
+  const [feedback, setFeedback] = useState<Record<string, FeedbackValue>>({});
   const [toast, setToast] = useState<ToastState | null>(null);
   const [, refreshModelCatalog] = useState(0);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  const workspaceStatus = useQuery({
+  useEffect(() => {
+    saveToStorageDeferred(storageKeys.conversations, conversations);
+  }, [conversations]);
+
+  useQuery({
     queryKey: ["workspace-status", user.email],
     queryFn: async () => ({
       label: "Ready",
@@ -238,11 +356,9 @@ function Workspace({
   const selectedModel = getModel(selectedModelId);
   const sortedConversations = useMemo(
     () =>
-      [...conversations]
-        .sort(
-          (left, right) =>
-            new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
-        ),
+      [...conversations].sort(
+        (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
+      ),
     [conversations],
   );
   const filteredConversations = useMemo(() => {
@@ -263,6 +379,7 @@ function Workspace({
   }, [sortedConversations, historyQuery]);
 
   useEffect(() => {
+<<<<<<< Updated upstream
     const configuredModels = bootstrap.data?.semantic_models.map(toFrontendModel) ?? [];
     if (!configuredModels.length) return;
 
@@ -278,10 +395,90 @@ function Workspace({
   useEffect(() => {
     saveToStorage(storageKeys.conversations, conversations);
   }, [conversations]);
+=======
+    let active = true;
+    const fetchConversations = async () => {
+      try {
+        const token = await acquireToken();
+        if (!token) return;
+        const result = await getSessions(token);
+        if (!active || !result?.sessions) return;
+>>>>>>> Stashed changes
 
-  useEffect(() => {
-    saveToStorage(storageKeys.feedback, feedback);
-  }, [feedback]);
+        const mapped: Conversation[] = result.sessions.map((s: Record<string, unknown>) => ({
+          id: String(s.id),
+          title: String(s.title),
+          modelId: normalizeModelId(String(s.semantic_model_id)),
+          countryCode: "US",
+          messages: [],
+          createdAt: String(s.created_at),
+          updatedAt: String(s.updated_at),
+        }));
+
+        setConversations((current) => {
+          if (mapped.length === 0) return current;
+          const mergedMap = new Map<string, Conversation>();
+          current.forEach((c) => mergedMap.set(c.id, c));
+          mapped.forEach((s) => {
+            const existing = mergedMap.get(s.id);
+            mergedMap.set(s.id, {
+              ...s,
+              title: existing?.title && existing.title !== "New Chat" ? existing.title : s.title,
+              pinned: existing?.pinned ?? false,
+              messages: existing?.messages.length ? existing.messages : s.messages,
+            });
+          });
+          return Array.from(mergedMap.values());
+        });
+
+        if (mapped.length > 0 && !activeConversationId) {
+          const firstSessionId = mapped[0].id;
+          setActiveConversationId(firstSessionId);
+          setSelectedModelId(normalizeModelId(mapped[0].modelId));
+          setSelectedCountryCode("US");
+
+          const sessionDetails = await getSessionDetails(firstSessionId, token);
+          if (active && sessionDetails?.messages) {
+            setConversations((current) =>
+              current.map((c) =>
+                c.id === firstSessionId && c.messages.length === 0
+                  ? {
+                      ...c,
+                      messages: (sessionDetails.messages as Record<string, unknown>[]).map((m) => ({
+                        id: String(m.id),
+                        role: m.role as Message["role"],
+                        text: String(m.content),
+                        createdAt: String(m.created_at),
+                        chartTitle: (m.normalized_response as Record<string, unknown> | undefined)
+                          ?.chartTitle as string | undefined,
+                        chart: (m.normalized_response as Record<string, unknown> | undefined)
+                          ?.chart as Message["chart"],
+                        metrics: (m.normalized_response as Record<string, unknown> | undefined)
+                          ?.metrics as Message["metrics"],
+                        table: (m.normalized_response as Record<string, unknown> | undefined)
+                          ?.table as Message["table"],
+                        actions: (m.normalized_response as Record<string, unknown> | undefined)
+                          ?.actions as Message["actions"],
+                        debug: (m.normalized_response as Record<string, unknown> | undefined)
+                          ?.debug as Message["debug"],
+                        plot: (m.normalized_response as Record<string, unknown> | undefined)
+                          ?.plot as Message["plot"],
+                      })),
+                    }
+                  : c,
+              ),
+            );
+          }
+        }
+      } catch {
+        // Silently rely on local stored conversations when unauthenticated
+      }
+    };
+    fetchConversations();
+    return () => {
+      active = false;
+    };
+  }, [acquireToken]);
 
   useEffect(() => {
     dispatch(uiActions.setDebugOpen(settings.keepDebugOpen));
@@ -289,11 +486,10 @@ function Workspace({
 
   useEffect(() => {
     document.documentElement.dataset.theme = themeMode;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute(
-      "content",
-      themeMode === "dark" ? "#25282d" : "#ffffff",
-    );
-    localStorage.setItem(storageKeys.theme, themeMode);
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", themeMode === "dark" ? "#25282d" : "#ffffff");
+
     document.title = "Conversational BI";
   }, [themeMode]);
 
@@ -343,9 +539,21 @@ function Workspace({
     setToast({ message, tone });
   };
 
-  const closeTour = () => {
-    saveToStorage(storageKeys.tourSeen, true);
+  const closeTour = async () => {
     setTourOpen(false);
+    try {
+      const token = await acquireToken();
+      await updateUserSettings(
+        {
+          ...settings,
+          theme: themeMode,
+          tourSeen: true,
+        },
+        token,
+      );
+    } catch (err) {
+      console.error("Failed to save tour status:", err);
+    }
   };
 
   const startConversation = () => {
@@ -375,14 +583,74 @@ function Workspace({
     );
   };
 
+<<<<<<< Updated upstream
   const openConversation = (conversation: Conversation) => {
+=======
+  const setActiveConversationCountry = (nextCountryCode: CountryCode) => {
+    setSelectedCountryCode(nextCountryCode);
+    if (!activeConversation) {
+      return;
+    }
+
+    setConversations((current) =>
+      current.map((conversation) =>
+        conversation.id === activeConversation.id
+          ? { ...conversation, countryCode: nextCountryCode }
+          : conversation,
+      ),
+    );
+  };
+
+  const openConversation = async (conversation: Conversation) => {
+>>>>>>> Stashed changes
     setActiveConversationId(conversation.id);
     setSelectedModelId(normalizeModelId(conversation.modelId));
     setSelectedCountryCode(normalizeCountryCode(conversation.countryCode));
     setModelsOpen(false);
+
+    if (conversation.messages && conversation.messages.length > 0) {
+      return;
+    }
+
+    try {
+      const token = await acquireToken();
+      const sessionDetails = await getSessionDetails(conversation.id, token);
+      setConversations((current) =>
+        current.map((c) =>
+          c.id === conversation.id
+            ? {
+                ...c,
+                messages: (sessionDetails.messages as Record<string, unknown>[]).map((m) => ({
+                  id: String(m.id),
+                  role: m.role as Message["role"],
+                  text: String(m.content),
+                  createdAt: String(m.created_at),
+                  chartTitle: (m.normalized_response as Record<string, unknown> | undefined)
+                    ?.chartTitle as string | undefined,
+                  chart: (m.normalized_response as Record<string, unknown> | undefined)
+                    ?.chart as Message["chart"],
+                  metrics: (m.normalized_response as Record<string, unknown> | undefined)
+                    ?.metrics as Message["metrics"],
+                  table: (m.normalized_response as Record<string, unknown> | undefined)
+                    ?.table as Message["table"],
+                  actions: (m.normalized_response as Record<string, unknown> | undefined)
+                    ?.actions as Message["actions"],
+                  debug: (m.normalized_response as Record<string, unknown> | undefined)
+                    ?.debug as Message["debug"],
+                  plot: (m.normalized_response as Record<string, unknown> | undefined)
+                    ?.plot as Message["plot"],
+                })),
+              }
+            : c,
+        ),
+      );
+    } catch (err) {
+      console.error("Failed to load session details:", err);
+    }
   };
 
   const deleteConversation = (conversationId: string) => {
+<<<<<<< Updated upstream
     const deleting = conversations.find((conversation) => conversation.id === conversationId);
     const nextConversations = conversations.filter(
       (conversation) => conversation.id !== conversationId,
@@ -394,6 +662,22 @@ function Workspace({
       setSelectedModelId(normalizeModelId(nextActive?.modelId ?? selectedModelId));
       setSelectedCountryCode(normalizeCountryCode(nextActive?.countryCode ?? selectedCountryCode));
     }
+=======
+    setConversations((current) => {
+      const nextConversations = current.filter(
+        (conversation) => conversation.id !== conversationId,
+      );
+      if (activeConversationId === conversationId) {
+        const nextActive = nextConversations[0] ?? null;
+        setActiveConversationId(nextActive?.id ?? null);
+        if (nextActive) {
+          setSelectedModelId(normalizeModelId(nextActive.modelId));
+          setSelectedCountryCode(normalizeCountryCode(nextActive.countryCode));
+        }
+      }
+      return nextConversations;
+    });
+>>>>>>> Stashed changes
     showToast("Conversation removed");
     void (async () => {
       const token = await acquireToken();
@@ -437,9 +721,7 @@ function Workspace({
         return current.map((conversation) => {
           if (conversation.id !== conversationId) return conversation;
           const nextMessages = [...conversation.messages, userMessage];
-          const userMsgs = nextMessages
-            .filter((m) => m.role === "user")
-            .map((m) => m.text);
+          const userMsgs = nextMessages.filter((m) => m.role === "user").map((m) => m.text);
           return {
             ...conversation,
             title: titleFromUserMessages(userMsgs),
@@ -478,7 +760,7 @@ function Workspace({
       const tokenUsage = calculateTokenUsageAndCost(
         currentModelId,
         trimmedQuestion,
-        answer.text || ""
+        answer.text || "",
       );
       const responseMessage: Message = {
         id: createId("msg"),
@@ -505,11 +787,7 @@ function Workspace({
         error instanceof Error
           ? error.message
           : "The analytics engine could not complete this request.";
-      const tokenUsage = calculateTokenUsageAndCost(
-        currentModelId,
-        trimmedQuestion,
-        message
-      );
+      const tokenUsage = calculateTokenUsageAndCost(currentModelId, trimmedQuestion, message);
       const responseMessage: Message = {
         id: createId("msg"),
         role: "assistant",
@@ -585,9 +863,7 @@ function Workspace({
     setConversations((current) =>
       current.map((conversation) => {
         if (conversation.id !== conversationId) return conversation;
-        const userMsgs = nextMessages
-          .filter((m) => m.role === "user")
-          .map((m) => m.text);
+        const userMsgs = nextMessages.filter((m) => m.role === "user").map((m) => m.text);
         return {
           ...conversation,
           title: titleFromUserMessages(userMsgs),
@@ -612,7 +888,7 @@ function Workspace({
       const tokenUsage = calculateTokenUsageAndCost(
         currentModelId,
         trimmedQuestion,
-        answer.text || ""
+        answer.text || "",
       );
       const responseMessage: Message = {
         id: createId("msg"),
@@ -639,11 +915,7 @@ function Workspace({
         error instanceof Error
           ? error.message
           : "The analytics engine could not complete this request.";
-      const tokenUsage = calculateTokenUsageAndCost(
-        currentModelId,
-        trimmedQuestion,
-        message
-      );
+      const tokenUsage = calculateTokenUsageAndCost(currentModelId, trimmedQuestion, message);
       const responseMessage: Message = {
         id: createId("msg"),
         role: "assistant",
@@ -722,16 +994,14 @@ function Workspace({
   };
 
   const saveSettings = (nextSettings: SettingsState) => {
-    saveToStorage(storageKeys.settings, nextSettings);
     setSettings(nextSettings);
     dispatch(uiActions.setDebugOpen(nextSettings.keepDebugOpen));
     showToast("Settings saved");
   };
 
-  const submitIssue = (issue: IssueReport) => {
-    const issues = loadFromStorage<IssueReport[]>(storageKeys.issues, []);
-    saveToStorage(storageKeys.issues, [issue, ...issues]);
+  const submitIssue = async (issue: IssueReport) => {
     setIssueOpen(false);
+<<<<<<< Updated upstream
     showToast(`Issue ${issue.id} saved`);
     void (async () => {
       try {
@@ -743,6 +1013,30 @@ function Workspace({
         showToast("Issue saved locally; server submission is pending", "warning");
       }
     })();
+=======
+    try {
+      const token = await acquireToken();
+      await submitIssueReport(
+        {
+          id: issue.id,
+          title: `${issue.category} Issue (${issue.severity})`,
+          description: issue.description,
+          debugContext: {
+            conversationId: issue.conversationId,
+            modelId: issue.modelId,
+            modelName: issue.modelName,
+            lastMessage: issue.lastMessage,
+            createdAt: issue.createdAt,
+          },
+        },
+        token,
+      );
+      showToast(`Issue submitted successfully`);
+    } catch (err) {
+      console.error("Failed to submit issue report:", err);
+      showToast("Failed to submit issue", "warning");
+    }
+>>>>>>> Stashed changes
   };
 
   const copyMessage = async (message: Message) => {
@@ -750,8 +1044,10 @@ function Workspace({
     showToast(message.role === "user" ? "Message copied" : "Response copied");
   };
 
-  const markFeedback = (messageId: string, value: FeedbackValue) => {
+  const markFeedback = async (messageId: string, value: FeedbackValue) => {
     const removing = feedback[messageId] === value;
+    const apiValue = removing ? "none" : value === "helpful" ? "like" : "dislike";
+
     setFeedback((current) => {
       const next = { ...current };
       if (next[messageId] === value) {
@@ -761,6 +1057,7 @@ function Workspace({
       }
       return next;
     });
+<<<<<<< Updated upstream
     showToast(
       removing
         ? "Feedback removed"
@@ -790,12 +1087,58 @@ function Workspace({
             showToast("Feedback saved locally; server submission is pending", "warning");
           }
         })();
+=======
+
+    try {
+      const token = await acquireToken();
+      await submitFeedback(
+        {
+          messageId,
+          value: apiValue,
+          comment: "",
+        },
+        token,
+      );
+
+      showToast(
+        removing
+          ? "Feedback removed"
+          : value === "helpful"
+            ? "Marked as a good response"
+            : "Marked as a bad response",
+      );
+    } catch (err) {
+      console.error("Failed to submit feedback:", err);
+      showToast("Failed to save feedback", "warning");
+>>>>>>> Stashed changes
     }
   };
 
   const openSelectedModelGuide = () => {
     setModelsOpen(false);
     setGuideOpen(true);
+  };
+
+  const handleRenameConversation = (conversationId: string, newTitle: string) => {
+    const trimmed = newTitle.trim();
+    if (!trimmed) return;
+    setConversations((current) =>
+      current.map((conversation) =>
+        conversation.id === conversationId ? { ...conversation, title: trimmed } : conversation,
+      ),
+    );
+    showToast("Chat title updated");
+  };
+
+  const handleTogglePinConversation = (conversationId: string) => {
+    setConversations((current) =>
+      current.map((conversation) => {
+        if (conversation.id !== conversationId) return conversation;
+        const nextPinned = !conversation.pinned;
+        showToast(nextPinned ? "Chat pinned" : "Chat unpinned");
+        return { ...conversation, pinned: nextPinned };
+      }),
+    );
   };
 
   return (
@@ -810,6 +1153,12 @@ function Workspace({
         startConversation={startConversation}
         openConversation={openConversation}
         deleteConversation={deleteConversation}
+<<<<<<< Updated upstream
+=======
+        onRenameConversation={handleRenameConversation}
+        onTogglePinConversation={handleTogglePinConversation}
+        setGuideOpen={setGuideOpen}
+>>>>>>> Stashed changes
         setSidebarOpen={(open) => dispatch(uiActions.setSidebarOpen(open))}
         setSettingsOpen={setSettingsOpen}
         onSignOut={onSignOut}
@@ -821,6 +1170,7 @@ function Workspace({
           openGuide={openSelectedModelGuide}
           conversationTitle={activeConversation?.title}
           sidebarOpen={sidebarOpen}
+          onSelectPrompt={submitPrompt}
         />
 
         <main className={activeConversation ? "chat" : "welcome"}>
@@ -893,15 +1243,20 @@ function Workspace({
         <GuideModal
           close={() => setGuideOpen(false)}
           modelId={normalizeModelId(activeConversation?.modelId ?? selectedModelId)}
+          onSelectPrompt={submitPrompt}
         />
       )}
       {issueOpen && (
         <ErrorReportModal
           close={() => setIssueOpen(false)}
           submitIssue={submitIssue}
-          activeConversationId={activeConversationId || (conversations.length > 0 ? conversations[0].id : null)}
+          activeConversationId={
+            activeConversationId || (conversations.length > 0 ? conversations[0].id : null)
+          }
           modelId={normalizeModelId(activeConversation?.modelId ?? selectedModelId)}
-          modelName={getModel(normalizeModelId(activeConversation?.modelId ?? selectedModelId)).name}
+          modelName={
+            getModel(normalizeModelId(activeConversation?.modelId ?? selectedModelId)).name
+          }
           lastMessage={lastMessage}
           lastMessageFeedback={lastMessage ? feedback[lastMessage.id] : undefined}
           copyMessage={copyMessage}
@@ -910,15 +1265,15 @@ function Workspace({
       )}
       {settingsOpen && (
         <SettingsModal
-          close={() => {
-            setSettingsOpen(false);
-            dispatch(uiActions.setDebugOpen(settings.keepDebugOpen));
-          }}
+          close={() => setSettingsOpen(false)}
           settings={settings}
           saveSettings={saveSettings}
+<<<<<<< Updated upstream
           toggleDebug={() => dispatch(uiActions.setDebugOpen(!debugOpen))}
           themeMode={themeMode}
           toggleTheme={() => dispatch(uiActions.toggleThemeMode())}
+=======
+>>>>>>> Stashed changes
           onSignOut={onSignOut}
         />
       )}
