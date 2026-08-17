@@ -1,50 +1,7 @@
-import * as echarts from "echarts/core";
-import {
-  BarChart,
-  CustomChart,
-  FunnelChart,
-  GaugeChart,
-  HeatmapChart,
-  LineChart,
-  PieChart,
-  RadarChart,
-  ScatterChart,
-} from "echarts/charts";
-import {
-  DatasetComponent,
-  GridComponent,
-  LegendComponent,
-  RadarComponent,
-  TitleComponent,
-  TooltipComponent,
-  TransformComponent,
-  VisualMapComponent,
-} from "echarts/components";
-import { SVGRenderer } from "echarts/renderers";
+import * as echarts from "echarts";
 import { useEffect, useMemo, useRef } from "react";
-import type { EChartsCoreOption } from "echarts/core";
+import type { EChartsOption } from "echarts";
 import type { ChartBlock } from "../../../../shared/types/app";
-
-echarts.use([
-  BarChart,
-  CustomChart,
-  DatasetComponent,
-  FunnelChart,
-  GaugeChart,
-  GridComponent,
-  HeatmapChart,
-  LegendComponent,
-  LineChart,
-  PieChart,
-  RadarChart,
-  RadarComponent,
-  ScatterChart,
-  SVGRenderer,
-  TitleComponent,
-  TooltipComponent,
-  TransformComponent,
-  VisualMapComponent,
-]);
 
 const palette = ["#f40953", "#7f1534", "#002041", "#00a878", "#f6a800", "#5b7cfa"];
 
@@ -204,14 +161,14 @@ function inferFields(block: ChartBlock) {
   };
 }
 
-function sanitizeOption(option: Record<string, unknown>): EChartsCoreOption {
+function sanitizeOption(option: Record<string, unknown>): EChartsOption {
   return JSON.parse(
     JSON.stringify(option, (key, value) => {
       if (typeof value === "function") return undefined;
       if (/^on/i.test(key)) return undefined;
       return value;
     }),
-  ) as EChartsCoreOption;
+  ) as EChartsOption;
 }
 
 function formatCell(value: unknown) {

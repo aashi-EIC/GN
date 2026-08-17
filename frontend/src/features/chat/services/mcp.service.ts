@@ -133,20 +133,17 @@ function withMcpRuntime(
     ...answer,
     plot,
     mcpResponseSource: source,
->>>>>>> Stashed changes
     debug: [
       {
         stage: "mcp_request_payload",
         status: "success",
-        detail: "Payload sent to Node BFF",
+        detail: "Payload processed",
         payload: audit,
       },
       {
         stage: "response_render",
         status: "success",
-        detail: response.answer.blocks?.length
-          ? "Rendered structured response blocks"
-          : "Rendered text response",
+        detail: "Rendered text response",
       },
     ],
   };

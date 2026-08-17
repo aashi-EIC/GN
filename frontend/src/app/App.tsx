@@ -819,42 +819,7 @@ function Workspace({
 
   const submitIssue = async (issue: IssueReport) => {
     setIssueOpen(false);
-<<<<<<< Updated upstream
     showToast(`Issue ${issue.id} saved`);
-    void (async () => {
-      try {
-        const token = await acquireToken();
-        if (!token) return;
-        const saved = await submitIssueReport(token, issue, lastMessage?.backendId);
-        showToast(`Issue ${saved.id} submitted`);
-      } catch {
-        showToast("Issue saved locally; server submission is pending", "warning");
-      }
-    })();
-=======
-    try {
-      const token = await acquireToken();
-      await submitIssueReport(
-        {
-          id: issue.id,
-          title: `${issue.category} Issue (${issue.severity})`,
-          description: issue.description,
-          debugContext: {
-            conversationId: issue.conversationId,
-            modelId: issue.modelId,
-            modelName: issue.modelName,
-            lastMessage: issue.lastMessage,
-            createdAt: issue.createdAt,
-          },
-        },
-        token,
-      );
-      showToast(`Issue submitted successfully`);
-    } catch (err) {
-      console.error("Failed to submit issue report:", err);
-      showToast("Failed to submit issue", "warning");
-    }
->>>>>>> Stashed changes
   };
 
   const copyMessage = async (message: Message) => {
@@ -864,7 +829,6 @@ function Workspace({
 
   const markFeedback = async (messageId: string, value: FeedbackValue) => {
     const removing = feedback[messageId] === value;
-    const apiValue = removing ? "none" : value === "helpful" ? "like" : "dislike";
 
     setFeedback((current) => {
       const next = { ...current };
@@ -875,7 +839,6 @@ function Workspace({
       }
       return next;
     });
-<<<<<<< Updated upstream
     showToast(
       removing
         ? "Feedback removed"
@@ -883,53 +846,6 @@ function Workspace({
           ? "Marked as a good response"
           : "Marked as a bad response",
     );
-    const message = conversations
-      .flatMap((conversation) => conversation.messages)
-      .find((entry) => entry.id === messageId);
-    if (message?.backendId) {
-        const backendMessageId = message.backendId;
-        void (async () => {
-          try {
-            const token = await acquireToken();
-            if (!token) return;
-            if (removing) {
-              await removeMessageFeedback(token, backendMessageId);
-            } else {
-              await submitMessageFeedback(
-                token,
-                backendMessageId,
-                value === "helpful" ? "helpful" : "not_helpful",
-              );
-            }
-          } catch {
-            showToast("Feedback saved locally; server submission is pending", "warning");
-          }
-        })();
-=======
-
-    try {
-      const token = await acquireToken();
-      await submitFeedback(
-        {
-          messageId,
-          value: apiValue,
-          comment: "",
-        },
-        token,
-      );
-
-      showToast(
-        removing
-          ? "Feedback removed"
-          : value === "helpful"
-            ? "Marked as a good response"
-            : "Marked as a bad response",
-      );
-    } catch (err) {
-      console.error("Failed to submit feedback:", err);
-      showToast("Failed to save feedback", "warning");
->>>>>>> Stashed changes
-    }
   };
 
   const openSelectedModelGuide = () => {
@@ -971,12 +887,8 @@ function Workspace({
         startConversation={startConversation}
         openConversation={openConversation}
         deleteConversation={deleteConversation}
-<<<<<<< Updated upstream
-=======
         onRenameConversation={handleRenameConversation}
         onTogglePinConversation={handleTogglePinConversation}
-        setGuideOpen={setGuideOpen}
->>>>>>> Stashed changes
         setSidebarOpen={(open) => dispatch(uiActions.setSidebarOpen(open))}
         setSettingsOpen={setSettingsOpen}
         onSignOut={onSignOut}
@@ -1086,12 +998,9 @@ function Workspace({
           close={() => setSettingsOpen(false)}
           settings={settings}
           saveSettings={saveSettings}
-<<<<<<< Updated upstream
           toggleDebug={() => dispatch(uiActions.setDebugOpen(!debugOpen))}
           themeMode={themeMode}
           toggleTheme={() => dispatch(uiActions.toggleThemeMode())}
-=======
->>>>>>> Stashed changes
           onSignOut={onSignOut}
         />
       )}
