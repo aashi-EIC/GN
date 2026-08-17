@@ -485,86 +485,14 @@ function Workspace({
     );
   };
 
-<<<<<<< Updated upstream
   const openConversation = (conversation: Conversation) => {
-=======
-  const setActiveConversationCountry = (nextCountryCode: CountryCode) => {
-    setSelectedCountryCode(nextCountryCode);
-    if (!activeConversation) {
-      return;
-    }
-
-    setConversations((current) =>
-      current.map((conversation) =>
-        conversation.id === activeConversation.id
-          ? { ...conversation, countryCode: nextCountryCode }
-          : conversation,
-      ),
-    );
-  };
-
-  const openConversation = async (conversation: Conversation) => {
->>>>>>> Stashed changes
     setActiveConversationId(conversation.id);
     setSelectedModelId(normalizeModelId(conversation.modelId));
     setSelectedCountryCode(normalizeCountryCode(conversation.countryCode));
     setModelsOpen(false);
-
-    if (conversation.messages && conversation.messages.length > 0) {
-      return;
-    }
-
-    try {
-      const token = await acquireToken();
-      const sessionDetails = await getSessionDetails(conversation.id, token);
-      setConversations((current) =>
-        current.map((c) =>
-          c.id === conversation.id
-            ? {
-                ...c,
-                messages: (sessionDetails.messages as Record<string, unknown>[]).map((m) => ({
-                  id: String(m.id),
-                  role: m.role as Message["role"],
-                  text: String(m.content),
-                  createdAt: String(m.created_at),
-                  chartTitle: (m.normalized_response as Record<string, unknown> | undefined)
-                    ?.chartTitle as string | undefined,
-                  chart: (m.normalized_response as Record<string, unknown> | undefined)
-                    ?.chart as Message["chart"],
-                  metrics: (m.normalized_response as Record<string, unknown> | undefined)
-                    ?.metrics as Message["metrics"],
-                  table: (m.normalized_response as Record<string, unknown> | undefined)
-                    ?.table as Message["table"],
-                  actions: (m.normalized_response as Record<string, unknown> | undefined)
-                    ?.actions as Message["actions"],
-                  debug: (m.normalized_response as Record<string, unknown> | undefined)
-                    ?.debug as Message["debug"],
-                  plot: (m.normalized_response as Record<string, unknown> | undefined)
-                    ?.plot as Message["plot"],
-                })),
-              }
-            : c,
-        ),
-      );
-    } catch (err) {
-      console.error("Failed to load session details:", err);
-    }
   };
 
   const deleteConversation = (conversationId: string) => {
-<<<<<<< Updated upstream
-    const deleting = conversations.find((conversation) => conversation.id === conversationId);
-    const nextConversations = conversations.filter(
-      (conversation) => conversation.id !== conversationId,
-    );
-    setConversations(nextConversations);
-    if (activeConversationId === conversationId) {
-      const nextActive = nextConversations[0] ?? null;
-      setActiveConversationId(nextActive?.id ?? null);
-      setSelectedModelId(normalizeModelId(nextActive?.modelId ?? selectedModelId));
-      setSelectedCountryCode(normalizeCountryCode(nextActive?.countryCode ?? selectedCountryCode));
-    }
-=======
     setConversations((current) => {
       const nextConversations = current.filter(
         (conversation) => conversation.id !== conversationId,
@@ -579,19 +507,7 @@ function Workspace({
       }
       return nextConversations;
     });
->>>>>>> Stashed changes
     showToast("Conversation removed");
-    void (async () => {
-      const token = await acquireToken();
-      if (!token || !isSessionId(conversationId) || !deleting?.messages.some((message) => message.backendId)) {
-        return;
-      }
-      try {
-        await deleteSession(token, conversationId);
-      } catch {
-        showToast("Removed locally; server deletion is pending", "warning");
-      }
-    })();
   };
 
   const submitPrompt = async (question = prompt) => {
