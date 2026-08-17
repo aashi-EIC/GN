@@ -109,6 +109,7 @@ export function Sidebar({
   setHistoryQuery,
   startConversation,
   openConversation,
+  deleteConversation,
   onRenameConversation,
   onTogglePinConversation,
   setSidebarOpen,
