@@ -1,14 +1,11 @@
-import { Check, CircleGauge, LogOut, UserRound } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { CircleGauge, LogOut, UserRound } from "lucide-react";
+import { useEffect } from "react";
 import type { SettingsState } from "../../../shared/types/app";
 
 export function SettingsModal({
   close,
   settings,
   saveSettings,
-  toggleDebug,
-  themeMode,
-  toggleTheme,
   onSignOut,
 }: {
   close: () => void;
@@ -19,8 +16,6 @@ export function SettingsModal({
   toggleTheme?: () => void;
   onSignOut?: () => void;
 }) {
-  const [draft, setDraft] = useState(settings);
-
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
@@ -29,10 +24,8 @@ export function SettingsModal({
     return () => document.removeEventListener("keydown", closeOnEscape);
   }, [close]);
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    saveSettings(draft);
-    close();
+  const updateDisplayName = (name: string) => {
+    saveSettings({ ...settings, displayName: name });
   };
 
   return (
@@ -46,15 +39,13 @@ export function SettingsModal({
         aria-modal="true"
         aria-label="Workspace settings"
       >
-        <form className="sidebar-settings-form" onSubmit={submit}>
+        <div className="sidebar-settings-form">
           <label className="sidebar-settings-row">
             <UserRound />
             <span>Display name</span>
             <input
-              value={draft.displayName}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, displayName: event.target.value }))
-              }
+              value={settings.displayName}
+              onChange={(event) => updateDisplayName(event.target.value)}
               aria-label="Display name"
             />
           </label>
@@ -83,19 +74,8 @@ export function SettingsModal({
               <span>Sign out</span>
             </button>
           )}
-
-          <div className="sidebar-settings-actions">
-            <button type="button" onClick={close}>
-              Cancel
-            </button>
-            <button type="submit">
-              <Check />
-              Save
-            </button>
-          </div>
-        </form>
+        </div>
       </aside>
     </div>
   );
 }
-
