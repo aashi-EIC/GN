@@ -18,7 +18,6 @@ export function Composer({
   setModelsOpen,
   modelLocked,
   countryCode,
-  setCountryCode,
 }: {
   prompt: string;
   setPrompt: (prompt: string) => void;
@@ -30,7 +29,6 @@ export function Composer({
   setModelsOpen: (open: boolean) => void;
   modelLocked: boolean;
   countryCode: CountryCode;
-  setCountryCode: (countryCode: CountryCode) => void;
 }) {
   const [isRecording, setIsRecording] = useState(false);
   const model = getModel(modelId);

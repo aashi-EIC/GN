@@ -805,87 +805,9 @@ svg {
   font-weight: 700;
 }
 
-.auth-methods {
-  display: grid;
-  gap: 12px;
-}
-
-.auth-option,
-.cloud-bi-login {
-  width: 100%;
-  border: 1px solid var(--gn-line);
-  border-radius: 8px;
-  background: var(--gn-white);
-  color: var(--gn-navy);
-  box-shadow: 0 8px 22px rgba(0, 32, 65, 0.06);
-}
-
-.auth-option {
-  display: grid;
-  grid-template-columns: 44px 1fr;
-  align-items: center;
-  gap: 12px;
-  min-height: 72px;
-  padding: 14px;
-  text-align: left;
-}
-
-.auth-option b,
-.cloud-bi-title b {
-  display: block;
-  color: var(--gn-navy);
-  font-size: 14px;
-}
-
-.auth-option small,
-.cloud-bi-title small {
-  display: block;
-  margin-top: 3px;
-  color: var(--gn-text);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.auth-option:hover,
 .primary-action:hover {
   border-color: var(--gn-pink);
   box-shadow: 0 0 0 3px rgba(244, 9, 83, 0.12);
-}
-
-.auth-option.needs-config {
-  border-style: dashed;
-  background: var(--gn-surface);
-}
-
-.auth-option:disabled {
-  opacity: 0.68;
-}
-
-.auth-icon {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  background: var(--gn-surface);
-}
-
-.cloud-bi-login {
-  padding: 14px;
-}
-
-.cloud-bi-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.cloud-bi-title svg {
-  color: var(--gn-pink);
-}
-
-.cloud-bi-login .primary-action {
-  width: 100%;
 }
 
 .ms-mark {
@@ -915,7 +837,6 @@ svg {
   background: #ffba08;
 }
 
-.cloud-bi-login,
 .modal-form {
   display: grid;
   gap: 15px;
@@ -1653,24 +1574,20 @@ textarea:focus {
   scrollbar-width: thin;
 }
 
-.model-menu::-webkit-scrollbar,
-.country-menu::-webkit-scrollbar {
+.model-menu::-webkit-scrollbar {
   width: 5px;
 }
 
-.model-menu::-webkit-scrollbar-track,
-.country-menu::-webkit-scrollbar-track {
+.model-menu::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.model-menu::-webkit-scrollbar-thumb,
-.country-menu::-webkit-scrollbar-thumb {
+.model-menu::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 4px;
 }
 
-.model-menu::-webkit-scrollbar-thumb:hover,
-.country-menu::-webkit-scrollbar-thumb:hover {
+.model-menu::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
 
@@ -1706,105 +1623,6 @@ textarea:focus {
   white-space: normal;
   word-break: break-word;
   line-height: 1.35;
-}
-
-/* Country Picker Custom Dropdown */
-.country-picker-wrap {
-  position: relative;
-  display: inline-block;
-}
-
-.country-picker-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 38px;
-  padding: 0 10px;
-  border: 1px solid var(--gn-line);
-  border-radius: 8px;
-  background: #fbfcfe;
-  color: var(--gn-navy);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.country-picker-btn:hover {
-  border-color: var(--gn-pink);
-  background: var(--gn-white);
-}
-
-.country-picker-btn svg:not(.country-chevron) {
-  width: 14px;
-  height: 14px;
-  color: var(--gn-pink);
-  flex-shrink: 0;
-}
-
-.country-picker-btn .country-chevron {
-  width: 12px;
-  height: 12px;
-  color: var(--gn-navy);
-  opacity: 0.6;
-  flex-shrink: 0;
-}
-
-.country-selected-name {
-  max-width: 130px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.country-menu {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 0;
-  z-index: 60;
-  width: 200px;
-  max-height: 220px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px;
-  border: 1px solid var(--gn-line);
-  border-radius: 8px;
-  background: var(--gn-white);
-  box-shadow: var(--shadow);
-  scrollbar-width: thin;
-}
-
-.country-menu button {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  border: 0;
-  border-radius: 6px;
-  background: var(--gn-white);
-  color: var(--gn-navy);
-  text-align: left;
-  padding: 8px 10px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.country-menu button:hover,
-.country-menu button.selected {
-  background: var(--gn-soft-pink);
-  color: var(--gn-pink);
-  font-weight: 700;
-}
-
-.country-menu .country-menu-text {
-  display: block;
-  width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .suggestions {
@@ -2172,36 +1990,31 @@ textarea:focus {
   font-size: 11px;
 }
 
-.bar-chart {
-  height: 164px;
+.visualization-stack {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
-  align-items: end;
-  gap: 10px;
-  padding-top: 12px;
-  border-bottom: 1px solid var(--gn-line);
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 39px,
-    rgba(0, 32, 65, 0.08) 40px
-  );
+  gap: 12px;
+  margin: 12px 0;
 }
 
-.bar-col {
-  height: 100%;
+.universal-chart-panel {
+  min-width: 0;
+}
+
+.universal-chart {
+  width: 100%;
+  height: 340px;
+  min-height: 260px;
+}
+
+.table-section {
   display: grid;
-  grid-template-rows: 1fr 20px;
-  align-items: end;
-  justify-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.table-title {
   color: var(--gn-text);
-  font-size: 11px;
-}
-
-.bar-col i {
-  width: min(36px, 70%);
-  border-radius: 8px 8px 0 0;
-  background: linear-gradient(180deg, var(--gn-pink), var(--gn-burgundy));
+  font-size: 13px;
 }
 
 .table-wrap {
@@ -2239,26 +2052,6 @@ td {
 
 tr:last-child td {
   border-bottom: 0;
-}
-
-.action-list {
-  display: grid;
-  gap: 7px;
-  margin: 12px 0;
-}
-
-.action-list span {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--gn-text);
-  font-size: 12px;
-}
-
-.action-list svg {
-  width: 15px;
-  height: 15px;
-  color: #047857;
 }
 
 .response-actions {
@@ -2997,36 +2790,6 @@ tr:last-child td {
   left: auto;
 }
 
-.country-picker {
-  min-height: 44px;
-  display: grid;
-  grid-template-columns: 17px minmax(0, 1fr);
-  align-items: center;
-  gap: 6px;
-  padding: 0 8px;
-  border-radius: 8px;
-  background: #fbfcfe;
-  color: var(--gn-text);
-}
-
-.country-picker svg {
-  width: 15px;
-  height: 15px;
-  color: var(--gn-pink);
-}
-
-.country-picker select {
-  height: 32px;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--gn-navy);
-  box-shadow: none;
-  font-size: 11px;
-  font-weight: 800;
-}
-
 .model-picker > button > span,
 .model-menu button > span.model-chip,
 .model-summary > span,
@@ -3074,54 +2837,6 @@ tr:last-child td {
 
 .response {
   width: min(830px, 100%);
-}
-
-.html-plot {
-  margin: 14px 0;
-  overflow: hidden;
-  border: 1px solid var(--gn-line);
-  border-radius: 8px;
-  background: var(--gn-white);
-}
-
-.plot-toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 34px 34px 34px;
-  align-items: center;
-  gap: 4px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--gn-line);
-}
-
-.plot-toolbar b,
-.plot-toolbar span {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.plot-toolbar b {
-  color: var(--gn-navy);
-  font-size: 13px;
-}
-
-.plot-toolbar span {
-  margin-top: 2px;
-  color: var(--gn-text);
-  font-size: 11px;
-}
-
-.html-plot iframe {
-  display: block;
-  width: 100%;
-  height: 360px;
-  border: 0;
-  background: var(--gn-white);
-}
-
-.html-plot.expanded iframe {
-  height: 560px;
 }
 
 .guide-current {
@@ -3418,7 +3133,6 @@ body {
 .response,
 .chart-panel,
 .table-wrap,
-.html-plot,
 .metric,
 .modal,
 .profile-menu,
@@ -3431,7 +3145,6 @@ body {
 .composer,
 .chart-panel,
 .table-wrap,
-.html-plot,
 .metric,
 .modal,
 .tour-list > div,
@@ -3506,11 +3219,6 @@ body {
   box-shadow: 0 8px 22px rgba(0, 32, 65, 0.055);
 }
 
-.country-picker {
-  border: 1px solid #eef2f6;
-  border-radius: 6px;
-}
-
 .composer-entry > button {
   transition:
     background 0.16s ease,
@@ -3555,7 +3263,6 @@ body {
   background: #fbfcfe;
 }
 
-.plot-toolbar,
 .debug-panel pre,
 .table-wrap table {
   font-size: 12px;
@@ -4088,29 +3795,6 @@ body {
   gap: 14px;
 }
 
-.country-picker {
-  width: max-content;
-  min-height: 34px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: center;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-}
-
-.country-picker svg {
-  display: none;
-}
-
-.country-picker select {
-  height: 34px;
-  color: #6f777e;
-  font-size: 14px;
-  font-weight: 500;
-}
-
 .mic-btn,
 .send-btn {
   display: grid;
@@ -4359,14 +4043,12 @@ body {
 
 .welcome-composer textarea::placeholder,
 .composer textarea::placeholder,
-.country-picker select,
 .model-selected-name,
 .model-picker.compact > button > svg,
 .mic-btn {
   color: var(--ui-muted);
 }
 
-.country-picker,
 .model-picker.compact > button {
   background: transparent;
 }
@@ -4474,7 +4156,6 @@ body {
 
 :root[data-theme="dark"] .profile-menu,
 :root[data-theme="dark"] .model-menu,
-:root[data-theme="dark"] .country-menu,
 :root[data-theme="dark"] .modal,
 :root[data-theme="dark"] .metric,
 :root[data-theme="dark"] .chart-panel,
@@ -4572,29 +4253,20 @@ body {
   color: #64748b !important;
 }
 
-:root[data-theme="dark"] .country-picker select {
-  color: #94a3b8 !important;
-  background: transparent !important;
-}
-
-:root[data-theme="dark"] .model-menu,
-:root[data-theme="dark"] .country-menu {
+:root[data-theme="dark"] .model-menu {
   background: #1e242b !important;
   border-color: rgba(255, 255, 255, 0.14) !important;
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55) !important;
   color: #f8fafc !important;
 }
 
-:root[data-theme="dark"] .model-menu button,
-:root[data-theme="dark"] .country-menu button {
+:root[data-theme="dark"] .model-menu button {
   background: transparent !important;
   color: #f8fafc !important;
 }
 
 :root[data-theme="dark"] .model-menu button:hover,
-:root[data-theme="dark"] .model-menu button.selected,
-:root[data-theme="dark"] .country-menu button:hover,
-:root[data-theme="dark"] .country-menu button.selected {
+:root[data-theme="dark"] .model-menu button.selected {
   background: rgba(255, 42, 109, 0.16) !important;
   color: #ff7597 !important;
 }
@@ -4789,7 +4461,6 @@ body {
   min-height: 38px;
 }
 
-.chat .country-picker,
 .chat .model-picker.compact > button {
   min-height: 36px;
 }
@@ -7339,9 +7010,7 @@ body {
 
 .metric,
 .chart-panel,
-.table-wrap,
-.html-plot,
-.action-list {
+.table-wrap {
   border: 1px solid color-mix(in srgb, var(--ui-border) 92%, transparent) !important;
   border-radius: 8px !important;
   background: var(--ui-panel) !important;
@@ -7369,8 +7038,7 @@ body {
 }
 
 .chart-panel,
-.table-wrap,
-.html-plot {
+.table-wrap {
   overflow: hidden;
 }
 
@@ -7403,9 +7071,7 @@ body {
 
 .metric-grid,
 .chart-panel,
-.table-wrap,
-.html-plot,
-.action-list {
+.table-wrap {
   animation: modern-content-enter 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -7485,9 +7151,7 @@ body {
   .messages > .user-row,
   .metric-grid,
   .chart-panel,
-  .table-wrap,
-  .html-plot,
-  .action-list {
+  .table-wrap {
     animation: none !important;
     transition: none !important;
     transform: none !important;
@@ -7532,17 +7196,75 @@ body {
   }
 }
 
-/* Keep the welcome workspace calm and uniform. */
+/* Empty-chat workspace uses a neutral background without decorative lighting. */
 .workspace:has(> .welcome) {
+  position: relative;
+  overflow: hidden;
   background: var(--ui-bg);
+}
+
+.workspace:has(> .welcome)::before,
+.workspace:has(> .welcome)::after {
+  display: none;
+  content: none;
 }
 
 .workspace:has(> .welcome) > .topbar,
 .workspace:has(> .welcome) > .welcome {
-  background: transparent !important;
+  position: relative;
+  z-index: 1;
+  background: var(--ui-bg) !important;
 }
 
 .workspace:has(> .welcome) > .topbar {
   border-bottom: 0 !important;
   box-shadow: none !important;
+}
+
+@media (max-width: 700px) {
+  /* The button still opens the full guide dialog; suppress its hover card when
+     there is not enough room to keep it clear of the welcome content. */
+  .header-guide-popover {
+    display: none !important;
+  }
+
+  .welcome {
+    align-items: stretch !important;
+    padding: 28px 18px 48px !important;
+  }
+
+  .welcome-inner {
+    min-width: 0;
+  }
+
+  .welcome h1 {
+    width: 100%;
+    max-width: 100%;
+    font-size: clamp(27px, 8vw, 34px) !important;
+    overflow-wrap: anywhere;
+  }
+
+  .welcome-composer {
+    min-width: 0;
+  }
+
+  .composer-bottom {
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .model-picker.compact {
+    min-width: 0;
+    max-width: calc(100% - 88px);
+  }
+
+  .model-picker.compact > button {
+    max-width: 100% !important;
+  }
+
+  .model-selected-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }

@@ -20,7 +20,7 @@ type ChatInput = {
 export async function processChat(input: ChatInput) {
   assertSafeText(input.prompt, 'Prompt');
 
-  await ensureOwnedSession({
+  const userMessageId = await ensureOwnedSession({
     id: input.sessionId,
     semanticModelId: input.semanticModelId,
     prompt: input.prompt,
@@ -31,7 +31,11 @@ export async function processChat(input: ChatInput) {
   const external = await client.send(adaptMcpRequest(input), input.user, input.correlationId, input.signal);
   const normalized = adaptMcpResponse(external);
 
-  await saveAssistantMessage(input.sessionId, input.correlationId, normalized);
+  const messageId = await saveAssistantMessage(input.sessionId, input.correlationId, normalized);
 
-  return normalized;
+  return {
+    ...normalized,
+    message_id: messageId,
+    user_message_id: userMessageId,
+  };
 }

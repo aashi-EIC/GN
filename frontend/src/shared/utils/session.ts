@@ -5,6 +5,19 @@ export function createId(prefix: string) {
   return `${prefix}-${Math.random().toString(16).slice(2, 10)}`;
 }
 
+export function createSessionId() {
+  if ("randomUUID" in crypto) return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (character) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = character === "x" ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
+}
+
+export function isSessionId(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 export function titleFromQuestion(question: string) {
   const compact = question.replace(/\s+/g, " ").trim();
   return compact.length > 48 ? `${compact.slice(0, 45)}...` : compact;

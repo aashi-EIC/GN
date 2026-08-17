@@ -11,9 +11,15 @@ export const authenticate: RequestHandler = async (req, _res, next) => {
     const audience = getRequired('ENTRA_API_AUDIENCE');
     const token = readBearerToken(req.header('authorization'));
     const jwks = getJwks(tenantId);
+    const issuer = config.ENTRA_ACCEPT_V1_TOKENS
+      ? [
+          `https://login.microsoftonline.com/${tenantId}/v2.0`,
+          `https://sts.windows.net/${tenantId}/`,
+        ]
+      : `https://login.microsoftonline.com/${tenantId}/v2.0`;
 
     const { payload } = await jwtVerify(token, jwks, {
-      issuer: `https://login.microsoftonline.com/${tenantId}/v2.0`,
+      issuer,
       audience,
       algorithms: ['RS256'],
     });

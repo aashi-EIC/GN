@@ -9,9 +9,9 @@ import { cancellation } from './middleware/cancellation.js';
 import { correlation } from './middleware/correlation.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { rateLimit } from './middleware/rateLimit.js';
-import { authRouter } from './routes/auth.js';
 import { chatRouter } from './routes/chat.js';
 import { healthRouter } from './routes/health.js';
+import { platformRouter } from './routes/platform.js';
 
 export const app = express();
 const allowedOrigins = config.CORS_ALLOWED_ORIGINS
@@ -61,7 +61,7 @@ app.use(
       }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['authorization', 'content-type', 'x-correlation-id'],
   }),
 );
@@ -70,7 +70,7 @@ app.use(express.json({ limit: '256kb', strict: true }));
 app.use(cancellation);
 app.use('/api', rateLimit);
 app.use('/api/v1/health', healthRouter);
-app.use('/api/v1', authRouter);
+app.use('/api/v1', authenticate, platformRouter);
 app.use('/api/v1', authenticate, chatRouter);
 app.use(notFound);
 app.use(errorHandler);

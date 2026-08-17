@@ -105,7 +105,6 @@ export function Sidebar({
   startConversation,
   openConversation,
   deleteConversation,
-  setGuideOpen,
   setSidebarOpen,
   setSettingsOpen,
 }: {
@@ -118,7 +117,6 @@ export function Sidebar({
   startConversation: () => void;
   openConversation: (conversation: Conversation) => void;
   deleteConversation: (conversationId: string) => void;
-  setGuideOpen: (open: boolean) => void;
   setSidebarOpen: (open: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
   onSignOut?: () => void;

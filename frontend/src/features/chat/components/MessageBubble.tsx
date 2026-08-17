@@ -11,10 +11,8 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
-import type { FeedbackValue, Message, ToastState } from "../../../shared/types/app";
-import { BarChart } from "./charts/BarChart";
-import { HtmlPlot } from "./charts/HtmlPlot";
-import { InsightTable } from "./charts/InsightTable";
+import type { FeedbackValue, Message } from "../../../shared/types/app";
+import { VisualizationRenderer } from "./charts/VisualizationRenderer";
 import { IconButton } from "../../../shared/components/ui/IconButton";
 
 function MessageBubbleComponent({
@@ -23,7 +21,6 @@ function MessageBubbleComponent({
   feedback,
   copyMessage,
   markFeedback,
-  showToast,
   onReportError,
   onEditUserMessage,
   onRegenerateResponse,
@@ -34,7 +31,6 @@ function MessageBubbleComponent({
   feedback?: FeedbackValue;
   copyMessage: (message: Message) => void;
   markFeedback: (messageId: string, value: FeedbackValue) => void;
-  showToast: (message: string, tone?: ToastState["tone"]) => void;
   onReportError: () => void;
   onEditUserMessage?: (messageId: string, newText: string) => void;
   onRegenerateResponse?: (messageId: string) => void;
@@ -146,24 +142,7 @@ function MessageBubbleComponent({
           </div>
         )}
 
-        {message.chart && (
-          <BarChart title={message.chartTitle ?? "Trend"} data={message.chart} />
-        )}
-
-        {message.table && <InsightTable table={message.table} />}
-
-        {message.plot && <HtmlPlot plot={message.plot} showToast={showToast} />}
-
-        {message.actions && (
-          <div className="action-list">
-            {message.actions.map((action) => (
-              <span key={action}>
-                <Check />
-                {action}
-              </span>
-            ))}
-          </div>
-        )}
+        {message.visualizations && <VisualizationRenderer blocks={message.visualizations} />}
 
 
 
@@ -225,7 +204,7 @@ function MessageBubbleComponent({
             <div>
               <Code2 />
               <span>Admin debug mode</span>
-              <b>{message.mcpResponseSource ?? "node-bff"}</b>
+              <b>node-bff</b>
             </div>
             <pre>
               {JSON.stringify(

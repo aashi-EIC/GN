@@ -1,153 +1,98 @@
-# Conversational BI frontend
+# Conversational BI
 
-This package builds the Conversational BI React application and serves it from an Nginx container.
+This package contains the React frontend and Node.js Backend for Frontend (BFF). Real `.env` files, installed dependencies, build output and credentials are intentionally excluded.
 
-## Package contents
-
-The delivery consists of:
-
-1. A ZIP file containing the source code and Docker configuration.
-2. A separate `.env` file containing the environment-specific frontend configuration.
-
-Keep the `.env` file outside the ZIP during transfer. After extracting the ZIP, place `.env` in the extracted root folder, beside `Dockerfile.frontend` and `docker-compose.frontend.yml`.
-
-The extracted folder should contain:
+## Package layout
 
 ```text
-conversational-bi/
-├── frontend/
-├── .env
-├── .dockerignore
-├── Dockerfile.frontend
-├── docker-compose.frontend.yml
-└── nginx.frontend.conf
+Conversational-BI/
+|-- frontend/
+|   |-- .env.example
+|   |-- package.json
+|   `-- package-lock.json
+|-- backend/
+|   |-- .env.example
+|   |-- package.json
+|   `-- package-lock.json
+`-- README.md
 ```
 
-## Prerequisites
+## Requirements
 
-- Docker Desktop on Windows or macOS, or Docker Engine with the Compose plugin on Linux
-- Docker configured to use Linux containers
-- Port `5173` available on the host
+- Node.js 20 or newer for the backend
+- Node.js 22 or newer for the frontend
+- npm, included with Node.js
 - The frontend URL registered as a Single-page application redirect URI in Microsoft Entra ID
 
-No local Node.js or npm installation is required when using Docker.
+## Install dependencies after extraction
 
-## Environment configuration
+`node_modules` is intentionally excluded. From the extracted package root, install the exact dependency versions from the lockfiles:
 
-The separately supplied `.env` file must contain:
+```powershell
+cd frontend
+npm ci
+cd ../backend
+npm ci
+cd ..
+```
+
+If PowerShell blocks `npm.ps1`, use:
+
+```powershell
+cd frontend
+npm.cmd ci
+cd ../backend
+npm.cmd ci
+cd ..
+```
+
+## Configure the environments
+
+Create local environment files from the supplied templates:
+
+```powershell
+Copy-Item frontend/.env.example frontend/.env
+Copy-Item backend/.env.example backend/.env
+```
+
+Replace the placeholders with client-provided values. The frontend environment requires:
 
 ```dotenv
 VITE_ENTRA_CLIENT_ID=<application-client-id>
 VITE_ENTRA_TENANT_ID=<directory-tenant-id>
 VITE_ENTRA_API_SCOPE=User.Read
-VITE_API_BASE_URL=<browser-accessible-node-bff-url>/api/v1
+VITE_API_BASE_URL=http://localhost:3000/api/v1
 ```
 
-`User.Read` is the current scope for frontend login and SSO testing. After the Node BFF exposes a delegated scope, replace it with the client-approved value, such as:
+After the BFF delegated scope is configured, replace `User.Read` with the client-approved BFF scope, such as `api://<backend-application-id>/access_as_user`.
 
-```dotenv
-VITE_ENTRA_API_SCOPE=api://<backend-application-id>/access_as_user
-```
+All `VITE_*` values are compiled into browser JavaScript. Never place an Entra client secret, MCP API key, password, private key or access token in the frontend environment. Server-only values belong in `backend/.env` or the deployment secret manager.
 
-All `VITE_*` values are compiled into browser JavaScript. Do not place client secrets, API keys, passwords, private keys, certificates, or access tokens in these variables.
+## Run locally
 
-## Build and run
-
-Open PowerShell or a terminal in the extracted root folder and run:
+Start the backend from one terminal:
 
 ```powershell
+cd backend
+npm run dev
+```
+
+Start the frontend from another terminal:
+
+```powershell
+cd frontend
+npm run dev
+```
+
+## Run the frontend with Docker
+
+Docker installs frontend dependencies during the image build, so running `npm ci` locally is not required for this workflow.
+
+```powershell
+cd frontend
 docker compose -f docker-compose.frontend.yml up --build -d
 ```
 
-Docker will install frontend dependencies, build the React application, create the Nginx image, and start the container.
+The default frontend address is <http://localhost:5173>.
 
-Open the application at:
-
-```text
-http://localhost:5173
-```
-
-## Verify the deployment
-
-Check container status:
-
-```powershell
-docker compose -f docker-compose.frontend.yml ps
-```
-
-The frontend service should show as `Up` and then `healthy`.
-
-View logs:
-
-```powershell
-docker compose -f docker-compose.frontend.yml logs --tail 100 frontend
-```
-
-Verify the HTTP response from PowerShell:
-
-```powershell
-(Invoke-WebRequest -UseBasicParsing http://localhost:5173).StatusCode
-```
-
-The expected status is `200`.
-
-## Stop or restart
-
-Stop and remove the container:
-
-```powershell
-docker compose -f docker-compose.frontend.yml down
-```
-
-Restart it:
-
-```powershell
-docker compose -f docker-compose.frontend.yml up -d
-```
-
-## Apply environment changes
-
-Vite reads environment values while the image is built. If `.env` changes, rebuild the image:
-
-```powershell
-docker compose -f docker-compose.frontend.yml down
-docker compose -f docker-compose.frontend.yml build --no-cache frontend
-docker compose -f docker-compose.frontend.yml up -d
-```
-
-## Microsoft Entra redirect URI
-
-For local Docker testing, configure this exact URI under the app registration's **Authentication > Single-page application** platform:
-
-```text
-http://localhost:5173
-```
-
-For a deployed environment, register the exact HTTPS frontend address instead. The scheme, host, port, path, and trailing slash must match the address used by the browser.
-
-## Troubleshooting
-
-### Port 5173 is already in use
-
-Stop the process or container using the port, or change the Compose mapping from:
-
-```yaml
-ports:
-  - "5173:80"
-```
-
-to another available host port, for example `5174:80`. Add the resulting URL to the Entra SPA redirect URIs.
-
-### Entra sign-in returns to the login page
-
-Confirm that the client ID, tenant ID, scope, and redirect URI match the Entra app registration. Rebuild the image after changing `.env`.
-
-### Frontend loads but API requests fail
-
-`VITE_API_BASE_URL` is used by the user's browser, so it must be reachable from that browser. The Node BFF must also allow the frontend origin through CORS. `localhost` refers to the user's own computer, not another Docker host or remote server.
-
-### Review container logs
-
-```powershell
-docker compose -f docker-compose.frontend.yml logs -f frontend
-```
+For backend configuration and endpoints, see `backend/README.md`. For frontend Docker troubleshooting, see `frontend/FRONTEND_DOCKER_HANDOVER.md`.

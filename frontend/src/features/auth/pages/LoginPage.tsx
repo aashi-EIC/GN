@@ -8,7 +8,6 @@ export function LoginPage({
 }: {
   entraAvailable: boolean;
   onEntraSignIn?: () => Promise<void>;
-  onLocalSignIn?: (credentials: { username: string; name?: string }) => Promise<void>;
 }) {
   const [providerError, setProviderError] = useState("");
   const [entraBusy, setEntraBusy] = useState(false);

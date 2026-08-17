@@ -1,4 +1,4 @@
-import { InteractionRequiredAuthError, InteractionStatus } from "@azure/msal-browser";
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
 import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { useQuery } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
@@ -16,6 +16,7 @@ import { TourModal } from "../shared/components/TourModal";
 import { Navbar } from "../shared/components/Navbar";
 import { Sidebar } from "../shared/components/Sidebar";
 import { defaultSettings, storageKeys } from "../shared/config/storage";
+import { replaceSemanticModels } from "../shared/constants/semanticModels";
 import { apiScope } from "../features/auth/lib/msal";
 import { LoginPage } from "../features/auth/pages/LoginPage";
 import { buildMcpRequestPayload, persistMcpRequestAudit, requestMcpInsight } from "../features/chat/services/mcp.service";
@@ -30,59 +31,23 @@ import type {
   UserProfile,
 } from "../shared/types/app";
 import type { CountryCode, ModelId } from "../features/chat/types/semantic";
-import { copyText, downloadJson, messageToPlainText } from "../shared/utils/clipboard";
+import { copyText, messageToPlainText } from "../shared/utils/clipboard";
 import { accountToProfile } from "../shared/utils/identity";
-import { createId, titleFromUserMessages } from "../shared/utils/session";
+import { createId, createSessionId, isSessionId, titleFromUserMessages } from "../shared/utils/session";
 import { getModel, normalizeCountryCode, normalizeModelId } from "../features/chat/utils/semantic";
 import { loadFromStorage, saveToStorage } from "../shared/utils/storage";
 import { calculateTokenUsageAndCost } from "../features/chat/utils/tokenCost";
+import {
+  deleteSession,
+  fetchBootstrap,
+  removeMessageFeedback,
+  submitIssueReport,
+  submitMessageFeedback,
+  toFrontendModel,
+} from "../shared/services/platform.service";
 
 function AppRoot({ msalEnabled }: { msalEnabled: boolean }) {
-  return <AppRouter shell={msalEnabled ? <MsalBackedShell /> : <LocalShell />} />;
-}
-
-function LocalShell() {
-  const [localUser, setLocalUser] = useState<UserProfile | null>(() =>
-    loadFromStorage<UserProfile | null>(storageKeys.user, null),
-  );
-  const [authStatus, setAuthStatus] = useState<"signing-in" | "signing-out" | null>(null);
-
-  const localSignIn = async (credentials: { username: string; name?: string }) => {
-    const displayName = credentials.name || credentials.username.split("@")[0] || credentials.username;
-    const userProfile: UserProfile = {
-      name: displayName,
-      email: credentials.username,
-      authProvider: "Local Auth",
-    };
-    setLocalUser(userProfile);
-    saveToStorage(storageKeys.user, userProfile);
-  };
-
-  const signOut = async () => {
-    setAuthStatus("signing-out");
-    try {
-      setLocalUser(null);
-      saveToStorage(storageKeys.user, null);
-    } finally {
-      setAuthStatus(null);
-    }
-  };
-
-  const acquireToken = async () => null;
-
-  if (authStatus === "signing-out") {
-    return <LoadingScreen text="Signing out..." />;
-  }
-
-  return (
-    <IntelligenceApp
-      user={localUser}
-      entraAvailable={false}
-      onLocalSignIn={localSignIn}
-      onSignOut={signOut}
-      acquireToken={acquireToken}
-    />
-  );
+  return <AppRouter shell={msalEnabled ? <MsalBackedShell /> : <LoginPage entraAvailable={false} />} />;
 }
 
 function MsalBackedShell() {
@@ -90,10 +55,7 @@ function MsalBackedShell() {
   const isAuthenticated = useIsAuthenticated();
   const account = instance.getActiveAccount() ?? accounts[0];
   const profile = accountToProfile(account);
-  const [localUser, setLocalUser] = useState<UserProfile | null>(() =>
-    loadFromStorage<UserProfile | null>(storageKeys.user, null),
-  );
-  const activeUser = (isAuthenticated ? profile : null) || localUser;
+  const activeUser = isAuthenticated ? profile : null;
   const [authStatus, setAuthStatus] = useState<"signing-in" | "signing-out" | null>(null);
 
   const signIn = async () => {
@@ -110,22 +72,9 @@ function MsalBackedShell() {
     }
   };
 
-  const localSignIn = async (credentials: { username: string; name?: string }) => {
-    const displayName = credentials.name || credentials.username.split("@")[0] || credentials.username;
-    const userProfile: UserProfile = {
-      name: displayName,
-      email: credentials.username,
-      authProvider: "Local Auth",
-    };
-    setLocalUser(userProfile);
-    saveToStorage(storageKeys.user, userProfile);
-  };
-
   const signOut = async () => {
     try {
       setAuthStatus("signing-out");
-      setLocalUser(null);
-      saveToStorage(storageKeys.user, null);
       if (isAuthenticated && account) {
         try {
           await instance.logoutPopup({ account });
@@ -174,7 +123,6 @@ function MsalBackedShell() {
       user={activeUser}
       entraAvailable
       onEntraSignIn={signIn}
-      onLocalSignIn={localSignIn}
       onSignOut={signOut}
       acquireToken={acquireToken}
     />
@@ -185,14 +133,12 @@ function IntelligenceApp({
   user,
   entraAvailable,
   onEntraSignIn,
-  onLocalSignIn,
   onSignOut,
   acquireToken,
 }: {
   user: UserProfile | null;
   entraAvailable: boolean;
   onEntraSignIn?: () => Promise<void>;
-  onLocalSignIn?: (credentials: { username: string; name?: string }) => Promise<void>;
   onSignOut: () => void;
   acquireToken: () => Promise<string | null>;
 }) {
@@ -212,7 +158,6 @@ function IntelligenceApp({
       <LoginPage
         entraAvailable={entraAvailable}
         onEntraSignIn={onEntraSignIn}
-        onLocalSignIn={onLocalSignIn}
       />
     );
   }
@@ -251,7 +196,10 @@ function Workspace({
   const debugOpen = useAppSelector((state) => state.ui.debugOpen);
   const themeMode = useAppSelector((state) => state.ui.themeMode);
   const [conversations, setConversations] = useState<Conversation[]>(() =>
-    loadFromStorage<Conversation[]>(storageKeys.conversations, []),
+    loadFromStorage<Conversation[]>(storageKeys.conversations, []).map((conversation) => ({
+      ...conversation,
+      id: isSessionId(conversation.id) ? conversation.id : createSessionId(),
+    })),
   );
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [selectedModelId, setSelectedModelId] = useState<ModelId>(() =>
@@ -263,7 +211,6 @@ function Workspace({
   const [prompt, setPrompt] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [modelsOpen, setModelsOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
@@ -273,6 +220,7 @@ function Workspace({
     loadFromStorage<Record<string, FeedbackValue>>(storageKeys.feedback, {}),
   );
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [, refreshModelCatalog] = useState(0);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const workspaceStatus = useQuery({
@@ -281,7 +229,6 @@ function Workspace({
       label: "Ready",
       checkedAt: new Date().toISOString(),
     }),
-    staleTime: 60_000,
   });
 
   const activeConversation = conversations.find(
@@ -314,6 +261,19 @@ function Workspace({
       return titleMatches || modelNameMatches || modelShortMatches || messageMatches;
     });
   }, [sortedConversations, historyQuery]);
+
+  useEffect(() => {
+    const configuredModels = bootstrap.data?.semantic_models.map(toFrontendModel) ?? [];
+    if (!configuredModels.length) return;
+
+    replaceSemanticModels(configuredModels);
+    refreshModelCatalog((version) => version + 1);
+    setSelectedModelId((current) =>
+      configuredModels.some((model) => model.id === current)
+        ? current
+        : configuredModels[0]!.id,
+    );
+  }, [bootstrap.data]);
 
   useEffect(() => {
     saveToStorage(storageKeys.conversations, conversations);
@@ -359,9 +319,6 @@ function Workspace({
       if (modelsOpen && !target.closest(".model-picker")) {
         setModelsOpen(false);
       }
-      if (profileOpen && !target.closest(".profile-wrap")) {
-        setProfileOpen(false);
-      }
     };
 
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -369,7 +326,6 @@ function Workspace({
         return;
       }
       setModelsOpen(false);
-      setProfileOpen(false);
       if (sidebarOpen) {
         dispatch(uiActions.setSidebarOpen(false));
       }
@@ -381,7 +337,7 @@ function Workspace({
       document.removeEventListener("pointerdown", closeOpenNavigation);
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [dispatch, modelsOpen, profileOpen, sidebarOpen]);
+  }, [dispatch, modelsOpen, sidebarOpen]);
 
   const showToast = (message: string, tone: ToastState["tone"] = "success") => {
     setToast({ message, tone });
@@ -419,21 +375,6 @@ function Workspace({
     );
   };
 
-  const setActiveConversationCountry = (nextCountryCode: CountryCode) => {
-    setSelectedCountryCode(nextCountryCode);
-    if (!activeConversation) {
-      return;
-    }
-
-    setConversations((current) =>
-      current.map((conversation) =>
-        conversation.id === activeConversation.id
-          ? { ...conversation, countryCode: nextCountryCode }
-          : conversation,
-      ),
-    );
-  };
-
   const openConversation = (conversation: Conversation) => {
     setActiveConversationId(conversation.id);
     setSelectedModelId(normalizeModelId(conversation.modelId));
@@ -442,6 +383,7 @@ function Workspace({
   };
 
   const deleteConversation = (conversationId: string) => {
+    const deleting = conversations.find((conversation) => conversation.id === conversationId);
     const nextConversations = conversations.filter(
       (conversation) => conversation.id !== conversationId,
     );
@@ -453,6 +395,17 @@ function Workspace({
       setSelectedCountryCode(normalizeCountryCode(nextActive?.countryCode ?? selectedCountryCode));
     }
     showToast("Conversation removed");
+    void (async () => {
+      const token = await acquireToken();
+      if (!token || !isSessionId(conversationId) || !deleting?.messages.some((message) => message.backendId)) {
+        return;
+      }
+      try {
+        await deleteSession(token, conversationId);
+      } catch {
+        showToast("Removed locally; server deletion is pending", "warning");
+      }
+    })();
   };
 
   const submitPrompt = async (question = prompt) => {
@@ -466,7 +419,7 @@ function Workspace({
       activeConversation?.countryCode ?? selectedCountryCode,
     );
     const createdAt = new Date().toISOString();
-    const conversationId = activeConversation?.id ?? createId("conv");
+    const conversationId = activeConversation?.id ?? createSessionId();
     const userMessage: Message = {
       id: createId("msg"),
       role: "user",
@@ -515,16 +468,13 @@ function Workspace({
     try {
       const token = await acquireToken();
       const mcpRequest = buildMcpRequestPayload({
-        user,
         conversationId,
         modelId: currentModelId,
-        countryCode: currentCountryCode,
         prompt: trimmedQuestion,
-        token,
       });
       requestAudit = mcpRequest.audit;
       persistMcpRequestAudit(requestAudit);
-      const answer = await requestMcpInsight(mcpRequest.payload, requestAudit);
+      const answer = await requestMcpInsight(mcpRequest.payload, requestAudit, token);
       const tokenUsage = calculateTokenUsageAndCost(
         currentModelId,
         trimmedQuestion,
@@ -590,7 +540,6 @@ function Workspace({
           },
         ],
         mcpRequest: requestAudit ?? undefined,
-        mcpResponseSource: "node-bff",
         tokenUsage,
       };
 
@@ -617,9 +566,6 @@ function Workspace({
     }
 
     const currentModelId = normalizeModelId(activeConversation.modelId ?? selectedModelId);
-    const currentCountryCode = normalizeCountryCode(
-      activeConversation.countryCode ?? selectedCountryCode,
-    );
     const createdAt = new Date().toISOString();
     const conversationId = activeConversation.id;
 
@@ -656,16 +602,13 @@ function Workspace({
     try {
       const token = await acquireToken();
       const mcpRequest = buildMcpRequestPayload({
-        user,
         conversationId,
         modelId: currentModelId,
-        countryCode: currentCountryCode,
         prompt: trimmedQuestion,
-        token,
       });
       requestAudit = mcpRequest.audit;
       persistMcpRequestAudit(requestAudit);
-      const answer = await requestMcpInsight(mcpRequest.payload, requestAudit);
+      const answer = await requestMcpInsight(mcpRequest.payload, requestAudit, token);
       const tokenUsage = calculateTokenUsageAndCost(
         currentModelId,
         trimmedQuestion,
@@ -731,7 +674,6 @@ function Workspace({
           },
         ],
         mcpRequest: requestAudit ?? undefined,
-        mcpResponseSource: "node-bff",
         tokenUsage,
       };
 
@@ -791,6 +733,16 @@ function Workspace({
     saveToStorage(storageKeys.issues, [issue, ...issues]);
     setIssueOpen(false);
     showToast(`Issue ${issue.id} saved`);
+    void (async () => {
+      try {
+        const token = await acquireToken();
+        if (!token) return;
+        const saved = await submitIssueReport(token, issue, lastMessage?.backendId);
+        showToast(`Issue ${saved.id} submitted`);
+      } catch {
+        showToast("Issue saved locally; server submission is pending", "warning");
+      }
+    })();
   };
 
   const copyMessage = async (message: Message) => {
@@ -816,28 +768,33 @@ function Workspace({
           ? "Marked as a good response"
           : "Marked as a bad response",
     );
-  };
-
-  const exportConversation = () => {
-    if (!activeConversation) {
-      showToast("Start a conversation before exporting", "warning");
-      return;
+    const message = conversations
+      .flatMap((conversation) => conversation.messages)
+      .find((entry) => entry.id === messageId);
+    if (message?.backendId) {
+        const backendMessageId = message.backendId;
+        void (async () => {
+          try {
+            const token = await acquireToken();
+            if (!token) return;
+            if (removing) {
+              await removeMessageFeedback(token, backendMessageId);
+            } else {
+              await submitMessageFeedback(
+                token,
+                backendMessageId,
+                value === "helpful" ? "helpful" : "not_helpful",
+              );
+            }
+          } catch {
+            showToast("Feedback saved locally; server submission is pending", "warning");
+          }
+        })();
     }
-    downloadJson(`${activeConversation.title.replace(/[^a-z0-9]+/gi, "-")}.json`, {
-      exportedAt: new Date().toISOString(),
-      conversation: activeConversation,
-      feedback: Object.fromEntries(
-        Object.entries(feedback).filter(([messageId]) =>
-          activeConversation.messages.some((message) => message.id === messageId),
-        ),
-      ),
-    });
-    showToast("Conversation exported");
   };
 
   const openSelectedModelGuide = () => {
     setModelsOpen(false);
-    setProfileOpen(false);
     setGuideOpen(true);
   };
 
@@ -853,7 +810,6 @@ function Workspace({
         startConversation={startConversation}
         openConversation={openConversation}
         deleteConversation={deleteConversation}
-        setGuideOpen={setGuideOpen}
         setSidebarOpen={(open) => dispatch(uiActions.setSidebarOpen(open))}
         setSettingsOpen={setSettingsOpen}
         onSignOut={onSignOut}
@@ -870,14 +826,12 @@ function Workspace({
         <main className={activeConversation ? "chat" : "welcome"}>
           {!activeConversation ? (
             <WelcomePanel
-              user={user}
               model={selectedModel}
               modelId={selectedModelId}
               setModelId={setSelectedModelId}
               modelsOpen={modelsOpen}
               setModelsOpen={setModelsOpen}
               countryCode={selectedCountryCode}
-              setCountryCode={setSelectedCountryCode}
               prompt={prompt}
               setPrompt={setPrompt}
               submitPrompt={submitPrompt}
@@ -893,7 +847,6 @@ function Workspace({
                     feedback={feedback[message.id]}
                     copyMessage={copyMessage}
                     markFeedback={markFeedback}
-                    showToast={showToast}
                     onReportError={() => setIssueOpen(true)}
                     onEditUserMessage={handleEditUserMessage}
                     onRegenerateResponse={regenerateResponse}
@@ -929,7 +882,6 @@ function Workspace({
                 countryCode={normalizeCountryCode(
                   activeConversation.countryCode ?? selectedCountryCode,
                 )}
-                setCountryCode={setActiveConversationCountry}
               />
             </>
           )}
@@ -964,7 +916,6 @@ function Workspace({
           }}
           settings={settings}
           saveSettings={saveSettings}
-          debugOpen={debugOpen}
           toggleDebug={() => dispatch(uiActions.setDebugOpen(!debugOpen))}
           themeMode={themeMode}
           toggleTheme={() => dispatch(uiActions.toggleThemeMode())}

@@ -7,8 +7,9 @@ This service is the only backend called by React. All application endpoints are 
 - Every application route validates the inbound Microsoft Entra access token signature, issuer, audience and lifetime.
 - Optional delegated scope and role allowlists are enforced from environment configuration.
 - Session ownership uses the validated `tid` and `oid` claims. Browser-supplied email or owner values are never trusted.
-- A session's semantic model is immutable and enforced in a PostgreSQL transaction.
-- MCP authentication is selected by `MCP_AUTH_MODE`: `api-key` for current testing or `obo` for production.
+- A session's semantic model is immutable and enforced by the repository layer.
+- Sessions, messages, feedback and issue reports currently use process-local memory and reset when the BFF restarts.
+- MCP authentication is selected by `MCP_AUTH_MODE`: `none` for an explicitly unprotected demo endpoint, `api-key` for protected testing, or `obo` for production.
 - External response content is size-limited, runtime-validated and rejected when it contains active/script content.
 - Logs redact authorization tokens, API keys, secrets and passwords.
 
@@ -17,10 +18,22 @@ This service is the only backend called by React. All application endpoints are 
 | Method | Path | Authentication | Purpose |
 |---|---|---|---|
 | GET | `/api/v1/health/live` | No | Process liveness |
-| GET | `/api/v1/health/ready` | No | Configuration, PostgreSQL and optional Redis readiness |
-| GET | `/api/v1/sessions?limit=10` | Entra | List the caller's sessions |
+| GET | `/api/v1/health/ready` | No | Configuration and optional Redis readiness |
+| GET | `/api/v1/me` | Entra | Current user, scopes, roles and effective permissions |
+| GET | `/api/v1/bootstrap` | Entra | User, accessible models, feature flags and UI limits |
+| GET | `/api/v1/semantic-models` | Entra | Accessible semantic-model catalogue |
+| GET | `/api/v1/semantic-models/:modelId` | Entra | One accessible model |
+| GET | `/api/v1/semantic-models/:modelId/prompts` | Entra | Example prompts for one model |
+| POST | `/api/v1/sessions` | Entra | Create an owned session and server-generated UUID |
+| GET | `/api/v1/sessions?limit=10&cursor=&search=&semantic_model_id=` | Entra | Search and paginate the caller's sessions |
 | GET | `/api/v1/sessions/:sessionId` | Entra | Read one owned session and its messages |
+| PATCH | `/api/v1/sessions/:sessionId` | Entra | Rename one owned session |
+| DELETE | `/api/v1/sessions/:sessionId` | Entra | Soft-delete one owned session |
 | POST | `/api/v1/chat` | Entra | Send a prompt through the BFF to MCP |
+| POST | `/api/v1/chat/:requestId/cancel` | Entra | Cancel an active owned prompt request |
+| POST | `/api/v1/messages/:messageId/feedback` | Entra | Create or update message feedback |
+| DELETE | `/api/v1/messages/:messageId/feedback` | Entra | Remove message feedback |
+| POST | `/api/v1/issues` | Entra | Persist an issue report with ownership context |
 
 The stable BFF request is:
 
@@ -34,6 +47,29 @@ The stable BFF request is:
 
 No user email, owner ID, API key or downstream token is accepted in the body.
 
+## Frontend configuration
+
+`SEMANTIC_MODELS_JSON` is the temporary client-owned catalogue source until a dedicated configuration service is available. The BFF validates it at startup and filters models by the caller's Entra roles. An empty array keeps the current frontend fallback catalogue available during integration.
+
+Example structure using placeholders only:
+
+```json
+[
+  {
+    "id": "client-provided-model-id",
+    "name": "Client model name",
+    "short": "CM",
+    "description": "Client-provided description",
+    "examplePrompts": ["Client-provided example prompt"],
+    "supportedVisualizations": ["kpi", "bar", "line", "table"],
+    "enabled": true,
+    "allowedRoles": ["ClientConfiguredAnalystRole"]
+  }
+]
+```
+
+`FEATURE_FLAGS_JSON`, `MAX_PROMPT_LENGTH` and `MAX_HISTORY_ITEMS` control non-secret UI behavior returned by `/api/v1/bootstrap`. Secrets are never returned by configuration endpoints.
+
 ## Setup
 
 1. Copy `.env.example` to `.env`.
@@ -41,28 +77,30 @@ No user email, owner ID, API key or downstream token is accepted in the body.
 3. Install and compile:
 
 ```powershell
-npm.cmd install
+npm.cmd ci
 npm.cmd run typecheck
 npm.cmd run build
 ```
 
-4. Create the PostgreSQL schema:
-
-```powershell
-npm.cmd run migrate
-```
-
-5. Start development mode:
+4. Start development mode:
 
 ```powershell
 npm.cmd run dev
 ```
 
-Production uses `npm.cmd run build`, `npm.cmd run migrate:prod`, then `npm.cmd start`.
+Production uses `npm.cmd run build`, then `npm.cmd start`.
+
+## Temporary storage
+
+The BFF does not currently require a database. Chat sessions, messages, feedback and issue reports are retained only in the running Node process. This is suitable for local integration and demonstrations, but data is lost on restart and is not shared between multiple BFF instances. The repository interfaces remain isolated so a client-owned persistent store can be added later without changing the HTTP API.
 
 ## API-key testing mode
 
 Set `MCP_AUTH_MODE=api-key`, then supply the client-provided `MCP_API_KEY_HEADER` and `MCP_API_KEY_VALUE`. The header name is not assumed; `Authorization` is supported when that is the agreed external contract.
+
+## Unauthenticated demo mode
+
+Set `MCP_AUTH_MODE=none` only when the MCP team confirms that the non-production endpoint is intentionally unauthenticated. This mode must not be used for production.
 
 ## OBO production mode
 
@@ -72,14 +110,38 @@ The inbound BFF token is exchanged using MSAL's on-behalf-of flow. Secrets belon
 
 See [docs/entra-obo-one-registration.md](docs/entra-obo-one-registration.md) for the one-registration workflow and the exact client values still required.
 
-## Client-specific MCP contract
+## MCP contract
 
-No external endpoint path, payload fields, response fields, scopes, model IDs, RLS claims or Entra identifiers are hard-coded.
+No external endpoint path, request payload fields, scopes, model IDs, RLS claims or Entra identifiers are hard-coded.
 
 - `mcpRequestAdapter.ts` maps the stable BFF request to field paths named by `MCP_REQUEST_*` variables.
-- `mcpResponseAdapter.ts` validates a JSON-object response and resolves client-provided `MCP_RESPONSE_*_PATH` values.
+- `mcpResponseAdapter.ts` validates the agreed `answer.text` + `answer.blocks` JSON contract and rejects unsafe content. It does not perform client-specific field mapping or render HTML.
 - `httpMcpHostClient.ts` owns the external URL, HTTP behavior, timeouts, cancellation, response size limit and explicitly enabled safe retries.
 - `authenticationProvider.ts` owns API-key and OBO authentication.
+
+The MCP host must return `Content-Type: application/json` with this completed-response shape:
+
+```json
+{
+  "answer": {
+    "text": "Here is the requested analysis.",
+    "blocks": [
+      {
+        "type": "chart",
+        "chart_type": "line",
+        "title": "Weekly trend",
+        "data": [
+          { "week": "W1", "value": 120 },
+          { "week": "W2", "value": 145 }
+        ],
+        "encoding": { "x": "week", "y": "value" }
+      }
+    ]
+  }
+}
+```
+
+`answer.text` is required. `answer.blocks` is optional and accepts only structured `text`, `table`, and `chart` blocks. Raw HTML, scripts and SSE events are not part of this contract.
 
 Safe retries are disabled by default because the unknown MCP POST operation cannot be assumed idempotent. Enable them only after the MCP owner confirms that replaying a correlation-ID-identical request is safe.
 

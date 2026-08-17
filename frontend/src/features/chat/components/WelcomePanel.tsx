@@ -2,40 +2,33 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUp, ChevronLeft, ChevronRight, Mic, Plus } from "lucide-react";
 import { animate, motion, useReducedMotion } from "framer-motion";
 import { getCountryLocale } from "../../../shared/constants/locales";
-import type { UserProfile } from "../../../shared/types/app";
 import type { CountryCode, ModelId, SemanticModel } from "../types/semantic";
-import { firstName } from "../../../shared/utils/identity";
 import { handleEnter } from "../../../shared/utils/keyboard";
 import { startVoiceInput } from "../utils/speech";
 import { ModelPicker } from "./ModelPicker";
 
 export function WelcomePanel({
-  user,
   model,
   modelId,
   setModelId,
   modelsOpen,
   setModelsOpen,
   countryCode,
-  setCountryCode,
   prompt,
   setPrompt,
   submitPrompt,
 }: {
-  user: UserProfile;
   model: SemanticModel;
   modelId: ModelId;
   setModelId: (modelId: ModelId) => void;
   modelsOpen: boolean;
   setModelsOpen: (open: boolean) => void;
   countryCode: CountryCode;
-  setCountryCode: (countryCode: CountryCode) => void;
   prompt: string;
   setPrompt: (prompt: string) => void;
   submitPrompt: (prompt?: string) => void;
 }) {
   const [isRecording, setIsRecording] = useState(false);
-  const [activePromptIndex, setActivePromptIndex] = useState(0);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const promptTrackRef = useRef<HTMLDivElement | null>(null);
@@ -52,12 +45,8 @@ export function WelcomePanel({
     const track = promptTrackRef.current;
     if (!track) return;
 
-    const firstCard = track.querySelector<HTMLElement>("button");
-    const gap = Number.parseFloat(getComputedStyle(track).columnGap) || 0;
-    const step = (firstCard?.offsetWidth ?? track.clientWidth) + gap;
     const maxScroll = Math.max(0, track.scrollWidth - track.clientWidth);
 
-    setActivePromptIndex(Math.min(localizedPrompts.length - 1, Math.round(track.scrollLeft / step)));
     setCanScrollLeft(track.scrollLeft > 2);
     setCanScrollRight(track.scrollLeft < maxScroll - 2);
   };
@@ -113,7 +102,7 @@ export function WelcomePanel({
     >
       <h1>
         <span className="welcome-greeting-accent">
-          Hello, {firstName(user.name)}!
+          Hello, Aditya!
         </span>{" "}
         <span className="welcome-greeting-question">
           How can I help you today?
