@@ -14,7 +14,6 @@ export function SettingsModal({
   close,
   settings,
   saveSettings,
-  debugOpen,
   toggleDebug,
   themeMode,
   toggleTheme,
@@ -23,7 +22,6 @@ export function SettingsModal({
   close: () => void;
   settings: SettingsState;
   saveSettings: (settings: SettingsState) => void;
-  debugOpen?: boolean;
   toggleDebug?: () => void;
   themeMode?: "light" | "dark";
   toggleTheme?: () => void;

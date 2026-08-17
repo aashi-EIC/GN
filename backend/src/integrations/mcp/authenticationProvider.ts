@@ -20,6 +20,12 @@ class ApiKeyAuthenticationProvider implements OutboundAuthenticationProvider {
   }
 }
 
+class NoAuthenticationProvider implements OutboundAuthenticationProvider {
+  async getHeaders() {
+    return {};
+  }
+}
+
 class OboAuthenticationProvider implements OutboundAuthenticationProvider {
   private application?: ConfidentialClientApplication;
 
@@ -52,7 +58,7 @@ class OboAuthenticationProvider implements OutboundAuthenticationProvider {
 }
 
 export function createAuthenticationProvider(): OutboundAuthenticationProvider {
-  return config.MCP_AUTH_MODE === 'obo'
-    ? new OboAuthenticationProvider()
-    : new ApiKeyAuthenticationProvider();
+  if (config.MCP_AUTH_MODE === 'obo') return new OboAuthenticationProvider();
+  if (config.MCP_AUTH_MODE === 'api-key') return new ApiKeyAuthenticationProvider();
+  return new NoAuthenticationProvider();
 }

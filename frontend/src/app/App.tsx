@@ -1,4 +1,4 @@
-import { InteractionRequiredAuthError, InteractionStatus } from "@azure/msal-browser";
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
 import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { useQuery } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
@@ -31,7 +31,7 @@ import type {
   UserProfile,
 } from "../shared/types/app";
 import type { CountryCode, ModelId } from "../features/chat/types/semantic";
-import { copyText, downloadJson, messageToPlainText } from "../shared/utils/clipboard";
+import { copyText, messageToPlainText } from "../shared/utils/clipboard";
 import { accountToProfile } from "../shared/utils/identity";
 import { createId, createSessionId, isSessionId, titleFromUserMessages } from "../shared/utils/session";
 import { getModel, normalizeCountryCode, normalizeModelId } from "../features/chat/utils/semantic";
@@ -47,51 +47,7 @@ import {
 } from "../shared/services/platform.service";
 
 function AppRoot({ msalEnabled }: { msalEnabled: boolean }) {
-  return <AppRouter shell={msalEnabled ? <MsalBackedShell /> : <LocalShell />} />;
-}
-
-function LocalShell() {
-  const [localUser, setLocalUser] = useState<UserProfile | null>(() =>
-    loadFromStorage<UserProfile | null>(storageKeys.user, null),
-  );
-  const [authStatus, setAuthStatus] = useState<"signing-in" | "signing-out" | null>(null);
-
-  const localSignIn = async (credentials: { username: string; name?: string }) => {
-    const displayName = credentials.name || credentials.username.split("@")[0] || credentials.username;
-    const userProfile: UserProfile = {
-      name: displayName,
-      email: credentials.username,
-      authProvider: "Local Auth",
-    };
-    setLocalUser(userProfile);
-    saveToStorage(storageKeys.user, userProfile);
-  };
-
-  const signOut = async () => {
-    setAuthStatus("signing-out");
-    try {
-      setLocalUser(null);
-      saveToStorage(storageKeys.user, null);
-    } finally {
-      setAuthStatus(null);
-    }
-  };
-
-  const acquireToken = async () => null;
-
-  if (authStatus === "signing-out") {
-    return <LoadingScreen text="Signing out..." />;
-  }
-
-  return (
-    <IntelligenceApp
-      user={localUser}
-      entraAvailable={false}
-      onLocalSignIn={localSignIn}
-      onSignOut={signOut}
-      acquireToken={acquireToken}
-    />
-  );
+  return <AppRouter shell={msalEnabled ? <MsalBackedShell /> : <LoginPage entraAvailable={false} />} />;
 }
 
 function MsalBackedShell() {
@@ -99,10 +55,7 @@ function MsalBackedShell() {
   const isAuthenticated = useIsAuthenticated();
   const account = instance.getActiveAccount() ?? accounts[0];
   const profile = accountToProfile(account);
-  const [localUser, setLocalUser] = useState<UserProfile | null>(() =>
-    loadFromStorage<UserProfile | null>(storageKeys.user, null),
-  );
-  const activeUser = (isAuthenticated ? profile : null) || localUser;
+  const activeUser = isAuthenticated ? profile : null;
   const [authStatus, setAuthStatus] = useState<"signing-in" | "signing-out" | null>(null);
 
   const signIn = async () => {
@@ -119,22 +72,9 @@ function MsalBackedShell() {
     }
   };
 
-  const localSignIn = async (credentials: { username: string; name?: string }) => {
-    const displayName = credentials.name || credentials.username.split("@")[0] || credentials.username;
-    const userProfile: UserProfile = {
-      name: displayName,
-      email: credentials.username,
-      authProvider: "Local Auth",
-    };
-    setLocalUser(userProfile);
-    saveToStorage(storageKeys.user, userProfile);
-  };
-
   const signOut = async () => {
     try {
       setAuthStatus("signing-out");
-      setLocalUser(null);
-      saveToStorage(storageKeys.user, null);
       if (isAuthenticated && account) {
         try {
           await instance.logoutPopup({ account });
@@ -183,7 +123,6 @@ function MsalBackedShell() {
       user={activeUser}
       entraAvailable
       onEntraSignIn={signIn}
-      onLocalSignIn={localSignIn}
       onSignOut={signOut}
       acquireToken={acquireToken}
     />
@@ -194,14 +133,12 @@ function IntelligenceApp({
   user,
   entraAvailable,
   onEntraSignIn,
-  onLocalSignIn,
   onSignOut,
   acquireToken,
 }: {
   user: UserProfile | null;
   entraAvailable: boolean;
   onEntraSignIn?: () => Promise<void>;
-  onLocalSignIn?: (credentials: { username: string; name?: string }) => Promise<void>;
   onSignOut: () => void;
   acquireToken: () => Promise<string | null>;
 }) {
@@ -221,7 +158,6 @@ function IntelligenceApp({
       <LoginPage
         entraAvailable={entraAvailable}
         onEntraSignIn={onEntraSignIn}
-        onLocalSignIn={onLocalSignIn}
       />
     );
   }
@@ -275,7 +211,6 @@ function Workspace({
   const [prompt, setPrompt] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [modelsOpen, setModelsOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
@@ -288,14 +223,6 @@ function Workspace({
   const [, refreshModelCatalog] = useState(0);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  const workspaceStatus = useQuery({
-    queryKey: ["workspace-status", user.email],
-    queryFn: async () => ({
-      label: "Ready",
-      checkedAt: new Date().toISOString(),
-    }),
-    staleTime: 60_000,
-  });
   const bootstrap = useQuery({
     queryKey: ["workspace-bootstrap", user.email],
     queryFn: async () => {
@@ -396,9 +323,6 @@ function Workspace({
       if (modelsOpen && !target.closest(".model-picker")) {
         setModelsOpen(false);
       }
-      if (profileOpen && !target.closest(".profile-wrap")) {
-        setProfileOpen(false);
-      }
     };
 
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -406,7 +330,6 @@ function Workspace({
         return;
       }
       setModelsOpen(false);
-      setProfileOpen(false);
       if (sidebarOpen) {
         dispatch(uiActions.setSidebarOpen(false));
       }
@@ -418,7 +341,7 @@ function Workspace({
       document.removeEventListener("pointerdown", closeOpenNavigation);
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [dispatch, modelsOpen, profileOpen, sidebarOpen]);
+  }, [dispatch, modelsOpen, sidebarOpen]);
 
   const showToast = (message: string, tone: ToastState["tone"] = "success") => {
     setToast({ message, tone });
@@ -451,21 +374,6 @@ function Workspace({
       current.map((conversation) =>
         conversation.id === activeConversation.id
           ? { ...conversation, modelId: nextModelId }
-          : conversation,
-      ),
-    );
-  };
-
-  const setActiveConversationCountry = (nextCountryCode: CountryCode) => {
-    setSelectedCountryCode(nextCountryCode);
-    if (!activeConversation) {
-      return;
-    }
-
-    setConversations((current) =>
-      current.map((conversation) =>
-        conversation.id === activeConversation.id
-          ? { ...conversation, countryCode: nextCountryCode }
           : conversation,
       ),
     );
@@ -564,16 +472,13 @@ function Workspace({
     try {
       const token = await acquireToken();
       const mcpRequest = buildMcpRequestPayload({
-        user,
         conversationId,
         modelId: currentModelId,
-        countryCode: currentCountryCode,
         prompt: trimmedQuestion,
-        token,
       });
       requestAudit = mcpRequest.audit;
       persistMcpRequestAudit(requestAudit);
-      const answer = await requestMcpInsight(mcpRequest.payload, requestAudit);
+      const answer = await requestMcpInsight(mcpRequest.payload, requestAudit, token);
       const tokenUsage = calculateTokenUsageAndCost(
         currentModelId,
         trimmedQuestion,
@@ -639,7 +544,6 @@ function Workspace({
           },
         ],
         mcpRequest: requestAudit ?? undefined,
-        mcpResponseSource: "node-bff",
         tokenUsage,
       };
 
@@ -666,9 +570,6 @@ function Workspace({
     }
 
     const currentModelId = normalizeModelId(activeConversation.modelId ?? selectedModelId);
-    const currentCountryCode = normalizeCountryCode(
-      activeConversation.countryCode ?? selectedCountryCode,
-    );
     const createdAt = new Date().toISOString();
     const conversationId = activeConversation.id;
 
@@ -705,16 +606,13 @@ function Workspace({
     try {
       const token = await acquireToken();
       const mcpRequest = buildMcpRequestPayload({
-        user,
         conversationId,
         modelId: currentModelId,
-        countryCode: currentCountryCode,
         prompt: trimmedQuestion,
-        token,
       });
       requestAudit = mcpRequest.audit;
       persistMcpRequestAudit(requestAudit);
-      const answer = await requestMcpInsight(mcpRequest.payload, requestAudit);
+      const answer = await requestMcpInsight(mcpRequest.payload, requestAudit, token);
       const tokenUsage = calculateTokenUsageAndCost(
         currentModelId,
         trimmedQuestion,
@@ -780,7 +678,6 @@ function Workspace({
           },
         ],
         mcpRequest: requestAudit ?? undefined,
-        mcpResponseSource: "node-bff",
         tokenUsage,
       };
 
@@ -900,26 +797,8 @@ function Workspace({
     }
   };
 
-  const exportConversation = () => {
-    if (!activeConversation) {
-      showToast("Start a conversation before exporting", "warning");
-      return;
-    }
-    downloadJson(`${activeConversation.title.replace(/[^a-z0-9]+/gi, "-")}.json`, {
-      exportedAt: new Date().toISOString(),
-      conversation: activeConversation,
-      feedback: Object.fromEntries(
-        Object.entries(feedback).filter(([messageId]) =>
-          activeConversation.messages.some((message) => message.id === messageId),
-        ),
-      ),
-    });
-    showToast("Conversation exported");
-  };
-
   const openSelectedModelGuide = () => {
     setModelsOpen(false);
-    setProfileOpen(false);
     setGuideOpen(true);
   };
 
@@ -935,7 +814,6 @@ function Workspace({
         startConversation={startConversation}
         openConversation={openConversation}
         deleteConversation={deleteConversation}
-        setGuideOpen={setGuideOpen}
         setSidebarOpen={(open) => dispatch(uiActions.setSidebarOpen(open))}
         setSettingsOpen={setSettingsOpen}
         onSignOut={onSignOut}
@@ -958,7 +836,6 @@ function Workspace({
               modelsOpen={modelsOpen}
               setModelsOpen={setModelsOpen}
               countryCode={selectedCountryCode}
-              setCountryCode={setSelectedCountryCode}
               prompt={prompt}
               setPrompt={setPrompt}
               submitPrompt={submitPrompt}
@@ -974,7 +851,6 @@ function Workspace({
                     feedback={feedback[message.id]}
                     copyMessage={copyMessage}
                     markFeedback={markFeedback}
-                    showToast={showToast}
                     onReportError={() => setIssueOpen(true)}
                     onEditUserMessage={handleEditUserMessage}
                     onRegenerateResponse={regenerateResponse}
@@ -1010,7 +886,6 @@ function Workspace({
                 countryCode={normalizeCountryCode(
                   activeConversation.countryCode ?? selectedCountryCode,
                 )}
-                setCountryCode={setActiveConversationCountry}
               />
             </>
           )}
@@ -1045,7 +920,6 @@ function Workspace({
           }}
           settings={settings}
           saveSettings={saveSettings}
-          debugOpen={debugOpen}
           toggleDebug={() => dispatch(uiActions.setDebugOpen(!debugOpen))}
           themeMode={themeMode}
           toggleTheme={() => dispatch(uiActions.toggleThemeMode())}

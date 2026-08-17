@@ -22,17 +22,11 @@ const schema = z.object({
   PORT: integer(3000),
   LOG_LEVEL: z.string().default('info'),
 
-  DATABASE_URL: optionalText,
-  DATABASE_SSL: bool.default(false),
-  DB_POOL_MAX: integer(10),
-  DB_IDLE_TIMEOUT_MS: integer(30_000),
-  DB_CONNECTION_TIMEOUT_MS: integer(10_000),
   CORS_ALLOWED_ORIGINS: optionalText,
 
   ENTRA_TENANT_ID: optionalText,
-  ENTRA_CLIENT_ID: optionalText,
-  ENTRA_CLIENT_SECRET: optionalText,
   ENTRA_API_AUDIENCE: optionalText,
+  ENTRA_ACCEPT_V1_TOKENS: bool.default(false),
   ENTRA_REQUIRED_SCOPE: optionalText,
   ENTRA_ALLOWED_ROLES: optionalText,
 
@@ -55,7 +49,7 @@ const schema = z.object({
     z.number().int().min(0).max(3),
   ),
 
-  MCP_AUTH_MODE: z.enum(['api-key', 'obo']).default('api-key'),
+  MCP_AUTH_MODE: z.enum(['none', 'api-key', 'obo']).default('api-key'),
   MCP_API_KEY_HEADER: optionalText,
   MCP_API_KEY_VALUE: optionalText,
 
@@ -74,10 +68,6 @@ const schema = z.object({
     z.enum(['oid', 'sub', 'preferred_username']).optional(),
   ),
 
-  MCP_RESPONSE_TEXT_PATH: optionalText,
-  MCP_RESPONSE_DATA_PATH: optionalText,
-  MCP_RESPONSE_DEBUG_PATH: optionalText,
-  MCP_RESPONSE_VISUALIZATION_PATH: optionalText,
 });
 
 const parsed = schema.safeParse(process.env);
@@ -114,20 +104,17 @@ export function getDownstreamScopes(): string[] {
 
 export function assertRuntimeConfiguration() {
   requireConfig(
-    'DATABASE_URL',
     'ENTRA_TENANT_ID',
     'ENTRA_API_AUDIENCE',
     'MCP_BASE_URL',
     'MCP_ENDPOINT_PATH',
     'MCP_REQUEST_PROMPT_FIELD',
     'MCP_REQUEST_SESSION_FIELD',
-    'MCP_REQUEST_MODEL_FIELD',
-    'MCP_RESPONSE_TEXT_PATH',
   );
 
   if (config.MCP_AUTH_MODE === 'api-key') {
     requireConfig('MCP_API_KEY_HEADER', 'MCP_API_KEY_VALUE');
-  } else {
+  } else if (config.MCP_AUTH_MODE === 'obo') {
     requireConfig('OBO_CLIENT_ID', 'OBO_CLIENT_SECRET', 'OBO_DOWNSTREAM_SCOPE');
     getOboTenantId();
     getDownstreamScopes();

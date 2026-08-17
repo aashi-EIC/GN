@@ -1,28 +1,57 @@
 import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError } from '../../errors.js';
-import type { AuthenticatedUser, NormalizedMcpResponse } from '../../types.js';
-import { getPool } from '../postgres/pool.js';
+import type { AuthenticatedUser, McpHostResponse } from '../../types.js';
+
+type SessionRecord = {
+  id: string;
+  owner_tenant_id: string;
+  owner_object_id: string;
+  semantic_model_id: string;
+  title: string;
+  created_at: Date;
+  updated_at: Date;
+  deleted_at?: Date;
+};
+
+type MessageRecord = {
+  id: string;
+  session_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  normalized_response: McpHostResponse | null;
+  correlation_id: string;
+  created_at: Date;
+};
 
 type SessionOwnerInput = {
   id: string;
   user: AuthenticatedUser;
 };
 
-async function assertOwnedSession({ id, user }: SessionOwnerInput) {
-  const result = await getPool().query(
-    `SELECT id, semantic_model_id, title, created_at, updated_at
-       FROM chat_sessions
-      WHERE id=$1 AND owner_tenant_id=$2 AND owner_object_id=$3 AND deleted_at IS NULL`,
-    [id, user.tenantId, user.objectId],
-  );
-  if (!result.rowCount) throw new NotFoundError('Session not found');
-  return result.rows[0] as {
-    id: string;
-    semantic_model_id: string;
-    title: string;
-    created_at: Date;
-    updated_at: Date;
+const sessions = new Map<string, SessionRecord>();
+const messages = new Map<string, MessageRecord>();
+
+function sessionView(session: SessionRecord) {
+  return {
+    id: session.id,
+    semantic_model_id: session.semantic_model_id,
+    title: session.title,
+    created_at: session.created_at,
+    updated_at: session.updated_at,
   };
+}
+
+export async function assertOwnedSession({ id, user }: SessionOwnerInput) {
+  const session = sessions.get(id);
+  if (
+    !session
+    || session.deleted_at
+    || session.owner_tenant_id !== user.tenantId
+    || session.owner_object_id !== user.objectId
+  ) {
+    throw new NotFoundError('Session not found');
+  }
+  return sessionView(session);
 }
 
 export async function createOwnedSession(input: {
@@ -30,14 +59,18 @@ export async function createOwnedSession(input: {
   title: string;
   user: AuthenticatedUser;
 }) {
-  const id = randomUUID();
-  const result = await getPool().query(
-    `INSERT INTO chat_sessions(id, owner_tenant_id, owner_object_id, semantic_model_id, title)
-     VALUES($1,$2,$3,$4,$5)
-     RETURNING id, semantic_model_id, title, created_at, updated_at`,
-    [id, input.user.tenantId, input.user.objectId, input.semanticModelId, input.title],
-  );
-  return result.rows[0];
+  const now = new Date();
+  const session: SessionRecord = {
+    id: randomUUID(),
+    owner_tenant_id: input.user.tenantId,
+    owner_object_id: input.user.objectId,
+    semantic_model_id: input.semanticModelId,
+    title: input.title,
+    created_at: now,
+    updated_at: now,
+  };
+  sessions.set(session.id, session);
+  return sessionView(session);
 }
 
 export async function ensureOwnedSession(input: {
@@ -47,58 +80,63 @@ export async function ensureOwnedSession(input: {
   user: AuthenticatedUser;
   correlationId: string;
 }) {
-  const client = await getPool().connect();
-  const messageId = randomUUID();
-  try {
-    await client.query('BEGIN');
-    await client.query(
-      `INSERT INTO chat_sessions(id, owner_tenant_id, owner_object_id, semantic_model_id, title)
-       VALUES($1,$2,$3,$4,$5) ON CONFLICT (id) DO NOTHING`,
-      [input.id, input.user.tenantId, input.user.objectId, input.semanticModelId, input.prompt.slice(0, 120)],
-    );
-    const current = await client.query(
-      `SELECT owner_tenant_id, owner_object_id, semantic_model_id
-         FROM chat_sessions WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`,
-      [input.id],
-    );
-    const row = current.rows[0] as {
-      owner_tenant_id: string;
-      owner_object_id: string;
-      semantic_model_id: string;
-    } | undefined;
-    if (!row || row.owner_tenant_id !== input.user.tenantId || row.owner_object_id !== input.user.objectId) {
-      throw new NotFoundError('Session not found');
-    }
-    if (row.semantic_model_id !== input.semanticModelId) {
-      throw new ConflictError('A session cannot change its semantic model');
-    }
-    await client.query(
-      `INSERT INTO chat_messages(id, session_id, role, content, correlation_id)
-       VALUES($1,$2,'user',$3,$4)`,
-      [messageId, input.id, input.prompt, input.correlationId],
-    );
-    await client.query('UPDATE chat_sessions SET updated_at=NOW() WHERE id=$1', [input.id]);
-    await client.query('COMMIT');
-    return messageId;
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
+  let session = sessions.get(input.id);
+  if (!session) {
+    const now = new Date();
+    session = {
+      id: input.id,
+      owner_tenant_id: input.user.tenantId,
+      owner_object_id: input.user.objectId,
+      semantic_model_id: input.semanticModelId,
+      title: input.prompt.slice(0, 120),
+      created_at: now,
+      updated_at: now,
+    };
+    sessions.set(session.id, session);
   }
+
+  if (
+    session.deleted_at
+    || session.owner_tenant_id !== input.user.tenantId
+    || session.owner_object_id !== input.user.objectId
+  ) {
+    throw new NotFoundError('Session not found');
+  }
+  if (session.semantic_model_id !== input.semanticModelId) {
+    throw new ConflictError('A session cannot change its semantic model');
+  }
+
+  const messageId = randomUUID();
+  messages.set(messageId, {
+    id: messageId,
+    session_id: session.id,
+    role: 'user',
+    content: input.prompt,
+    normalized_response: null,
+    correlation_id: input.correlationId,
+    created_at: new Date(),
+  });
+  session.updated_at = new Date();
+  return messageId;
 }
 
 export async function saveAssistantMessage(
   sessionId: string,
   correlationId: string,
-  response: NormalizedMcpResponse,
+  response: McpHostResponse,
 ) {
+  if (!sessions.has(sessionId)) throw new NotFoundError('Session not found');
+
   const id = randomUUID();
-  await getPool().query(
-    `INSERT INTO chat_messages(id, session_id, role, content, normalized_response, correlation_id)
-     VALUES($1,$2,'assistant',$3,$4,$5)`,
-    [id, sessionId, response.answer, JSON.stringify(response), correlationId],
-  );
+  messages.set(id, {
+    id,
+    session_id: sessionId,
+    role: 'assistant',
+    content: response.answer.text,
+    normalized_response: response,
+    correlation_id: correlationId,
+    created_at: new Date(),
+  });
   return id;
 }
 
@@ -109,92 +147,58 @@ export async function listOwnedSessions(input: {
   search?: string;
   semanticModelId?: string;
 }) {
-  const values: unknown[] = [input.user.tenantId, input.user.objectId];
-  const filters = [
-    'owner_tenant_id=$1',
-    'owner_object_id=$2',
-    'deleted_at IS NULL',
-  ];
+  const cursor = input.cursor ? new Date(input.cursor).getTime() : undefined;
+  const search = input.search?.toLocaleLowerCase();
+  const matches = [...sessions.values()]
+    .filter((session) => (
+      !session.deleted_at
+      && session.owner_tenant_id === input.user.tenantId
+      && session.owner_object_id === input.user.objectId
+      && (cursor === undefined || session.updated_at.getTime() < cursor)
+      && (!search || session.title.toLocaleLowerCase().includes(search))
+      && (!input.semanticModelId || session.semantic_model_id === input.semanticModelId)
+    ))
+    .sort((left, right) => right.updated_at.getTime() - left.updated_at.getTime());
 
-  if (input.cursor) {
-    values.push(input.cursor);
-    filters.push(`updated_at < $${values.length}::timestamptz`);
-  }
-  if (input.search) {
-    values.push(`%${input.search}%`);
-    filters.push(`title ILIKE $${values.length}`);
-  }
-  if (input.semanticModelId) {
-    values.push(input.semanticModelId);
-    filters.push(`semantic_model_id = $${values.length}`);
-  }
-
-  values.push(input.limit + 1);
-  const result = await getPool().query(
-    `SELECT id, semantic_model_id, title, created_at, updated_at
-       FROM chat_sessions
-      WHERE ${filters.join(' AND ')}
-      ORDER BY updated_at DESC
-      LIMIT $${values.length}`,
-    values,
-  );
-  const hasMore = result.rows.length > input.limit;
-  const sessions = result.rows.slice(0, input.limit);
-  const last = sessions.at(-1) as { updated_at?: Date | string } | undefined;
+  const hasMore = matches.length > input.limit;
+  const page = matches.slice(0, input.limit);
   return {
-    sessions,
-    next_cursor: hasMore && last?.updated_at
-      ? new Date(last.updated_at).toISOString()
-      : null,
+    sessions: page.map(sessionView),
+    next_cursor: hasMore ? page.at(-1)?.updated_at.toISOString() ?? null : null,
   };
 }
 
 export async function getOwnedSession(user: AuthenticatedUser, id: string) {
   const session = await assertOwnedSession({ id, user });
-  const messages = await getPool().query(
-    `SELECT id, role, content, normalized_response, correlation_id, created_at
-       FROM chat_messages WHERE session_id=$1 ORDER BY created_at`,
-    [id],
-  );
-  return { ...session, messages: messages.rows };
+  const sessionMessages = [...messages.values()]
+    .filter((message) => message.session_id === id)
+    .sort((left, right) => left.created_at.getTime() - right.created_at.getTime());
+  return { ...session, messages: sessionMessages };
 }
 
 export async function renameOwnedSession(user: AuthenticatedUser, id: string, title: string) {
-  const result = await getPool().query(
-    `UPDATE chat_sessions SET title=$1, updated_at=NOW()
-      WHERE id=$2 AND owner_tenant_id=$3 AND owner_object_id=$4 AND deleted_at IS NULL
-      RETURNING id, semantic_model_id, title, created_at, updated_at`,
-    [title, id, user.tenantId, user.objectId],
-  );
-  if (!result.rowCount) throw new NotFoundError('Session not found');
-  return result.rows[0];
+  await assertOwnedSession({ id, user });
+  const session = sessions.get(id)!;
+  session.title = title;
+  session.updated_at = new Date();
+  return sessionView(session);
 }
 
 export async function deleteOwnedSession(user: AuthenticatedUser, id: string) {
-  const result = await getPool().query(
-    `UPDATE chat_sessions SET deleted_at=NOW(), updated_at=NOW()
-      WHERE id=$1 AND owner_tenant_id=$2 AND owner_object_id=$3 AND deleted_at IS NULL
-      RETURNING id`,
-    [id, user.tenantId, user.objectId],
-  );
-  if (!result.rowCount) throw new NotFoundError('Session not found');
+  await assertOwnedSession({ id, user });
+  const session = sessions.get(id)!;
+  session.deleted_at = new Date();
+  session.updated_at = session.deleted_at;
 }
 
 export async function assertOwnedMessage(user: AuthenticatedUser, messageId: string) {
-  const result = await getPool().query(
-    `SELECT m.id, m.session_id, m.correlation_id, s.semantic_model_id
-       FROM chat_messages m
-       JOIN chat_sessions s ON s.id=m.session_id
-      WHERE m.id=$1 AND s.owner_tenant_id=$2 AND s.owner_object_id=$3 AND s.deleted_at IS NULL`,
-    [messageId, user.tenantId, user.objectId],
-  );
-  if (!result.rowCount) throw new NotFoundError('Message not found');
-  return result.rows[0] as {
-    id: string;
-    session_id: string;
-    correlation_id: string;
-    semantic_model_id: string;
+  const message = messages.get(messageId);
+  if (!message) throw new NotFoundError('Message not found');
+  const session = await assertOwnedSession({ id: message.session_id, user });
+  return {
+    id: message.id,
+    session_id: message.session_id,
+    correlation_id: message.correlation_id,
+    semantic_model_id: session.semantic_model_id,
   };
 }
-
-export { assertOwnedSession };

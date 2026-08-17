@@ -14,7 +14,6 @@ export function WelcomePanel({
   modelsOpen,
   setModelsOpen,
   countryCode,
-  setCountryCode,
   prompt,
   setPrompt,
   submitPrompt,
@@ -25,13 +24,11 @@ export function WelcomePanel({
   modelsOpen: boolean;
   setModelsOpen: (open: boolean) => void;
   countryCode: CountryCode;
-  setCountryCode: (countryCode: CountryCode) => void;
   prompt: string;
   setPrompt: (prompt: string) => void;
   submitPrompt: (prompt?: string) => void;
 }) {
   const [isRecording, setIsRecording] = useState(false);
-  const [activePromptIndex, setActivePromptIndex] = useState(0);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const promptTrackRef = useRef<HTMLDivElement | null>(null);
@@ -48,12 +45,8 @@ export function WelcomePanel({
     const track = promptTrackRef.current;
     if (!track) return;
 
-    const firstCard = track.querySelector<HTMLElement>("button");
-    const gap = Number.parseFloat(getComputedStyle(track).columnGap) || 0;
-    const step = (firstCard?.offsetWidth ?? track.clientWidth) + gap;
     const maxScroll = Math.max(0, track.scrollWidth - track.clientWidth);
 
-    setActivePromptIndex(Math.min(localizedPrompts.length - 1, Math.round(track.scrollLeft / step)));
     setCanScrollLeft(track.scrollLeft > 2);
     setCanScrollRight(track.scrollLeft < maxScroll - 2);
   };

@@ -27,6 +27,19 @@ VITE_API_BASE_URL=https://api.example.com/api/v1
 
 These values are compiled into the browser application and must not contain secrets. Never add an Entra client secret, password, private key, or permanent access token to a `VITE_*` variable.
 
+## Run from source
+
+The ZIP intentionally excludes `node_modules`. Install the exact versions from `package-lock.json` before running locally:
+
+```powershell
+npm ci
+npm run dev
+```
+
+On Windows, use `npm.cmd ci` and `npm.cmd run dev` if PowerShell blocks `npm.ps1`.
+
+No local dependency installation is required for the Docker workflow because the image runs `npm ci` during its build.
+
 ## Build and run
 
 ```powershell

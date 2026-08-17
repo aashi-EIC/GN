@@ -23,7 +23,9 @@ export function adaptMcpRequest(context: McpRequestContext): Record<string, unkn
   const body: Record<string, unknown> = {};
   setPath(body, getRequired('MCP_REQUEST_PROMPT_FIELD'), context.prompt);
   setPath(body, getRequired('MCP_REQUEST_SESSION_FIELD'), context.sessionId);
-  setPath(body, getRequired('MCP_REQUEST_MODEL_FIELD'), context.semanticModelId);
+  if (config.MCP_REQUEST_MODEL_FIELD) {
+    setPath(body, config.MCP_REQUEST_MODEL_FIELD, context.semanticModelId);
+  }
   if (config.MCP_REQUEST_CORRELATION_FIELD) setPath(body, config.MCP_REQUEST_CORRELATION_FIELD, context.correlationId);
   if (config.MCP_REQUEST_USER_FIELD) {
     if (!config.MCP_REQUEST_USER_VALUE_SOURCE) throw new ConfigurationError('MCP_REQUEST_USER_VALUE_SOURCE is not configured');

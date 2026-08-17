@@ -3,14 +3,10 @@ import type { CountryCode, ModelId } from "../../features/chat/types/semantic";
 export type Density = "comfortable" | "compact";
 export type MessageRole = "user" | "assistant";
 export type FeedbackValue = "helpful" | "not-helpful";
-export type McpResponseSource = "configured-host" | "node-bff";
-
 export type UserProfile = {
   email: string;
   name: string;
-  authProvider: "Microsoft Entra ID" | "Local Auth";
-  accessToken?: string;
-  tokenExpiresAt?: string;
+  authProvider: "Microsoft Entra ID";
 };
 
 
@@ -19,11 +15,6 @@ export type SettingsState = {
   region: string;
   density: Density;
   keepDebugOpen: boolean;
-};
-
-export type ChartDatum = {
-  label: string;
-  value: number;
 };
 
 export type InsightMetric = {
@@ -37,11 +28,6 @@ export type DebugEvent = {
   status: "success" | "warning";
   detail: string;
   payload?: unknown;
-};
-
-export type TableData = {
-  columns: string[];
-  rows: string[][];
 };
 
 export type ChartType =
@@ -92,26 +78,13 @@ export type TextBlock = {
 
 export type VisualizationBlock = ChartBlock | TableBlock | TextBlock;
 
-export type PlotSpec = {
-  title: string;
-  description: string;
-  html: string;
-};
-
 export type McpRequestPayload = {
-  user_email_id: string;
   session_id: string;
   semantic_model_id: ModelId;
-  country: CountryCode;
-  country_name: string;
-  language?: string;
-  language_name?: string;
   prompt: string;
-  bearer_token_for_rls: string;
 };
 
-export type McpRequestAudit = Omit<McpRequestPayload, "bearer_token_for_rls"> & {
-  bearer_token_for_rls: string;
+export type McpRequestAudit = McpRequestPayload & {
   request_id: string;
   sent_at: string;
 };
@@ -128,16 +101,10 @@ export type Message = {
   role: MessageRole;
   text: string;
   createdAt: string;
-  chartTitle?: string;
-  chart?: ChartDatum[];
   metrics?: InsightMetric[];
-  table?: TableData;
   visualizations?: VisualizationBlock[];
-  actions?: string[];
   debug?: DebugEvent[];
-  plot?: PlotSpec;
   mcpRequest?: McpRequestAudit;
-  mcpResponseSource?: McpResponseSource;
   tokenUsage?: TokenUsage;
 };
 

@@ -1,8 +1,25 @@
 import { randomUUID } from 'node:crypto';
 import { ConflictError } from '../../errors.js';
 import type { AuthenticatedUser } from '../../types.js';
-import { getPool } from '../postgres/pool.js';
 import { assertOwnedMessage, assertOwnedSession } from './sessionRepository.js';
+
+type FeedbackRecord = {
+  id: string;
+  message_id: string;
+  owner_tenant_id: string;
+  owner_object_id: string;
+  rating: 'helpful' | 'not_helpful';
+  reason: string | null;
+  created_at: Date;
+  updated_at: Date;
+};
+
+const feedbackByOwnerAndMessage = new Map<string, FeedbackRecord>();
+const issueReports = new Map<string, Record<string, unknown>>();
+
+function feedbackKey(user: AuthenticatedUser, messageId: string) {
+  return `${user.tenantId}:${user.objectId}:${messageId}`;
+}
 
 export async function saveMessageFeedback(input: {
   messageId: string;
@@ -11,28 +28,26 @@ export async function saveMessageFeedback(input: {
   user: AuthenticatedUser;
 }) {
   await assertOwnedMessage(input.user, input.messageId);
-  const result = await getPool().query(
-    `INSERT INTO message_feedback(
-       id, message_id, owner_tenant_id, owner_object_id, rating, reason
-     ) VALUES($1,$2,$3,$4,$5,$6)
-     ON CONFLICT(message_id, owner_tenant_id, owner_object_id)
-     DO UPDATE SET rating=EXCLUDED.rating, reason=EXCLUDED.reason, updated_at=NOW()
-     RETURNING id, message_id, rating, reason, created_at, updated_at`,
-    [
-      randomUUID(), input.messageId, input.user.tenantId, input.user.objectId,
-      input.rating, input.reason ?? null,
-    ],
-  );
-  return result.rows[0];
+  const key = feedbackKey(input.user, input.messageId);
+  const current = feedbackByOwnerAndMessage.get(key);
+  const now = new Date();
+  const feedback: FeedbackRecord = {
+    id: current?.id ?? randomUUID(),
+    message_id: input.messageId,
+    owner_tenant_id: input.user.tenantId,
+    owner_object_id: input.user.objectId,
+    rating: input.rating,
+    reason: input.reason ?? null,
+    created_at: current?.created_at ?? now,
+    updated_at: now,
+  };
+  feedbackByOwnerAndMessage.set(key, feedback);
+  return feedback;
 }
 
 export async function deleteMessageFeedback(user: AuthenticatedUser, messageId: string) {
   await assertOwnedMessage(user, messageId);
-  await getPool().query(
-    `DELETE FROM message_feedback
-      WHERE message_id=$1 AND owner_tenant_id=$2 AND owner_object_id=$3`,
-    [messageId, user.tenantId, user.objectId],
-  );
+  feedbackByOwnerAndMessage.delete(feedbackKey(user, messageId));
 }
 
 export async function createIssueReport(input: {
@@ -62,17 +77,17 @@ export async function createIssueReport(input: {
   }
 
   const id = randomUUID();
-  const result = await getPool().query(
-    `INSERT INTO issue_reports(
-       id, owner_tenant_id, owner_object_id, session_id, message_id,
-       semantic_model_id, category, severity, description, correlation_id
-     ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-     RETURNING id, session_id, message_id, semantic_model_id, category, severity, description, created_at`,
-    [
-      id, input.user.tenantId, input.user.objectId, input.sessionId ?? null,
-      input.messageId ?? null, input.semanticModelId, input.category, input.severity,
-      input.description, input.correlationId,
-    ],
-  );
-  return result.rows[0];
+  const issue = {
+    id,
+    session_id: input.sessionId ?? null,
+    message_id: input.messageId ?? null,
+    semantic_model_id: input.semanticModelId,
+    category: input.category,
+    severity: input.severity,
+    description: input.description,
+    correlation_id: input.correlationId,
+    created_at: new Date(),
+  };
+  issueReports.set(id, issue);
+  return issue;
 }
