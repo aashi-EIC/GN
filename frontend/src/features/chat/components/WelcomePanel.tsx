@@ -7,6 +7,9 @@ import { handleEnter } from "../../../shared/utils/keyboard";
 import { startVoiceInput } from "../utils/speech";
 import { ModelPicker } from "./ModelPicker";
 
+import { firstName } from "../../../shared/utils/identity";
+import type { UserProfile } from "../../../shared/types/app";
+
 const WELCOME_MESSAGES = [
   "Hola {Name}! Ready to talk to your metrics in plain english?",
   "Bring a smart question, {Name} , and let the data do the flex!",
@@ -27,6 +30,7 @@ const WELCOME_MESSAGES = [
 ];
 
 export function WelcomePanel({
+  user,
   model,
   modelId,
   setModelId,
@@ -37,6 +41,7 @@ export function WelcomePanel({
   setPrompt,
   submitPrompt,
 }: {
+  user?: UserProfile | null;
   model: SemanticModel;
   modelId: ModelId;
   setModelId: (modelId: ModelId) => void;
@@ -60,7 +65,7 @@ export function WelcomePanel({
     return selectedTemplate.split("{Name}");
   }, [selectedTemplate]);
 
-  const userName = firstName(user.name);
+  const userName = user?.name ? firstName(user.name) : "User";
 
   return (
     <motion.div

@@ -194,12 +194,14 @@ function IntelligenceApp({
   user,
   entraAvailable,
   onEntraSignIn,
+  onLocalSignIn,
   onSignOut,
   acquireToken,
 }: {
   user: UserProfile | null;
   entraAvailable: boolean;
   onEntraSignIn?: () => Promise<void>;
+  onLocalSignIn?: (credentials: { username: string; name?: string }) => Promise<void>;
   onSignOut: () => void;
   acquireToken: () => Promise<string | null>;
 }) {
@@ -268,8 +270,10 @@ function IntelligenceApp({
   if (!user) {
     return (
       <LoginPage
+        user={user}
         entraAvailable={entraAvailable}
         onEntraSignIn={onEntraSignIn}
+        onLocalSignIn={onLocalSignIn}
       />
     );
   }
@@ -906,6 +910,7 @@ function Workspace({
         <main className={activeConversation ? "chat" : "welcome"}>
           {!activeConversation ? (
             <WelcomePanel
+              user={user}
               model={selectedModel}
               modelId={selectedModelId}
               setModelId={setSelectedModelId}

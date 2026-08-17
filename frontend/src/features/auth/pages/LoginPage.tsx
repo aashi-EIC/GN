@@ -3,11 +3,15 @@ import { AskBrandMark, MicrosoftMark } from "../../../shared/components/Brand";
 import { ShieldCheck } from "lucide-react";
 
 export function LoginPage({
+  user: _user,
   entraAvailable,
   onEntraSignIn,
+  onLocalSignIn: _onLocalSignIn,
 }: {
+  user?: unknown;
   entraAvailable: boolean;
   onEntraSignIn?: () => Promise<void>;
+  onLocalSignIn?: (credentials: { username: string; name?: string }) => Promise<void>;
 }) {
   const [providerError, setProviderError] = useState("");
   const [entraBusy, setEntraBusy] = useState(false);

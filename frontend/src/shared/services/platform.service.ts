@@ -48,9 +48,11 @@ export async function fetchBootstrap(token: string) {
   return response.data;
 }
 
+import { normalizeModelId } from "../../features/chat/utils/semantic";
+
 export function toFrontendModel(model: BackendSemanticModel): SemanticModel {
   return {
-    id: model.id,
+    id: normalizeModelId(model.id),
     name: model.name,
     short: model.short,
     nickname: model.nickname ?? model.name,

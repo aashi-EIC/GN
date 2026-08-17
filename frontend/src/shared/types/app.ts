@@ -6,7 +6,7 @@ export type FeedbackValue = "helpful" | "not-helpful";
 export type UserProfile = {
   email: string;
   name: string;
-  authProvider: "Microsoft Entra ID";
+  authProvider: "Microsoft Entra ID" | "Local Auth";
 };
 
 export type SettingsState = {

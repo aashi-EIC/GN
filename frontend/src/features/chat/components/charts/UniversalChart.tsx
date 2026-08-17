@@ -38,12 +38,12 @@ export function UniversalChart({ block }: { block: ChartBlock }) {
   );
 }
 
-function buildChartOption(block: ChartBlock): EChartsCoreOption {
+function buildChartOption(block: ChartBlock): EChartsOption {
   if (block.option) return sanitizeOption(block.option);
 
   const data = block.data ?? [];
   const fields = inferFields(block);
-  const base: EChartsCoreOption = {
+  const base: EChartsOption = {
     color: palette,
     tooltip: { trigger: "axis" },
     legend: { type: "scroll", bottom: 0 },
