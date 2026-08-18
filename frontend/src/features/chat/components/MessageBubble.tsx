@@ -240,25 +240,122 @@ function MessageBubbleComponent({
 }
 
 function SafeResponseText({ text }: { text: string }) {
-  const parts = text.split(/(\*\*[^*\n]+\*\*)/g);
+  const renderedElements = useMemo(() => {
+    if (!text) return null;
 
-  return (
-    <p>
-      {parts.map((part, partIndex) => {
-        const content = part.startsWith("**") && part.endsWith("**")
-          ? <strong>{part.slice(2, -2)}</strong>
-          : part;
-        const lines = typeof content === "string" ? content.split("\n") : [content];
+    // Split text by code blocks ```code```
+    const blocks = text.split(/(```[\s\S]*?```)/g);
 
-        return lines.map((line, lineIndex) => (
-          <span key={`${partIndex}-${lineIndex}`}>
-            {lineIndex > 0 && <br />}
-            {line}
-          </span>
-        ));
-      })}
-    </p>
-  );
+    return blocks.map((block, blockIdx) => {
+      if (block.startsWith("```") && block.endsWith("```")) {
+        const lines = block.slice(3, -3).trim().split("\n");
+        const language = lines[0]?.match(/^[a-zA-Z0-9_-]+$/) ? lines[0] : "";
+        const codeContent = language ? lines.slice(1).join("\n") : lines.join("\n");
+
+        return (
+          <div key={`code-${blockIdx}`} className="markdown-code-block">
+            <div className="code-block-header">
+              <span>{language || "code"}</span>
+              <button
+                type="button"
+                className="btn-copy-code"
+                onClick={() => navigator.clipboard.writeText(codeContent)}
+              >
+                <Copy size={12} />
+                <span>Copy</span>
+              </button>
+            </div>
+            <pre>
+              <code>{codeContent}</code>
+            </pre>
+          </div>
+        );
+      }
+
+      // Process regular markdown lines (headers, lists, paragraphs)
+      const lines = block.split("\n");
+      const elements: React.ReactNode[] = [];
+      let currentList: React.ReactNode[] = [];
+
+      const flushList = (keyPrefix: string) => {
+        if (currentList.length > 0) {
+          elements.push(
+            <ul key={`ul-${keyPrefix}-${elements.length}`} className="markdown-bullet-list">
+              {currentList}
+            </ul>,
+          );
+          currentList = [];
+        }
+      };
+
+      lines.forEach((line, lineIdx) => {
+        const trimmed = line.trim();
+
+        // Bullet point lines (- item or * item or • item)
+        if (/^[-*•]\s+/.test(trimmed)) {
+          const listText = trimmed.replace(/^[-*•]\s+/, "");
+          currentList.push(
+            <li key={`li-${lineIdx}`}>{renderFormattedInlineText(listText)}</li>,
+          );
+          return;
+        }
+
+        // Flush list if we hit a non-list line
+        flushList(`${blockIdx}-${lineIdx}`);
+
+        if (!trimmed) {
+          return;
+        }
+
+        // Headers (# H1, ## H2, ### H3)
+        if (trimmed.startsWith("### ")) {
+          elements.push(
+            <h3 key={`h3-${lineIdx}`} className="markdown-h3">
+              {renderFormattedInlineText(trimmed.slice(4))}
+            </h3>,
+          );
+        } else if (trimmed.startsWith("## ")) {
+          elements.push(
+            <h2 key={`h2-${lineIdx}`} className="markdown-h2">
+              {renderFormattedInlineText(trimmed.slice(3))}
+            </h2>,
+          );
+        } else if (trimmed.startsWith("# ")) {
+          elements.push(
+            <h1 key={`h1-${lineIdx}`} className="markdown-h1">
+              {renderFormattedInlineText(trimmed.slice(2))}
+            </h1>,
+          );
+        } else {
+          elements.push(
+            <p key={`p-${lineIdx}`} className="markdown-p">
+              {renderFormattedInlineText(line)}
+            </p>,
+          );
+        }
+      });
+
+      flushList(`${blockIdx}-end`);
+      return <div key={`block-${blockIdx}`}>{elements}</div>;
+    });
+  }, [text]);
+
+  return <div className="markdown-response-body">{renderedElements}</div>;
+}
+
+function renderFormattedInlineText(text: string): React.ReactNode {
+  // Regex to match **bold** and `code`
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+
+  return parts.map((part, idx) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={idx}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return <code key={idx} className="markdown-inline-code">{part.slice(1, -1)}</code>;
+    }
+    return part;
+  });
 }
 
 export const MessageBubble = memo(MessageBubbleComponent);
