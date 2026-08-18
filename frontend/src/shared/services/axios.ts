@@ -3,7 +3,7 @@ import { env } from "../config/env";
 
 export const appHttpClient = axios.create({
   baseURL: env.apiBaseUrl,
-  timeout: 30000,
+  timeout: env.apiTimeoutMs,
 });
 
 export const bffClient = appHttpClient;

@@ -17,9 +17,14 @@ export function UniversalChart({ block }: { block: ChartBlock }) {
     chart.setOption(option, true);
 
     const resize = () => chart.resize();
+    const resizeObserver = new ResizeObserver(resize);
+    resizeObserver.observe(container);
     window.addEventListener("resize", resize);
+    const initialResize = window.requestAnimationFrame(resize);
 
     return () => {
+      window.cancelAnimationFrame(initialResize);
+      resizeObserver.disconnect();
       window.removeEventListener("resize", resize);
       chart.dispose();
     };
@@ -33,9 +38,23 @@ export function UniversalChart({ block }: { block: ChartBlock }) {
           {block.description && <span>{block.description}</span>}
         </div>
       )}
-      <div className="universal-chart" ref={containerRef} />
+      <div
+        className="universal-chart"
+        ref={containerRef}
+        style={chartHeight(block)}
+      />
     </section>
   );
+}
+
+function chartHeight(block: ChartBlock) {
+  if (block.chart_type !== "horizontal-bar") return undefined;
+  const categoryField = block.encoding?.x;
+  const categoryCount = categoryField
+    ? new Set(block.data?.map((row) => formatCell(row[categoryField]))).size
+    : block.data?.length ?? 0;
+  const height = Math.max(340, Math.min(680, categoryCount * 28 + 100));
+  return { height };
 }
 
 function buildChartOption(block: ChartBlock): EChartsOption {

@@ -2119,6 +2119,11 @@ textarea:focus {
   min-height: 260px;
 }
 
+.universal-chart svg {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 .table-section {
   display: grid;
   gap: 8px;

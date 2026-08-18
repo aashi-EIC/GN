@@ -129,7 +129,7 @@ function MessageBubbleComponent({
         <Sparkles />
       </div>
       <article className="response">
-        <p>{message.text}</p>
+        <SafeResponseText text={message.text} />
 
         {message.metrics && (
           <div className="metric-grid">
@@ -218,6 +218,28 @@ function MessageBubbleComponent({
         )}
       </article>
     </div>
+  );
+}
+
+function SafeResponseText({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*\n]+\*\*)/g);
+
+  return (
+    <p>
+      {parts.map((part, partIndex) => {
+        const content = part.startsWith("**") && part.endsWith("**")
+          ? <strong>{part.slice(2, -2)}</strong>
+          : part;
+        const lines = typeof content === "string" ? content.split("\n") : [content];
+
+        return lines.map((line, lineIndex) => (
+          <span key={`${partIndex}-${lineIndex}`}>
+            {lineIndex > 0 && <br />}
+            {line}
+          </span>
+        ));
+      })}
+    </p>
   );
 }
 
