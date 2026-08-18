@@ -38,7 +38,12 @@ import type {
 import type { CountryCode, ModelId } from "../features/chat/types/semantic";
 import { copyText, messageToPlainText } from "../shared/utils/clipboard";
 import { accountToProfile } from "../shared/utils/identity";
-import { createId, createSessionId, titleFromUserMessages } from "../shared/utils/session";
+import {
+  createId,
+  createSessionId,
+  isSessionId,
+  titleFromUserMessages,
+} from "../shared/utils/session";
 import { getModel, normalizeCountryCode, normalizeModelId } from "../features/chat/utils/semantic";
 import { calculateTokenUsageAndCost } from "../features/chat/utils/tokenCost";
 

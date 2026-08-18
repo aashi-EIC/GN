@@ -66,7 +66,8 @@ function inferChartFromTable(
 
   return {
     type: "chart",
-    chart_type: temporal ? "line" : "bar",
+    chart_type:
+      temporal ? "line" : measureKeys.length === 1 && orderedRows.length >= 5 ? "horizontal-bar" : "bar",
     title: block.title ? `${block.title} overview` : "Data overview",
     description:
       rows.length > 15
