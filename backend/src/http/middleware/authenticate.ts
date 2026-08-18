@@ -2,10 +2,27 @@ import type { RequestHandler } from "express";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import { config, getRequired } from "../../config/env.js";
 import { AuthenticationError, AuthorizationError } from "../../errors.js";
+import { logger } from "../../observability/logger.js";
 
 let cachedJwks: { tenant: string; jwks: ReturnType<typeof createRemoteJWKSet> } | undefined;
 
 export const authenticate: RequestHandler = async (req, _res, next) => {
+  if (config.DISABLE_AUTH) {
+    Object.assign(req, {
+      user: {
+        tenantId: config.ENTRA_TENANT_ID || "dev-tenant",
+        objectId: "dev-user-id",
+        subject: "dev-subject",
+        preferredUsername: "devuser@local",
+        scopes: config.ENTRA_REQUIRED_SCOPE ? [config.ENTRA_REQUIRED_SCOPE] : ["access_as_user"],
+        roles: [],
+        rawAccessToken: "dev-token",
+      },
+    });
+    next();
+    return;
+  }
+
   try {
     const tenantId = getRequired("ENTRA_TENANT_ID");
     const audience = getRequired("ENTRA_API_AUDIENCE");
@@ -22,6 +39,7 @@ export const authenticate: RequestHandler = async (req, _res, next) => {
       issuer,
       audience,
       algorithms: ["RS256"],
+      clockTolerance: "5m",
     });
 
     const scopes = readScopes(payload);
@@ -51,6 +69,7 @@ export const authenticate: RequestHandler = async (req, _res, next) => {
       return;
     }
 
+    logger.warn({ err: error }, "JWT verification failed");
     next(new AuthenticationError("Invalid or expired access token"));
   }
 };

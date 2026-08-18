@@ -3,9 +3,10 @@ import type { CountryCode, ModelId } from "../types/semantic";
 
 export function normalizeModelId(value?: string): ModelId {
   const legacyMap: Record<string, ModelId> = {
-    mapping_stats: "mapping_stats_svc",
-    mapping_stats_svc: "mapping_stats_svc",
-    mapping: "mapping_stats_svc",
+    mapping_stats: "mapping_stats_vod",
+    mapping_stats_svc: "mapping_stats_vod",
+    mapping_stats_vod: "mapping_stats_vod",
+    mapping: "mapping_stats_vod",
     schedule_completeness: "schedule_completeness_tsg",
     schedule_completeness_tsg: "schedule_completeness_tsg",
     schedule: "schedule_completeness_tsg",

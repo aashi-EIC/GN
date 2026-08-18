@@ -21,6 +21,7 @@ import { apiScope } from "../features/auth/lib/msal";
 import { LoginPage } from "../features/auth/pages/LoginPage";
 import {
   buildMcpRequestPayload,
+  formatUserFriendlyError,
   persistMcpRequestAudit,
   requestMcpInsight,
 } from "../features/chat/services/mcp.service";
@@ -139,7 +140,7 @@ function MsalBackedShell() {
     }
   };
 
-  const acquireToken = async () => {
+  const acquireToken = async (forceRefresh = false) => {
     if (!account) {
       return null;
     }
@@ -148,6 +149,7 @@ function MsalBackedShell() {
       const result = await instance.acquireTokenSilent({
         account,
         scopes: [apiScope],
+        forceRefresh,
       });
       return result.accessToken;
     } catch (error) {
@@ -195,7 +197,7 @@ function IntelligenceApp({
   onEntraSignIn?: () => Promise<void>;
   onLocalSignIn?: (credentials: { username: string; name?: string }) => Promise<void>;
   onSignOut: () => void;
-  acquireToken: () => Promise<string | null>;
+  acquireToken: (forceRefresh?: boolean) => Promise<string | null>;
 }) {
   const [settings, setSettings] = useState<SettingsState>(defaultSettings);
   const [loading, setLoading] = useState(true);
@@ -301,7 +303,7 @@ function Workspace({
   settings: SettingsState;
   setSettings: (settings: SettingsState) => void;
   onSignOut: () => void;
-  acquireToken: () => Promise<string | null>;
+  acquireToken: (forceRefresh?: boolean) => Promise<string | null>;
 }) {
   const dispatch = useAppDispatch();
   const sidebarOpen = useAppSelector((state) => state.ui.sidebarOpen);
@@ -561,7 +563,7 @@ function Workspace({
     let requestAudit: McpRequestAudit | null = null;
 
     try {
-      const token = await acquireToken();
+      let token = await acquireToken();
       const mcpRequest = buildMcpRequestPayload({
         conversationId,
         modelId: currentModelId,
@@ -569,7 +571,24 @@ function Workspace({
       });
       requestAudit = mcpRequest.audit;
       persistMcpRequestAudit(requestAudit);
-      const answer = await requestMcpInsight(mcpRequest.payload, requestAudit, token);
+      let answer;
+      try {
+        answer = await requestMcpInsight(mcpRequest.payload, requestAudit, token);
+      } catch (err) {
+        if (
+          err instanceof Error &&
+          err.message.includes("Invalid or expired access token")
+        ) {
+          const freshToken = await acquireToken(true);
+          if (freshToken) {
+            answer = await requestMcpInsight(mcpRequest.payload, requestAudit, freshToken);
+          } else {
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      }
       const tokenUsage = calculateTokenUsageAndCost(
         currentModelId,
         trimmedQuestion,
@@ -596,20 +615,22 @@ function Workspace({
         ),
       );
     } catch (error) {
-      const message =
+      const rawMessage =
         error instanceof Error
           ? error.message
           : "The analytics engine could not complete this request.";
-      const tokenUsage = calculateTokenUsageAndCost(currentModelId, trimmedQuestion, message);
+      const errorInfo = formatUserFriendlyError(rawMessage);
+      const displayText = `${errorInfo.userMessage}\n\n💡 **Suggested Action**: ${errorInfo.suggestion}`;
+      const tokenUsage = calculateTokenUsageAndCost(currentModelId, trimmedQuestion, displayText);
       const responseMessage: Message = {
         id: createId("msg"),
         role: "assistant",
         createdAt: new Date().toISOString(),
-        text: message,
+        text: displayText,
         metrics: [
           {
-            label: "Request status",
-            value: "Needs review",
+            label: "Status",
+            value: errorInfo.statusLabel,
             tone: "watch",
           },
         ],
@@ -627,7 +648,7 @@ function Workspace({
           {
             stage: "request_error",
             status: "warning",
-            detail: message,
+            detail: rawMessage,
           },
         ],
         mcpRequest: requestAudit ?? undefined,
@@ -689,7 +710,7 @@ function Workspace({
     let requestAudit: McpRequestAudit | null = null;
 
     try {
-      const token = await acquireToken();
+      let token = await acquireToken();
       const mcpRequest = buildMcpRequestPayload({
         conversationId,
         modelId: currentModelId,
@@ -697,7 +718,24 @@ function Workspace({
       });
       requestAudit = mcpRequest.audit;
       persistMcpRequestAudit(requestAudit);
-      const answer = await requestMcpInsight(mcpRequest.payload, requestAudit, token);
+      let answer;
+      try {
+        answer = await requestMcpInsight(mcpRequest.payload, requestAudit, token);
+      } catch (err) {
+        if (
+          err instanceof Error &&
+          err.message.includes("Invalid or expired access token")
+        ) {
+          const freshToken = await acquireToken(true);
+          if (freshToken) {
+            answer = await requestMcpInsight(mcpRequest.payload, requestAudit, freshToken);
+          } else {
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      }
       const tokenUsage = calculateTokenUsageAndCost(
         currentModelId,
         trimmedQuestion,
@@ -724,20 +762,22 @@ function Workspace({
         ),
       );
     } catch (error) {
-      const message =
+      const rawMessage =
         error instanceof Error
           ? error.message
           : "The analytics engine could not complete this request.";
-      const tokenUsage = calculateTokenUsageAndCost(currentModelId, trimmedQuestion, message);
+      const errorInfo = formatUserFriendlyError(rawMessage);
+      const displayText = `${errorInfo.userMessage}\n\n💡 **Suggested Action**: ${errorInfo.suggestion}`;
+      const tokenUsage = calculateTokenUsageAndCost(currentModelId, trimmedQuestion, displayText);
       const responseMessage: Message = {
         id: createId("msg"),
         role: "assistant",
         createdAt: new Date().toISOString(),
-        text: message,
+        text: displayText,
         metrics: [
           {
-            label: "Request status",
-            value: "Needs review",
+            label: "Status",
+            value: errorInfo.statusLabel,
             tone: "watch",
           },
         ],
@@ -755,7 +795,7 @@ function Workspace({
           {
             stage: "request_error",
             status: "warning",
-            detail: message,
+            detail: rawMessage,
           },
         ],
         mcpRequest: requestAudit ?? undefined,

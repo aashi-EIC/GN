@@ -24,9 +24,10 @@ const schema = z.object({
 
   ENTRA_TENANT_ID: optionalText,
   ENTRA_API_AUDIENCE: optionalText,
-  ENTRA_ACCEPT_V1_TOKENS: bool.default(false),
+  ENTRA_ACCEPT_V1_TOKENS: bool.default(true),
   ENTRA_REQUIRED_SCOPE: optionalText,
   ENTRA_ALLOWED_ROLES: optionalText,
+  DISABLE_AUTH: bool.default(false),
 
   SEMANTIC_MODELS_JSON: optionalText,
   FEATURE_FLAGS_JSON: optionalText,
@@ -37,8 +38,14 @@ const schema = z.object({
   RATE_LIMIT_WINDOW_MS: integer(60_000),
   RATE_LIMIT_MAX: integer(30),
 
-  MCP_BASE_URL: optionalText,
-  MCP_ENDPOINT_PATH: optionalText,
+  MCP_BASE_URL: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(1).default("https://mcp-np.gvsa-np.cloud.gracenote.com"),
+  ),
+  MCP_ENDPOINT_PATH: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(1).default("/chat"),
+  ),
   MCP_TIMEOUT_MS: integer(30_000),
   MCP_MAX_RESPONSE_BYTES: integer(5_242_880),
   MCP_SAFE_RETRY_ENABLED: bool.default(false),
@@ -47,7 +54,7 @@ const schema = z.object({
     z.number().int().min(0).max(3),
   ),
 
-  MCP_AUTH_MODE: z.enum(["none", "api-key", "obo"]).default("api-key"),
+  MCP_AUTH_MODE: z.enum(["none", "api-key", "obo"]).default("none"),
   MCP_API_KEY_HEADER: optionalText,
   MCP_API_KEY_VALUE: optionalText,
 
@@ -56,8 +63,14 @@ const schema = z.object({
   OBO_CLIENT_SECRET: optionalText,
   OBO_DOWNSTREAM_SCOPE: optionalText,
 
-  MCP_REQUEST_PROMPT_FIELD: optionalText,
-  MCP_REQUEST_SESSION_FIELD: optionalText,
+  MCP_REQUEST_PROMPT_FIELD: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(1).default("message"),
+  ),
+  MCP_REQUEST_SESSION_FIELD: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(1).default("session_id"),
+  ),
   MCP_REQUEST_MODEL_FIELD: optionalText,
   MCP_REQUEST_CORRELATION_FIELD: optionalText,
   MCP_REQUEST_USER_FIELD: optionalText,

@@ -10,6 +10,14 @@ export interface CountryLocale {
 }
 
 const defaultEnglishPrompts = {
+  mapping_stats_vod: [
+    "How long are VOD provider imports taking today?",
+    "Which VOD sources have processing bottlenecks?",
+    "Show match rates and delay trends by VOD provider",
+    "Flag VOD providers outside the expected processing time",
+    "Compare today's VOD mapping performance with last week",
+    "Which VOD providers have the lowest match rates?",
+  ],
   mapping_stats_svc: [
     "How long are provider imports taking today?",
     "Which sources have processing bottlenecks?",

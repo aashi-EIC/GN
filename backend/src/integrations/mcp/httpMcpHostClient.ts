@@ -5,7 +5,7 @@ import { logger } from "../../observability/logger.js";
 import type { AuthenticatedUser } from "../../types.js";
 import type { OutboundAuthenticationProvider } from "./authenticationProvider.js";
 
-const RETRYABLE_STATUSES = new Set([502, 503, 504]);
+const RETRYABLE_STATUSES = new Set([500, 502, 503, 504, 429]);
 
 export class HttpMcpHostClient {
   constructor(private readonly authentication: OutboundAuthenticationProvider) {}

@@ -4,7 +4,7 @@ export const semanticModels: SemanticModel[] = [
   {
     id: "schedule_completeness_tsg",
     name: "Schedule Completeness TSG",
-    short: "SC",
+    short: "TSG",
     nickname: 'The "TV Guide Protector"',
     description:
       'The "TV Guide Protector" - Ensures upcoming TV schedules are fully filled in without "TBA" or generic placeholders.',
@@ -21,22 +21,22 @@ export const semanticModels: SemanticModel[] = [
     ],
   },
   {
-    id: "mapping_stats_svc",
-    name: "Mapping Stats Service",
-    short: "MSS",
-    nickname: 'The "Speedometer"',
+    id: "mapping_stats_vod",
+    name: "Mapping Stats VOD",
+    short: "VOD",
+    nickname: 'The "VOD Speedometer"',
     description:
-      'The "Speedometer" - Measures how long it takes for a new show sent by a provider (Disney, Sony) to be processed and recognized.',
+      'The "Speedometer" - Measures how long it takes for a new VOD asset sent by a provider (Disney, Sony) to be processed and recognized.',
     guide:
-      "Measures intake processing speed from content providers. If this slows down, new episodes don't appear on time. Analogy: A post office sorting facility measuring the time for a package to arrive, get scanned, and hit the delivery truck.",
+      "Measures intake processing speed for VOD content from content providers. If this slows down, new episodes don't appear on time. Analogy: A post office sorting facility measuring the time for a package to arrive, get scanned, and hit the delivery truck.",
     color: "#94073F",
     prompts: [
-      "How long are provider imports taking today?",
-      "Which sources have processing bottlenecks?",
-      "Show match rates and delay trends by provider",
-      "Flag providers outside the expected processing time",
-      "Compare today's mapping performance with last week",
-      "Which providers have the lowest match rates?",
+      "How long are VOD provider imports taking today?",
+      "Which VOD sources have processing bottlenecks?",
+      "Show match rates and delay trends by VOD provider",
+      "Flag VOD providers outside the expected processing time",
+      "Compare today's VOD mapping performance with last week",
+      "Which VOD providers have the lowest match rates?",
     ],
   },
 ];

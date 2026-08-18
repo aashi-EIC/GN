@@ -45,37 +45,53 @@ export async function requestMcpInsight(
     throw new Error("Sign in with Microsoft before sending a prompt.");
   }
 
-  try {
-    const response = await bffClient.post<ChatResponse>("/chat", payload, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const answer = parseChatResponse(response.data);
+  const maxAttempts = 2;
+  let lastError: unknown;
 
-    return withMcpRuntime(
-      {
-        text: hasTableBlock(answer.blocks)
-          ? removeDuplicateMarkdownTable(answer.text)
-          : answer.text,
-        backendId: response.data.message_id,
-        visualizations: answer.blocks?.length ? answer.blocks : undefined,
-      },
-      audit,
-      response.data.request_id,
-    );
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      const upstreamMessage = readApiError(error.response?.data);
-      if (upstreamMessage) throw new Error(upstreamMessage);
-      if (error.code === "ECONNABORTED") {
-        throw new Error("The analysis took too long. Please try again.");
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await bffClient.post<ChatResponse>("/chat", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const answer = parseChatResponse(response.data);
+
+      return withMcpRuntime(
+        {
+          text: hasTableBlock(answer.blocks)
+            ? removeDuplicateMarkdownTable(answer.text)
+            : answer.text,
+          backendId: response.data.message_id,
+          visualizations: answer.blocks?.length ? answer.blocks : undefined,
+        },
+        audit,
+        response.data.request_id,
+      );
+    } catch (error) {
+      lastError = error;
+
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        const isTransient = !error.response || (status && (status >= 500 || status === 429));
+        if (isTransient && attempt < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 800 * attempt));
+          continue;
+        }
+
+        const upstreamMessage = readApiError(error.response?.data);
+        if (upstreamMessage) throw new Error(upstreamMessage);
+        if (error.code === "ECONNABORTED") {
+          throw new Error("The analysis took too long. Please try again.");
+        }
+        if (!error.response) {
+          throw new Error("The middleware is unavailable. Check that the BFF is running.");
+        }
       }
-      if (!error.response) {
-        throw new Error("The middleware is unavailable. Check that the BFF is running.");
-      }
+
+      throw error;
     }
-
-    throw error;
   }
+
+  throw lastError;
 }
 
 export function persistMcpRequestAudit(audit: McpRequestAudit) {
@@ -156,4 +172,71 @@ function removeDuplicateMarkdownTable(text: string) {
   });
   const result = filtered.join("\n").replace(/\n{3,}/g, "\n\n").trim();
   return result || "Query results";
+}
+
+export function formatUserFriendlyError(rawMessage: string): {
+  userMessage: string;
+  suggestion: string;
+  statusLabel: string;
+} {
+  const normalized = rawMessage.toLowerCase();
+
+  if (
+    normalized.includes("mcp host returned an unsuccessful response") ||
+    normalized.includes("upstream") ||
+    normalized.includes("502") ||
+    normalized.includes("503") ||
+    normalized.includes("504")
+  ) {
+    return {
+      userMessage:
+        "The backend analytics engine is currently experiencing a temporary pause or maintenance.",
+      suggestion:
+        "Please try submitting your question again in a few moments, or select a different semantic model.",
+      statusLabel: "Service Pause",
+    };
+  }
+
+  if (
+    normalized.includes("invalid or expired access token") ||
+    normalized.includes("expired") ||
+    normalized.includes("access token") ||
+    normalized.includes("sign in with microsoft")
+  ) {
+    return {
+      userMessage: "Your Microsoft Entra ID session has expired.",
+      suggestion: "Please sign out and sign in again to refresh your authorization.",
+      statusLabel: "Session Expired",
+    };
+  }
+
+  if (
+    normalized.includes("timeout") ||
+    normalized.includes("took too long") ||
+    normalized.includes("econnaborted")
+  ) {
+    return {
+      userMessage: "The analysis request took longer than expected to process.",
+      suggestion: "Try narrowing your question to a specific metric or selecting a shorter time period.",
+      statusLabel: "Request Timeout",
+    };
+  }
+
+  if (
+    normalized.includes("middleware is unavailable") ||
+    normalized.includes("bff is running") ||
+    normalized.includes("network error")
+  ) {
+    return {
+      userMessage: "Unable to connect to the Conversational BI server.",
+      suggestion: "Please check your network connection or verify that the server service is active.",
+      statusLabel: "Connection Unavailable",
+    };
+  }
+
+  return {
+    userMessage: "We could not complete this analytical query at the moment.",
+    suggestion: "Try rephrasing your prompt or picking another semantic model from the top bar.",
+    statusLabel: "Notice",
+  };
 }

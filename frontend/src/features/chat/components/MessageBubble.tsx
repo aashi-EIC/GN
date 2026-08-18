@@ -123,13 +123,31 @@ function MessageBubbleComponent({
     );
   }
 
+  const isError =
+    Boolean(message.debug?.some((d) => d.stage === "request_error")) ||
+    Boolean(message.metrics?.some((m) => m.tone === "watch"));
+
   return (
     <div className="assistant-row">
       <div className="ai-mark">
         <Sparkles />
       </div>
-      <article className="response">
+      <article className={`response ${isError ? "response-error-state" : ""}`}>
         <SafeResponseText text={message.text} />
+
+        {isError && onRegenerateResponse && (
+          <div className="error-retry-row">
+            <button
+              type="button"
+              className="btn-retry-action"
+              onClick={() => onRegenerateResponse(message.id)}
+              disabled={busy}
+            >
+              <RefreshCw className={busy ? "spin" : ""} size={15} />
+              <span>{busy ? "Retrying analysis..." : "Retry Question"}</span>
+            </button>
+          </div>
+        )}
 
         {message.metrics && (
           <div className="metric-grid">
