@@ -1,4 +1,4 @@
-import { CircleGauge, LogOut, UserRound } from "lucide-react";
+import { Braces, CircleGauge, LogOut, UserRound } from "lucide-react";
 import { useEffect } from "react";
 import type { SettingsState } from "../../../shared/types/app";
 
@@ -6,6 +6,7 @@ export function SettingsModal({
   close,
   settings,
   saveSettings,
+  toggleDebug,
   onSignOut,
 }: {
   close: () => void;
@@ -60,6 +61,27 @@ export function SettingsModal({
               <strong>-</strong>
             </div>
           </div>
+
+          {toggleDebug && (
+            <button
+              type="button"
+              className={`sidebar-settings-row ${settings.keepDebugOpen ? "active" : ""}`}
+              onClick={toggleDebug}
+              aria-pressed={settings.keepDebugOpen}
+            >
+              <Braces />
+              <span>
+                Debug responses
+                <small>Show raw MCP and processed BFF payloads</small>
+              </span>
+              <span
+                className={`settings-switch ${settings.keepDebugOpen ? "active" : ""}`}
+                aria-hidden="true"
+              >
+                <span className="settings-switch-thumb" />
+              </span>
+            </button>
+          )}
 
           {onSignOut && (
             <button

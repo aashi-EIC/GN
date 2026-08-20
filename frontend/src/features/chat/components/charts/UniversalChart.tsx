@@ -99,14 +99,19 @@ export function UniversalChart({ block }: { block: ChartBlock }) {
     // Apply updated chart option with smooth transition
     chart.setOption(option, true);
 
-    const resize = () => chart?.resize();
+    let resizeTimer: ReturnType<typeof setTimeout> | undefined;
+    const resize = () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => chart?.resize(), 90);
+    };
     const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(container);
     window.addEventListener("resize", resize);
-    const initialResize = window.requestAnimationFrame(resize);
+    const initialResize = window.requestAnimationFrame(() => chart?.resize());
 
     return () => {
       window.cancelAnimationFrame(initialResize);
+      window.clearTimeout(resizeTimer);
       resizeObserver.disconnect();
       window.removeEventListener("resize", resize);
       if (chart) {

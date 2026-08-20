@@ -83,6 +83,7 @@ export type McpRequestPayload = {
   session_id: string;
   semantic_model_id: ModelId;
   prompt: string;
+  debug?: boolean;
 };
 
 export type McpRequestAudit = McpRequestPayload & {

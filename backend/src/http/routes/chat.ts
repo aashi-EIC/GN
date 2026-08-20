@@ -6,7 +6,7 @@ import {
   releaseChatRequest,
 } from "../../application/services/chatRequestRegistry.js";
 import { processChat } from "../../application/services/chatService.js";
-import { getAccessibleModel } from "../../config/catalog.js";
+import { getAccessibleModel, getFeatureFlags } from "../../config/catalog.js";
 import { config } from "../../config/env.js";
 import { NotFoundError } from "../../errors.js";
 import {
@@ -24,6 +24,7 @@ const chatBody = z
     session_id: z.string().uuid(),
     semantic_model_id: z.string().trim().min(1).max(256),
     prompt: z.string().trim().min(1).max(config.MAX_PROMPT_LENGTH),
+    debug: z.boolean().optional(),
   })
   .strict();
 
@@ -113,6 +114,9 @@ chatRouter.post("/chat", rateLimit, async (request, res) => {
   const controller = registerChatRequest(req.correlationId, req.user);
   const signal = AbortSignal.any([req.requestSignal, controller.signal]);
   try {
+    const includeDebug =
+      body.debug === true &&
+      (config.NODE_ENV !== "production" || getFeatureFlags(req.user).debugMode);
     const result = await processChat({
       prompt: body.prompt,
       sessionId: body.session_id,
@@ -120,8 +124,26 @@ chatRouter.post("/chat", rateLimit, async (request, res) => {
       correlationId: req.correlationId,
       user: req.user,
       signal,
+      includeDebug,
     });
-    res.status(200).json({ ...result, request_id: req.correlationId });
+    const debug = "debug" in result ? result.debug : undefined;
+    const publicResult = {
+      answer: result.answer,
+      message_id: result.message_id,
+      user_message_id: result.user_message_id,
+    };
+    const response = { ...publicResult, request_id: req.correlationId };
+    res.status(200).json(
+      debug
+        ? {
+            ...response,
+            debug: {
+              ...debug,
+              bff_response: response,
+            },
+          }
+        : response,
+    );
   } finally {
     releaseChatRequest(req.correlationId);
   }

@@ -283,7 +283,11 @@ export function Sidebar({
 
   return (
     <aside className={`sidebar ${open ? "open" : "closed"}`}>
-      {open && (
+      <div
+        className="sidebar-expanded-content"
+        aria-hidden={!open}
+        inert={!open}
+      >
         <div className="side-head">
           <div className="side-brand">
             <AskBrandMark />
@@ -292,10 +296,7 @@ export function Sidebar({
             <PanelLeftClose />
           </IconButton>
         </div>
-      )}
 
-      {open ? (
-        <>
           <button className="new-chat" onClick={startConversation}>
             <MessageSquarePlus />
             <span>New Chat</span>
@@ -403,9 +404,13 @@ export function Sidebar({
               <Settings />
             </IconButton>
           </div>
-        </>
-      ) : (
-        <div className="sidebar-collapsed-nav">
+      </div>
+
+      <div
+        className="sidebar-collapsed-nav"
+        aria-hidden={open}
+        inert={open}
+      >
           <button
             className="collapsed-brand-trigger"
             type="button"
@@ -443,8 +448,7 @@ export function Sidebar({
               </button>
             </div>
           </div>
-        </div>
-      )}
+      </div>
     </aside>
   );
 }

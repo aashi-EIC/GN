@@ -18,6 +18,7 @@ type ChatInput = {
   correlationId: string;
   user: AuthenticatedUser;
   signal: AbortSignal;
+  includeDebug?: boolean;
 };
 
 export async function processChat(input: ChatInput) {
@@ -41,9 +42,32 @@ export async function processChat(input: ChatInput) {
 
   const messageId = await saveAssistantMessage(input.sessionId, input.correlationId, normalized);
 
-  return {
+  const response = {
     ...normalized,
     message_id: messageId,
     user_message_id: userMessageId,
   };
+
+  return input.includeDebug
+    ? {
+        ...response,
+        debug: {
+          mcp_raw_response: redactSensitiveValues(external),
+        },
+      }
+    : response;
+}
+
+function redactSensitiveValues(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactSensitiveValues);
+  if (!value || typeof value !== "object") return value;
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [
+      key,
+      /authorization|cookie|token|secret|api[-_]?key/i.test(key)
+        ? "[REDACTED]"
+        : redactSensitiveValues(entry),
+    ]),
+  );
 }
