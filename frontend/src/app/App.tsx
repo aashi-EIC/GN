@@ -975,10 +975,13 @@ function Workspace({
                       <Sparkles />
                     </div>
                     <div className="thinking" role="status" aria-live="polite">
-                      <i />
-                      <i />
-                      <i />
-                      Running governed calculations
+                      <span className="thinking-wave" aria-hidden="true">
+                        <i />
+                        <i />
+                        <i />
+                        <i />
+                      </span>
+                      <span className="thinking-label">Analyzing your data</span>
                     </div>
                   </div>
                 )}
