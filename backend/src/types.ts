@@ -52,7 +52,7 @@ export type McpContentBlock =
         | "gauge";
       title?: string;
       description?: string;
-      data?: Array<Record<string, McpScalar>>;
+      data?: Array<Record<string, McpScalar>> | McpScalar[][];
       encoding?: {
         x?: string;
         y?: string;

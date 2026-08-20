@@ -70,6 +70,7 @@ function inferChartFromTable(
     categoryKey,
     orderedRows.map((row) => row[categoryKey]),
   );
+  const requestedChartType = chartTypeFromTitle(block.title);
   const chartData = orderedRows.flatMap((row) =>
     measureKeys.map((measure) => ({
       category: String(row[categoryKey] ?? "Unknown"),
@@ -81,7 +82,12 @@ function inferChartFromTable(
   return {
     type: "chart",
     chart_type:
-      temporal ? "line" : measureKeys.length === 1 && orderedRows.length >= 5 ? "horizontal-bar" : "bar",
+      requestedChartType ??
+      (temporal
+        ? "line"
+        : measureKeys.length === 1 && orderedRows.length >= 5
+          ? "horizontal-bar"
+          : "bar"),
     title: block.title ? `${block.title} overview` : "Data overview",
     description:
       rows.length > 15
@@ -94,6 +100,17 @@ function inferChartFromTable(
       ...(measureKeys.length > 1 ? { color: "measure" } : {}),
     },
   };
+}
+
+function chartTypeFromTitle(title?: string) {
+  if (!title) return undefined;
+  if (/\bdonut\b/i.test(title)) return "donut" as const;
+  if (/\bpie(?:\s+chart)?\b/i.test(title)) return "pie" as const;
+  if (/\bline(?:\s+chart)?\b|\btrend\b/i.test(title)) return "line" as const;
+  if (/\barea(?:\s+chart)?\b/i.test(title)) return "area" as const;
+  if (/\bhorizontal(?:\s+bar)?\b/i.test(title)) return "horizontal-bar" as const;
+  if (/\bbar(?:\s+chart)?\b/i.test(title)) return "bar" as const;
+  return undefined;
 }
 
 function isMostlyNumeric(values: Array<string | number | boolean | null | undefined>) {

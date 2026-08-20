@@ -217,25 +217,72 @@ function MessageBubbleComponent({
 
         {debugOpen && message.debug && (
           <div className="debug-panel">
-            <div>
+            <div className="debug-panel-heading">
               <Code2 />
               <span>Admin debug mode</span>
               <b>node-bff</b>
             </div>
-            <pre>
-              {JSON.stringify(
-                {
-                  mcp_request_payload: message.mcpRequest,
-                  debug_events: message.debug,
-                },
-                null,
-                2,
-              )}
-            </pre>
+            <DebugPayload
+              title="Request sent to BFF"
+              value={message.mcpRequest}
+              defaultOpen
+            />
+            <DebugPayload
+              title="Raw MCP response"
+              value={message.debug.find((event) => event.stage === "mcp_response")?.payload}
+              defaultOpen
+            />
+            <DebugPayload
+              title="Processed BFF response"
+              value={message.debug.find((event) => event.stage === "bff_response")?.payload}
+              defaultOpen
+            />
+            <DebugPayload title="Processing events" value={message.debug} />
           </div>
         )}
       </article>
     </div>
+  );
+}
+
+function DebugPayload({
+  title,
+  value,
+  defaultOpen = false,
+}: {
+  title: string;
+  value: unknown;
+  defaultOpen?: boolean;
+}) {
+  const available = value !== undefined;
+  const content = available ? JSON.stringify(value, null, 2) : "";
+
+  return (
+    <details className="debug-payload" open={defaultOpen}>
+      <summary>
+        <span>{title}</span>
+        {available && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              void navigator.clipboard.writeText(content);
+            }}
+          >
+            <Copy />
+            Copy JSON
+          </button>
+        )}
+      </summary>
+      {available ? (
+        <pre>{content}</pre>
+      ) : (
+        <p className="debug-payload-empty">
+          Not captured for this message. Keep debug enabled and send a new prompt.
+        </p>
+      )}
+    </details>
   );
 }
 
@@ -304,6 +351,23 @@ function SafeResponseText({ text }: { text: string }) {
         flushList(`${blockIdx}-${lineIdx}`);
 
         if (!trimmed) {
+          return;
+        }
+
+        if (/^_{3,}$|^-{3,}$|^\*{3,}$/.test(trimmed)) {
+          elements.push(<hr key={`hr-${lineIdx}`} className="markdown-divider" />);
+          return;
+        }
+
+        if (/^[^a-z0-9]*findings\s*\/\s*insights\s*:/i.test(trimmed)) {
+          elements.push(
+            <div key={`insight-${lineIdx}`} className="markdown-insight-heading">
+              <span className="markdown-insight-icon" aria-hidden="true">
+                <Sparkles />
+              </span>
+              <span>Findings &amp; insights</span>
+            </div>,
+          );
           return;
         }
 

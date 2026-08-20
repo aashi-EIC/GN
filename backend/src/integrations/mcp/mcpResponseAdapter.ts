@@ -58,7 +58,12 @@ const block = z.discriminatedUnion("type", [
       ]),
       title: z.string().min(1).max(500).optional(),
       description: z.string().max(2_000).optional(),
-      data: z.array(z.record(z.string(), scalar)).max(100_000).optional(),
+      data: z
+        .union([
+          z.array(z.record(z.string(), scalar)).max(100_000),
+          z.array(z.array(scalar).max(100)).max(100_000),
+        ])
+        .optional(),
       encoding: encoding.optional(),
       option: z.record(z.string(), z.unknown()).optional(),
     })

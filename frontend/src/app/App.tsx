@@ -568,6 +568,7 @@ function Workspace({
         conversationId,
         modelId: currentModelId,
         prompt: trimmedQuestion,
+        debug: debugOpen,
       });
       requestAudit = mcpRequest.audit;
       persistMcpRequestAudit(requestAudit);
@@ -715,6 +716,7 @@ function Workspace({
         conversationId,
         modelId: currentModelId,
         prompt: trimmedQuestion,
+        debug: debugOpen,
       });
       requestAudit = mcpRequest.audit;
       persistMcpRequestAudit(requestAudit);
@@ -1037,7 +1039,9 @@ function Workspace({
           close={() => setSettingsOpen(false)}
           settings={settings}
           saveSettings={saveSettings}
-          toggleDebug={() => dispatch(uiActions.setDebugOpen(!debugOpen))}
+          toggleDebug={() =>
+            saveSettings({ ...settings, keepDebugOpen: !debugOpen })
+          }
           themeMode={themeMode}
           toggleTheme={() => dispatch(uiActions.toggleThemeMode())}
           onSignOut={onSignOut}

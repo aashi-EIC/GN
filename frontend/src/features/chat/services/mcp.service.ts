@@ -10,15 +10,21 @@ import type {
 import type { ModelId } from "../types/semantic";
 import { createId } from "../../../shared/utils/session";
 import { loadFromStorage, saveToStorage } from "../../../shared/utils/storage";
+import {
+  extractVisualizationBlocks,
+  normalizeVisualizationBlocks,
+} from "./visualizationResponse";
 
 export function buildMcpRequestPayload({
   conversationId,
   modelId,
   prompt,
+  debug = false,
 }: {
   conversationId: string;
   modelId: ModelId;
   prompt: string;
+  debug?: boolean;
 }) {
   const sentAt = new Date().toISOString();
   const requestId = createId("mcp");
@@ -26,6 +32,7 @@ export function buildMcpRequestPayload({
     session_id: conversationId,
     semantic_model_id: modelId,
     prompt,
+    ...(debug ? { debug: true } : {}),
   };
   const audit: McpRequestAudit = {
     ...payload,
@@ -65,6 +72,7 @@ export async function requestMcpInsight(
         },
         audit,
         response.data.request_id,
+        response.data.debug,
       );
     } catch (error) {
       lastError = error;
@@ -103,6 +111,7 @@ function withMcpRuntime(
   answer: Omit<Message, "id" | "role" | "createdAt">,
   audit: McpRequestAudit,
   correlationId?: string,
+  runtimeDebug?: ChatResponse["debug"],
 ): Omit<Message, "id" | "role" | "createdAt"> {
   return {
     ...answer,
@@ -119,6 +128,17 @@ function withMcpRuntime(
         detail: correlationId
           ? `MCP response received (correlation ID: ${correlationId})`
           : "MCP response received",
+        ...(runtimeDebug?.mcp_raw_response !== undefined
+          ? { payload: runtimeDebug.mcp_raw_response }
+          : {}),
+      },
+      {
+        stage: "bff_response",
+        status: "success",
+        detail: "Response returned by the Node BFF",
+        ...(runtimeDebug?.bff_response !== undefined
+          ? { payload: runtimeDebug.bff_response }
+          : {}),
       },
       {
         stage: "response_render",
@@ -138,6 +158,10 @@ type ChatResponse = {
   };
   message_id?: string;
   request_id?: string;
+  debug?: {
+    mcp_raw_response?: unknown;
+    bff_response?: unknown;
+  };
 };
 
 function parseChatResponse(response: ChatResponse) {
@@ -145,11 +169,11 @@ function parseChatResponse(response: ChatResponse) {
     throw new Error("The middleware returned an unsupported response.");
   }
 
-  const blocks = Array.isArray(response.answer.blocks)
-    ? (response.answer.blocks as VisualizationBlock[])
-    : undefined;
+  const structuredBlocks = normalizeVisualizationBlocks(response.answer.blocks);
+  const extracted = extractVisualizationBlocks(response.answer.text);
+  const blocks = [...(structuredBlocks ?? []), ...extracted.blocks];
 
-  return { text: response.answer.text, blocks };
+  return { text: extracted.text || "Query results", blocks: blocks.length ? blocks : undefined };
 }
 
 function readApiError(value: unknown) {

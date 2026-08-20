@@ -2214,6 +2214,92 @@ tr:last-child td {
     monospace;
 }
 
+.debug-payload {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.debug-payload:last-child {
+  border-bottom: 0;
+}
+
+.debug-payload summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 700;
+  list-style: none;
+}
+
+.debug-payload summary::-webkit-details-marker {
+  display: none;
+}
+
+.debug-payload summary::before {
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid #94a3b8;
+  border-bottom: 1.5px solid #94a3b8;
+  content: "";
+  transform: rotate(-45deg);
+  transition: transform 150ms ease;
+}
+
+.debug-payload[open] summary::before {
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+
+.debug-payload summary button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.debug-payload summary button:hover {
+  border-color: rgba(244, 9, 83, 0.5);
+  color: #ffffff;
+}
+
+.debug-payload summary button svg {
+  width: 12px;
+  height: 12px;
+}
+
+.debug-payload pre {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.debug-payload-empty {
+  margin: 0;
+  padding: 12px 30px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.sidebar-settings-row > span > small {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .thinking {
   display: flex;
   align-items: center;
@@ -7641,17 +7727,7 @@ body {
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.22) !important;
 }
 
-/* Refined Typography Tweaks & Slight Zoom-out Scaling */
-.workspace {
-  zoom: 0.94;
-}
-
-@supports not (zoom: 0.94) {
-  .workspace {
-    transform: scale(0.94);
-    transform-origin: top center;
-  }
-}
+/* Refined Typography Tweaks */
 
 .welcome h1 {
   font-family:
@@ -8592,30 +8668,17 @@ body {
 .workspace {
   position: relative;
   isolation: isolate;
-  background:
-    radial-gradient(circle at 84% 8%, color-mix(in srgb, #005d8f 7%, transparent) 0, transparent 30%),
-    radial-gradient(circle at 18% 88%, color-mix(in srgb, var(--gn-pink) 5%, transparent) 0, transparent 26%),
-    var(--ui-bg);
+  background: var(--ui-bg);
 }
 
 .workspace::before {
-  position: absolute;
-  top: -12rem;
-  right: -9rem;
-  z-index: -1;
-  width: 34rem;
-  height: 34rem;
-  border-radius: 50%;
-  background: color-mix(in srgb, #56b4d8 8%, transparent);
-  filter: blur(70px);
-  pointer-events: none;
-  content: "";
-  animation: ambient-drift 14s ease-in-out infinite alternate;
+  display: none;
+  content: none;
 }
 
 .workspace:has(> .welcome)::before {
-  display: block;
-  content: "";
+  display: none;
+  content: none;
 }
 
 .workspace:has(> .welcome) > .welcome {
@@ -8658,6 +8721,147 @@ body {
 .ask-brand:hover .ask-brand-icon::after {
   opacity: 1;
   transform: scale(1);
+}
+
+.sidebar .ask-brand-icon::after {
+  display: none;
+}
+
+.sidebar .ask-brand:hover .ask-brand-icon img {
+  filter: none;
+  transform: none;
+}
+
+/* Keep the header clean: no ambient wash or decorative guide underline. */
+.workspace > .topbar {
+  background: var(--ui-bg) !important;
+}
+
+.guide-button-wrap::after {
+  display: none !important;
+  content: none !important;
+}
+
+.header-actions .model-guide-button,
+.header-actions .model-guide-button:hover,
+.header-actions .model-guide-button:focus-visible {
+  border: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* Avoid the clipped dark tooltip edge appearing beside the collapsed rail. */
+.sidebar.closed .icon-btn::after,
+.collapsed-brand-trigger::after {
+  display: none !important;
+  content: none !important;
+}
+
+/*
+ * Keep both sidebar states mounted and move the rail on the compositor.
+ * The workspace no longer changes width during the transition, so charts do
+ * not receive a ResizeObserver update on every animation frame.
+ */
+.sidebar-expanded-content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  opacity: 1;
+  transition:
+    opacity 130ms ease,
+    visibility 0s linear;
+}
+
+.sidebar.open .sidebar-collapsed-nav {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 100ms ease,
+    visibility 0s linear 100ms;
+}
+
+.sidebar.closed .sidebar-expanded-content {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 90ms ease,
+    visibility 0s linear 90ms;
+}
+
+@media (min-width: 901px) {
+  .app-shell {
+    display: grid;
+    grid-template-columns: 292px minmax(0, 1fr);
+    transition: grid-template-columns 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .app-shell:has(> .sidebar.closed) {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .sidebar,
+  .sidebar.open,
+  .sidebar.closed {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: stretch;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    padding: 16px 10px 12px !important;
+    flex: none !important;
+    overflow: hidden;
+    z-index: 40;
+    transform: none;
+    transition: none !important;
+    contain: layout paint style;
+  }
+
+  .sidebar.closed {
+    padding: 12px 10px !important;
+    transform: none;
+  }
+
+  .sidebar-collapsed-nav,
+  .sidebar.closed .sidebar-collapsed-nav {
+    position: absolute;
+    inset: 12px 10px 12px auto;
+    width: 56px;
+    height: auto !important;
+    margin: 0 !important;
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity 140ms ease 70ms,
+      visibility 0s linear;
+  }
+
+  .workspace {
+    grid-column: 2;
+    grid-row: 1;
+    width: auto;
+    min-width: 0;
+    zoom: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .sidebar.open,
+  .sidebar.closed,
+  .sidebar-expanded-content,
+  .sidebar-collapsed-nav {
+    transition: none !important;
+  }
+
+  .app-shell {
+    transition: none !important;
+  }
 }
 
 .universal-chart-panel {
@@ -8943,17 +9147,112 @@ body {
 }
 
 .markdown-h1 {
-  font-size: 18px;
-  font-weight: 800;
-  margin: 18px 0 10px 0;
+  position: relative;
+  margin: 8px 0 14px;
+  padding: 13px 16px 13px 20px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 93, 143, 0.12);
+  border-radius: 14px;
+  background: linear-gradient(105deg, rgba(0, 93, 143, 0.07), rgba(244, 9, 83, 0.035));
   color: #002041;
-  border-bottom: 1px solid rgba(0, 93, 143, 0.12);
-  padding-bottom: 6px;
+  box-shadow: 0 8px 24px rgba(0, 32, 65, 0.045);
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: -0.012em;
+}
+
+.markdown-h1::before {
+  position: absolute;
+  inset: 9px auto 9px 0;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: linear-gradient(180deg, var(--gn-pink), #005d8f);
+  content: "";
 }
 
 [data-theme="dark"] .markdown-h1 {
   color: #f8fafc;
-  border-bottom-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(148, 163, 184, 0.16);
+  background: linear-gradient(105deg, rgba(56, 189, 248, 0.1), rgba(244, 9, 83, 0.07));
+}
+
+.markdown-divider {
+  width: 100%;
+  height: 1px;
+  margin: 2px 0 16px;
+  border: 0;
+  background: linear-gradient(90deg, rgba(0, 93, 143, 0.2), rgba(0, 93, 143, 0.04) 72%, transparent);
+}
+
+.markdown-insight-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 13px 16px 9px;
+  border: 1px solid #dfe7ef;
+  border-bottom: 0;
+  border-left: 3px solid var(--gn-pink);
+  border-radius: 14px 14px 0 0;
+  background: #f8fafc;
+  color: #002041;
+  box-shadow: 0 8px 22px rgba(0, 32, 65, 0.055);
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.markdown-insight-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 1px solid rgba(244, 9, 83, 0.2);
+  border-radius: 9px;
+  background: #ffffff;
+  color: var(--gn-pink);
+  box-shadow: 0 2px 6px rgba(0, 32, 65, 0.06);
+}
+
+.markdown-insight-icon svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2;
+}
+
+.markdown-insight-heading + .markdown-p {
+  margin-bottom: 14px;
+  padding: 4px 16px 16px 54px;
+  border: 1px solid #dfe7ef;
+  border-top: 0;
+  border-left: 3px solid var(--gn-pink);
+  border-radius: 0 0 14px 14px;
+  background: #ffffff;
+  color: #26364b;
+  box-shadow: 0 8px 22px rgba(0, 32, 65, 0.055);
+}
+
+[data-theme="dark"] .markdown-divider {
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.28), rgba(56, 189, 248, 0.05) 72%, transparent);
+}
+
+[data-theme="dark"] .markdown-insight-heading,
+[data-theme="dark"] .markdown-insight-heading + .markdown-p {
+  border-color: #334155;
+  border-left-color: var(--gn-pink);
+  background: #172033;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .markdown-insight-heading + .markdown-p {
+  background: #111827;
+}
+
+[data-theme="dark"] .markdown-insight-icon {
+  border-color: rgba(244, 9, 83, 0.32);
+  background: #0f172a;
 }
 
 .markdown-h2 {
