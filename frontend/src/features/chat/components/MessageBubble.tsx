@@ -178,6 +178,7 @@ function MessageBubbleComponent({
                 </div>
                 <b className="kpi-value">{metric.value}</b>
                 {metric.subtext && <span className="kpi-subtext">{metric.subtext}</span>}
+              </div>
             ))}
           </div>
         )}
