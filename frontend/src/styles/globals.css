@@ -8469,6 +8469,70 @@ body {
   text-align: left;
 }
 
+/* Table Status Badges & Percentage Highlights */
+.table-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1;
+  text-transform: capitalize;
+}
+
+.badge-success {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+[data-theme="dark"] .badge-success {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.badge-warning {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+
+[data-theme="dark"] .badge-warning {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.badge-danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
+[data-theme="dark"] .badge-danger {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.table-pct-val {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.table-pct-val.high-pct {
+  color: #059669;
+}
+
+[data-theme="dark"] .table-pct-val.high-pct {
+  color: #34d399;
+}
+
+.table-pct-val.low-pct {
+  color: #dc2626;
+}
+
+[data-theme="dark"] .table-pct-val.low-pct {
+  color: #f87171;
+}
+
 .empty-table-cell {
   text-align: center;
   padding: 24px;

@@ -41,6 +41,45 @@ function toNumber(value: unknown) {
   return normalized ? Number(normalized) : Number.NaN;
 }
 
+const NOISE_COLUMNS = new Set([
+  "tenant_id",
+  "id",
+  "uuid",
+  "_id",
+  "created_at",
+  "updated_at",
+  "raw_payload",
+  "__v",
+  "sys_id",
+]);
+
+function humanizeColumnLabel(key: string): string {
+  const customMap: Record<string, string> = {
+    channel_name: "Channel",
+    channel_id: "Channel ID",
+    completeness_pct: "Completeness %",
+    completeness_rate: "Completeness %",
+    tba_hours: "TBA (hrs)",
+    signoff_hours: "Sign-off (hrs)",
+    sign_off_hours: "Sign-off (hrs)",
+    generic_hours: "Generic (hrs)",
+    horizon_days: "Horizon",
+    total_assets: "Total Assets",
+    mapped_assets: "Mapped",
+    unmapped_assets: "To Be Mapped",
+    unmappable_assets: "Unmappable",
+    c2m_hours: "C2M (hrs)",
+  };
+
+  const lower = key.toLowerCase().trim();
+  if (customMap[lower]) return customMap[lower];
+
+  return key
+    .replace(/_/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 export function StructuredTable({
   block,
 }: {
@@ -53,15 +92,19 @@ export function StructuredTable({
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [copied, setCopied] = useState(false);
 
-  const columns = useMemo(
-    () =>
-      block.columns.map((column) =>
-        typeof column === "string"
-          ? { key: column, label: column }
-          : { key: column.key, label: column.label ?? column.key },
-      ),
-    [block.columns],
-  );
+  const columns = useMemo(() => {
+    const allCols = block.columns.map((column) =>
+      typeof column === "string"
+        ? { key: column, label: humanizeColumnLabel(column) }
+        : { key: column.key, label: column.label ? column.label : humanizeColumnLabel(column.key) },
+    );
+
+    if (allCols.length > 3) {
+      const essential = allCols.filter((col) => !NOISE_COLUMNS.has(col.key.toLowerCase()));
+      return essential.length > 0 ? essential : allCols;
+    }
+    return allCols;
+  }, [block.columns]);
 
   const rawRows = useMemo(
     () =>
@@ -272,7 +315,7 @@ export function StructuredTable({
                         key={column.key}
                         className={isNum ? "cell-number" : "cell-text"}
                       >
-                        {formatCell(rawVal)}
+                        {formatCell(rawVal, column.key)}
                       </td>
                     );
                   })}
@@ -340,7 +383,7 @@ export function StructuredTable({
                 >
                   <ChevronRight size={16} />
                 </button>
-              </div>
+                </div>
             )}
           </div>
         </div>
@@ -349,8 +392,47 @@ export function StructuredTable({
   );
 }
 
-function formatCell(value: unknown) {
-  if (value === null || value === undefined) return "—";
-  return String(value);
+function formatCell(value: unknown, columnKey: string) {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+
+  const str = String(value).trim();
+  const lower = str.toLowerCase();
+
+  if (lower === "complete" || lower === "100%" || lower === "mapped" || lower === "success") {
+    return <span className="table-badge badge-success">{str}</span>;
+  }
+  if (lower === "tba" || lower === "to be mapped" || lower === "in progress" || lower === "partial") {
+    return <span className="table-badge badge-warning">{str}</span>;
+  }
+  if (lower === "sign-off" || lower === "signoff" || lower === "generic" || lower === "unmappable" || lower === "failed") {
+    return <span className="table-badge badge-danger">{str}</span>;
+  }
+
+  if (typeof value === "number") {
+    const keyLower = columnKey.toLowerCase();
+    if (
+      keyLower.includes("pct") ||
+      keyLower.includes("rate") ||
+      keyLower.includes("percent") ||
+      keyLower.includes("completeness")
+    ) {
+      const formatted = value <= 1 && value > 0 ? (value * 100).toFixed(1) : value.toFixed(1);
+      const numFormatted = Number(formatted);
+      const isHigh = numFormatted >= 95;
+      const isLow = numFormatted < 80;
+      return (
+        <span className={`table-pct-val ${isHigh ? "high-pct" : isLow ? "low-pct" : ""}`}>
+          {formatted}%
+        </span>
+      );
+    }
+    if (Number.isInteger(value)) {
+      return value.toLocaleString();
+    }
+    return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+
+  return str;
 }
 

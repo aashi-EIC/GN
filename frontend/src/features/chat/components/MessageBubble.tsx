@@ -20,7 +20,7 @@ import type {
   VisualizationBlock,
 } from "../../../shared/types/app";
 import { IconButton } from "../../../shared/components/ui/IconButton";
-import { StructuredTable } from "./charts/VisualizationRenderer";
+import { VisualizationRenderer } from "./charts/VisualizationRenderer";
 import "./messageBubbleMarkdown.css";
 
 function MessageBubbleComponent({
@@ -178,9 +178,12 @@ function MessageBubbleComponent({
                 </div>
                 <b className="kpi-value">{metric.value}</b>
                 {metric.subtext && <span className="kpi-subtext">{metric.subtext}</span>}
-              </div>
             ))}
           </div>
+        )}
+
+        {message.visualizationBlocks && message.visualizationBlocks.length > 0 && (
+          <VisualizationRenderer blocks={message.visualizationBlocks} />
         )}
 
         <div className="response-actions">
