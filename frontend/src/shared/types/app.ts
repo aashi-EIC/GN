@@ -19,7 +19,8 @@ export type SettingsState = {
 export type InsightMetric = {
   label: string;
   value: string;
-  tone: "good" | "watch" | "neutral";
+  subtext?: string;
+  tone?: "good" | "positive" | "watch" | "neutral";
 };
 
 export type DebugEvent = {

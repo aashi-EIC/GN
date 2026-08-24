@@ -2,11 +2,13 @@ import * as echarts from "echarts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlignLeft,
+  AreaChart,
   BarChart3,
   Download,
   Maximize2,
   Minimize2,
   LineChart,
+  PieChart,
   RotateCcw,
   Table as TableIcon,
   ZoomIn,
@@ -167,7 +169,7 @@ export function UniversalChart({ block }: { block: ChartBlock }) {
             </div>
           )}
           {/* Chart Type Switcher Buttons */}
-          {viewMode === "chart" && !isRadial && (
+          {viewMode === "chart" && (
             <div className="chart-type-selector">
               <button
                 type="button"
@@ -195,6 +197,33 @@ export function UniversalChart({ block }: { block: ChartBlock }) {
               >
                 <AlignLeft size={14} />
                 <span>Horizontal</span>
+              </button>
+              <button
+                type="button"
+                className={`btn-chart-type ${activeChartType === "pie" ? "active" : ""}`}
+                onClick={() => setActiveChartType("pie")}
+                title="Pie Share Chart"
+              >
+                <PieChart size={14} />
+                <span>Pie</span>
+              </button>
+              <button
+                type="button"
+                className={`btn-chart-type ${activeChartType === "donut" ? "active" : ""}`}
+                onClick={() => setActiveChartType("donut")}
+                title="Donut Ring Chart"
+              >
+                <PieChart size={14} />
+                <span>Donut</span>
+              </button>
+              <button
+                type="button"
+                className={`btn-chart-type ${activeChartType === "area" ? "active" : ""}`}
+                onClick={() => setActiveChartType("area")}
+                title="Area Trend Chart"
+              >
+                <AreaChart size={14} />
+                <span>Area</span>
               </button>
             </div>
           )}

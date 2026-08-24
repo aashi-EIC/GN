@@ -1,7 +1,10 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import {
+  Activity,
   AlertTriangle,
   Check,
+  CheckCircle2,
   Code2,
   Copy,
   MoreHorizontal,
@@ -132,7 +135,12 @@ function MessageBubbleComponent({
       <div className="ai-mark">
         <Sparkles />
       </div>
-      <article className={`response ${isError ? "response-error-state" : ""}`}>
+      <motion.article
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        className={`response ${isError ? "response-error-state" : ""}`}
+      >
         <SafeResponseText text={message.text} />
 
         {isError && onRegenerateResponse && (
@@ -149,12 +157,22 @@ function MessageBubbleComponent({
           </div>
         )}
 
-        {message.metrics && (
-          <div className="metric-grid">
+        {message.metrics && message.metrics.length > 0 && (
+          <div className="metric-grid kpi-card-grid">
             {message.metrics.map((metric) => (
-              <div className={`metric ${metric.tone}`} key={metric.label}>
-                <span>{metric.label}</span>
-                <b>{metric.value}</b>
+              <div className={`metric kpi-card ${metric.tone || ""}`} key={metric.label}>
+                <div className="kpi-card-header">
+                  <span className="kpi-label">{metric.label}</span>
+                  {metric.tone === "positive" || metric.tone === "good" ? (
+                    <CheckCircle2 size={14} className="kpi-icon positive" />
+                  ) : metric.tone === "watch" ? (
+                    <AlertTriangle size={14} className="kpi-icon watch" />
+                  ) : (
+                    <Activity size={14} className="kpi-icon neutral" />
+                  )}
+                </div>
+                <b className="kpi-value">{metric.value}</b>
+                {metric.subtext && <span className="kpi-subtext">{metric.subtext}</span>}
               </div>
             ))}
           </div>
@@ -240,7 +258,7 @@ function MessageBubbleComponent({
             <DebugPayload title="Processing events" value={message.debug} />
           </div>
         )}
-      </article>
+      </motion.article>
     </div>
   );
 }
@@ -319,10 +337,12 @@ function SafeResponseText({ text }: { text: string }) {
         );
       }
 
-      // Process regular markdown lines (headers, lists, paragraphs)
+      // Process regular markdown lines (headers, lists, KPI card grids, blockquotes, paragraphs)
       const lines = block.split("\n");
       const elements: React.ReactNode[] = [];
       let currentList: React.ReactNode[] = [];
+      let currentKpiList: Array<{ label: string; value: string; subtext?: string }> = [];
+      let currentBlockquote: string[] = [];
 
       const flushList = (keyPrefix: string) => {
         if (currentList.length > 0) {
@@ -335,11 +355,70 @@ function SafeResponseText({ text }: { text: string }) {
         }
       };
 
+      const flushKpiList = (keyPrefix: string) => {
+        if (currentKpiList.length > 0) {
+          elements.push(
+            <div key={`kpi-${keyPrefix}-${elements.length}`} className="kpi-card-grid">
+              {currentKpiList.map((kpi, idx) => (
+                <div key={`kpi-item-${idx}`} className="kpi-card">
+                  <div className="kpi-card-header">
+                    <span className="kpi-label">{kpi.label}</span>
+                  </div>
+                  <b className="kpi-value">{kpi.value}</b>
+                  {kpi.subtext && <span className="kpi-subtext">{kpi.subtext}</span>}
+                </div>
+              ))}
+            </div>,
+          );
+          currentKpiList = [];
+        }
+      };
+
+      const flushBlockquote = (keyPrefix: string) => {
+        if (currentBlockquote.length > 0) {
+          elements.push(
+            <div key={`bq-${keyPrefix}-${elements.length}`} className="executive-insight-block">
+              <div className="executive-insight-header">
+                <Sparkles size={14} className="executive-insight-sparkle" />
+                <span>Findings & Insights</span>
+              </div>
+              <div className="executive-insight-content">
+                {currentBlockquote.map((bqLine, idx) => (
+                  <p key={idx} className="executive-insight-text">
+                    {renderFormattedInlineText(bqLine)}
+                  </p>
+                ))}
+              </div>
+            </div>,
+          );
+          currentBlockquote = [];
+        }
+      };
+
       lines.forEach((line, lineIdx) => {
         const trimmed = line.trim();
 
-        // Bullet point lines (- item or * item or • item)
+        // Check for KPI metric bullet lines: - **Label**: Value (Subtext) or - Label: Value
+        const metricMatch = trimmed.match(/^[-*•]\s+(?:\*\*([^*]+)\*\*|([A-Za-z0-9\s_%–-]+)):\s*([^(]+?)(?:\s*\(([^)]+)\))?$/);
+        if (metricMatch) {
+          flushList(`${blockIdx}-${lineIdx}`);
+          flushBlockquote(`${blockIdx}-${lineIdx}`);
+          const label = metricMatch[1] || metricMatch[2];
+          const value = metricMatch[3];
+          const subtext = metricMatch[4];
+
+          currentKpiList.push({
+            label: label.trim(),
+            value: value.trim(),
+            subtext: subtext?.trim(),
+          });
+          return;
+        }
+
+        // Regular bullet point lines (- item or * item or • item)
         if (/^[-*•]\s+/.test(trimmed)) {
+          flushKpiList(`${blockIdx}-${lineIdx}`);
+          flushBlockquote(`${blockIdx}-${lineIdx}`);
           const listText = trimmed.replace(/^[-*•]\s+/, "");
           currentList.push(
             <li key={`li-${lineIdx}`}>{renderFormattedInlineText(listText)}</li>,
@@ -347,8 +426,19 @@ function SafeResponseText({ text }: { text: string }) {
           return;
         }
 
-        // Flush list if we hit a non-list line
+        // Blockquote lines starting with '>' or emoji indicators
+        if (trimmed.startsWith(">") || /^([📊💡📌✨]|\*\*Findings\/Insights:\*\*|Findings\/Insights:)/i.test(trimmed)) {
+          flushList(`${blockIdx}-${lineIdx}`);
+          flushKpiList(`${blockIdx}-${lineIdx}`);
+          const bqText = trimmed.replace(/^>\s*(?:📊\s*)?(?:\*\*Findings\/Insights:\*\*|Findings\/Insights:)?\s*/i, "");
+          currentBlockquote.push(bqText);
+          return;
+        }
+
+        // Flush all buffers if we hit a normal line
         flushList(`${blockIdx}-${lineIdx}`);
+        flushKpiList(`${blockIdx}-${lineIdx}`);
+        flushBlockquote(`${blockIdx}-${lineIdx}`);
 
         if (!trimmed) {
           return;
@@ -400,6 +490,8 @@ function SafeResponseText({ text }: { text: string }) {
       });
 
       flushList(`${blockIdx}-end`);
+      flushKpiList(`${blockIdx}-end`);
+      flushBlockquote(`${blockIdx}-end`);
       return <div key={`block-${blockIdx}`}>{elements}</div>;
     });
   }, [text]);
@@ -408,8 +500,8 @@ function SafeResponseText({ text }: { text: string }) {
 }
 
 function renderFormattedInlineText(text: string): React.ReactNode {
-  // Regex to match **bold** and `code`
-  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  // Regex to match **bold**, `code`, *italic*
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g);
 
   return parts.map((part, idx) => {
     if (part.startsWith("**") && part.endsWith("**")) {
@@ -417,6 +509,9 @@ function renderFormattedInlineText(text: string): React.ReactNode {
     }
     if (part.startsWith("`") && part.endsWith("`")) {
       return <code key={idx} className="markdown-inline-code">{part.slice(1, -1)}</code>;
+    }
+    if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
+      return <em key={idx}>{part.slice(1, -1)}</em>;
     }
     return part;
   });

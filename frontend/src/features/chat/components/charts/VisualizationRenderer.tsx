@@ -79,15 +79,30 @@ function inferChartFromTable(
     })),
   );
 
+  const titleText = (block.title ?? "").toLowerCase();
+  let inferredType: "line" | "area" | "horizontal-bar" | "bar" | "pie" | "donut" = "bar";
+
+  if (titleText.includes("pie")) {
+    inferredType = "pie";
+  } else if (titleText.includes("donut")) {
+    inferredType = "donut";
+  } else if (titleText.includes("area")) {
+    inferredType = "area";
+  } else if (temporal) {
+    inferredType = "line";
+  } else if (
+    orderedRows.length >= 2 &&
+    orderedRows.length <= 6 &&
+    (titleText.includes("share") || titleText.includes("distribution") || titleText.includes("proportion") || titleText.includes("split"))
+  ) {
+    inferredType = "pie";
+  } else if (measureKeys.length === 1 && orderedRows.length >= 5) {
+    inferredType = "horizontal-bar";
+  }
+
   return {
     type: "chart",
-    chart_type:
-      requestedChartType ??
-      (temporal
-        ? "line"
-        : measureKeys.length === 1 && orderedRows.length >= 5
-          ? "horizontal-bar"
-          : "bar"),
+    chart_type: requestedChartType ?? inferredType,
     title: block.title ? `${block.title} overview` : "Data overview",
     description:
       rows.length > 15

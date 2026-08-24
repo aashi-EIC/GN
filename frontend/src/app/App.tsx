@@ -389,7 +389,7 @@ function Workspace({
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute("content", themeMode === "dark" ? "#25282d" : "#ffffff");
 
-    document.title = "Conversational BI";
+    document.title = "Conversational BI | Gracenote";
   }, [themeMode]);
 
   useEffect(() => {
@@ -563,7 +563,7 @@ function Workspace({
     let requestAudit: McpRequestAudit | null = null;
 
     try {
-      let token = await acquireToken();
+      const token = await acquireToken();
       const mcpRequest = buildMcpRequestPayload({
         conversationId,
         modelId: currentModelId,
@@ -711,7 +711,7 @@ function Workspace({
     let requestAudit: McpRequestAudit | null = null;
 
     try {
-      let token = await acquireToken();
+      const token = await acquireToken();
       const mcpRequest = buildMcpRequestPayload({
         conversationId,
         modelId: currentModelId,

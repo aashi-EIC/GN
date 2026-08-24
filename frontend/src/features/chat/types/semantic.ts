@@ -9,6 +9,13 @@ export type SemanticModel = {
   nickname: string;
   description: string;
   guide: string;
+  objective?: string;
+  objectiveNote?: string;
+  objectivePoints?: Array<{ label?: string; text: string }>;
+  businessPurpose?: string;
+  businessPoints?: string[];
+  quickTip?: string;
+  highlights?: Array<{ label: string; value: string }>;
   color: string;
   prompts: string[];
 };

@@ -1,6 +1,8 @@
 import {
   CalendarDays,
   Check,
+  ChevronDown,
+  ChevronRight,
   MessageSquarePlus,
   MoreHorizontal,
   PanelLeftClose,
@@ -82,7 +84,7 @@ const groupHistoryByModel = (conversations: Conversation[]): ModelGroup[] => {
 
   conversations.forEach((conversation) => {
     const model = getModel(conversation.modelId);
-    const label = model.name;
+    const label = model.nickname || model.short;
     const existing = modelGroups.get(label) ?? { short: model.short, color: model.color, list: [] };
     modelGroups.set(label, {
       short: model.short,
@@ -133,6 +135,22 @@ export function Sidebar({
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [collapsedTopics, setCollapsedTopics] = useState<Record<string, boolean>>({});
+  const [collapsedDates, setCollapsedDates] = useState<Record<string, boolean>>({});
+
+  const toggleTopicCollapse = (topicKey: string) => {
+    setCollapsedTopics((prev) => ({
+      ...prev,
+      [topicKey]: !prev[topicKey],
+    }));
+  };
+
+  const toggleDateCollapse = (dateKey: string) => {
+    setCollapsedDates((prev) => ({
+      ...prev,
+      [dateKey]: !prev[dateKey],
+    }));
+  };
 
   useEffect(() => {
     const closePopovers = (event: PointerEvent) => {
@@ -213,7 +231,7 @@ export function Sidebar({
         <button onClick={() => openConversation(conversation)}>
           <span>
             {conversation.pinned && <Pin className="history-pin-indicator" />}
-            {clampText(conversation.title || latestUserPrompt(conversation), 50)}
+            {clampText((conversation.title || latestUserPrompt(conversation)).toLowerCase(), 50)}
           </span>
           <small>
             {groupBy === "date"
@@ -351,37 +369,85 @@ export function Sidebar({
             )}
 
             {groupBy === "date"
-              ? groupHistoryByDate(unpinnedConversations).map((dateGroup) => (
-                  <section className="history-date-section" key={dateGroup.label}>
-                    <div className="history-date-heading">
-                      <CalendarDays />
-                      <span>{dateGroup.label}</span>
-                      <strong>{dateGroup.conversations.length}</strong>
-                    </div>
-
-                    <div className="history-item-list">
-                      {dateGroup.conversations.map(renderHistoryItem)}
-                    </div>
-                  </section>
-                ))
-              : groupHistoryByModel(unpinnedConversations).map((modelGroup) => (
-                  <section className="history-date-section" key={modelGroup.label}>
-                    <div className="history-date-heading">
-                      <span
-                        className="history-model-badge"
-                        style={{ backgroundColor: modelGroup.color }}
+              ? groupHistoryByDate(unpinnedConversations).map((dateGroup) => {
+                  const isCollapsed = Boolean(collapsedDates[dateGroup.label]);
+                  return (
+                    <section
+                      className={`history-date-section ${isCollapsed ? "is-collapsed" : ""}`}
+                      key={dateGroup.label}
+                    >
+                      <div
+                        className="history-date-heading clickable-heading"
+                        onClick={() => toggleDateCollapse(dateGroup.label)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") toggleDateCollapse(dateGroup.label);
+                        }}
+                        title={isCollapsed ? `Expand ${dateGroup.label}` : `Collapse ${dateGroup.label}`}
                       >
-                        {modelGroup.short}
-                      </span>
-                      <span>{modelGroup.label}</span>
-                      <strong>{modelGroup.conversations.length}</strong>
-                    </div>
+                        <div className="history-heading-left">
+                          {isCollapsed ? (
+                            <ChevronRight className="history-collapse-icon" size={13} />
+                          ) : (
+                            <ChevronDown className="history-collapse-icon" size={13} />
+                          )}
+                          <CalendarDays size={13} />
+                          <span>{dateGroup.label}</span>
+                        </div>
+                        <strong className="history-group-count">{dateGroup.conversations.length}</strong>
+                      </div>
 
-                    <div className="history-item-list">
-                      {modelGroup.conversations.map(renderHistoryItem)}
-                    </div>
-                  </section>
-                ))}
+                      {!isCollapsed && (
+                        <div className="history-item-list">
+                          {dateGroup.conversations.map(renderHistoryItem)}
+                        </div>
+                      )}
+                    </section>
+                  );
+                })
+              : groupHistoryByModel(unpinnedConversations).map((modelGroup) => {
+                  const isCollapsed = Boolean(collapsedTopics[modelGroup.label]);
+                  return (
+                    <section
+                      className={`history-date-section ${isCollapsed ? "is-collapsed" : ""}`}
+                      key={modelGroup.label}
+                    >
+                      <div
+                        className="history-date-heading clickable-heading"
+                        onClick={() => toggleTopicCollapse(modelGroup.label)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") toggleTopicCollapse(modelGroup.label);
+                        }}
+                        title={isCollapsed ? `Expand ${modelGroup.label}` : `Collapse ${modelGroup.label}`}
+                      >
+                        <div className="history-heading-left">
+                          {isCollapsed ? (
+                            <ChevronRight className="history-collapse-icon" size={13} />
+                          ) : (
+                            <ChevronDown className="history-collapse-icon" size={13} />
+                          )}
+                          <span
+                            className="history-model-badge"
+                            style={{ backgroundColor: modelGroup.color }}
+                          >
+                            {modelGroup.short}
+                          </span>
+                          <span className="history-model-name">{modelGroup.label}</span>
+                        </div>
+                        <strong className="history-group-count">{modelGroup.conversations.length}</strong>
+                      </div>
+
+                      {!isCollapsed && (
+                        <div className="history-item-list">
+                          {modelGroup.conversations.map(renderHistoryItem)}
+                        </div>
+                      )}
+                    </section>
+                  );
+                })}
             {conversations.length === 0 && <p className="empty-history">No saved conversations</p>}
           </nav>
 

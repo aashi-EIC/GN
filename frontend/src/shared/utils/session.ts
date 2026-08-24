@@ -109,7 +109,7 @@ function capitalizeWord(word: string): string {
 
 export function titleFromUserMessages(userMessages: string[]): string {
   const topMessages = userMessages.filter((m) => m && m.trim().length > 0).slice(0, 5);
-  if (topMessages.length === 0) return "New Chat";
+  if (topMessages.length === 0) return "new chat";
 
   const wordCounts: Map<string, number> = new Map();
   const orderedWords: string[] = [];
@@ -118,29 +118,28 @@ export function titleFromUserMessages(userMessages: string[]): string {
     const words = msg
       .replace(/[^a-zA-Z0-9\s]/g, " ")
       .split(/\s+/)
-      .map((w) => w.trim())
-      .filter((w) => w.length > 2 && !STOP_WORDS.has(w.toLowerCase()));
+      .map((w) => w.trim().toLowerCase())
+      .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
 
-    for (const rawWord of words) {
-      const lower = rawWord.toLowerCase();
+    for (const lower of words) {
       wordCounts.set(lower, (wordCounts.get(lower) || 0) + 1);
-      if (!orderedWords.some((w) => w.toLowerCase() === lower)) {
-        orderedWords.push(rawWord);
+      if (!orderedWords.includes(lower)) {
+        orderedWords.push(lower);
       }
     }
   }
 
   if (orderedWords.length === 0) {
     const rawFallback = topMessages[0].trim().split(/\s+/).slice(0, 2);
-    return rawFallback.map(capitalizeWord).join(" ") || "New Chat";
+    return rawFallback.join(" ").toLowerCase() || "new chat";
   }
 
   const sortedWords = [...orderedWords].sort((a, b) => {
-    const countA = wordCounts.get(a.toLowerCase()) || 0;
-    const countB = wordCounts.get(b.toLowerCase()) || 0;
-    return countB - countA;
+    const countA = wordCounts.get(a) || 0;
+    const countB = wordCounts.get(b) || 0;
+    if (countA !== countB) return countB - countA;
+    return orderedWords.indexOf(a) - orderedWords.indexOf(b);
   });
 
-  const selected = sortedWords.slice(0, 2);
-  return selected.map(capitalizeWord).join(" ");
+  return sortedWords.slice(0, 3).join(" ").toLowerCase();
 }
