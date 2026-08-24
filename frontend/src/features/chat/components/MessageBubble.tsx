@@ -20,7 +20,7 @@ import type {
   VisualizationBlock,
 } from "../../../shared/types/app";
 import { IconButton } from "../../../shared/components/ui/IconButton";
-import { VisualizationRenderer } from "./charts/VisualizationRenderer";
+import { StructuredTable, VisualizationRenderer } from "./charts/VisualizationRenderer";
 import "./messageBubbleMarkdown.css";
 
 function MessageBubbleComponent({
@@ -183,8 +183,8 @@ function MessageBubbleComponent({
           </div>
         )}
 
-        {message.visualizationBlocks && message.visualizationBlocks.length > 0 && (
-          <VisualizationRenderer blocks={message.visualizationBlocks} />
+        {message.visualizations && message.visualizations.length > 0 && (
+          <VisualizationRenderer blocks={message.visualizations} />
         )}
 
         <div className="response-actions">
