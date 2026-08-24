@@ -949,7 +949,6 @@ function Workspace({
               setModelId={setSelectedModelId}
               modelsOpen={modelsOpen}
               setModelsOpen={setModelsOpen}
-              countryCode={selectedCountryCode}
               prompt={prompt}
               setPrompt={setPrompt}
               submitPrompt={submitPrompt}

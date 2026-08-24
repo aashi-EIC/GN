@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { ArrowUp, Mic } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
-import { getCountryLocale } from "../../../shared/constants/locales";
-import type { CountryCode, ModelId, SemanticModel } from "../types/semantic";
+import type { ModelId, SemanticModel } from "../types/semantic";
 import { handleEnter } from "../../../shared/utils/keyboard";
 import { startVoiceInput } from "../utils/speech";
 import { ModelPicker } from "./ModelPicker";
@@ -36,7 +35,6 @@ export function WelcomePanel({
   setModelId,
   modelsOpen,
   setModelsOpen,
-  countryCode,
   prompt,
   setPrompt,
   submitPrompt,
@@ -47,14 +45,12 @@ export function WelcomePanel({
   setModelId: (modelId: ModelId) => void;
   modelsOpen: boolean;
   setModelsOpen: (open: boolean) => void;
-  countryCode: CountryCode;
   prompt: string;
   setPrompt: (prompt: string) => void;
   submitPrompt: (prompt?: string) => void;
 }) {
   const [isRecording, setIsRecording] = useState(false);
   const reduceMotion = useReducedMotion();
-  const locale = getCountryLocale(countryCode);
 
   const selectedTemplate = useMemo(() => {
     const randomIndex = Math.floor(Math.random() * WELCOME_MESSAGES.length);
@@ -103,7 +99,7 @@ export function WelcomePanel({
                 startVoiceInput(
                   prompt,
                   setPrompt,
-                  locale.speechLocale,
+                  "en-US",
                   () => setIsRecording(true),
                   () => setIsRecording(false),
                 )
@@ -118,7 +114,7 @@ export function WelcomePanel({
               onClick={() => submitPrompt()}
               disabled={!prompt.trim()}
               type="button"
-              aria-label={locale.sendLabel}
+              aria-label="Send prompt"
             >
               <ArrowUp />
             </button>

@@ -95,4 +95,3 @@ docker compose -f docker-compose.frontend.yml up --build -d
 
 The default frontend address is <http://localhost:5173>.
 
-For backend configuration and endpoints, see `backend/README.md`. For frontend Docker troubleshooting, see `frontend/FRONTEND_DOCKER_HANDOVER.md`.
