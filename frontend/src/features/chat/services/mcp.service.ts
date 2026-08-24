@@ -5,15 +5,10 @@ import type {
   McpRequestAudit,
   McpRequestPayload,
   Message,
-  VisualizationBlock,
 } from "../../../shared/types/app";
 import type { ModelId } from "../types/semantic";
 import { createId } from "../../../shared/utils/session";
 import { loadFromStorage, saveToStorage } from "../../../shared/utils/storage";
-import {
-  extractVisualizationBlocks,
-  normalizeVisualizationBlocks,
-} from "./visualizationResponse";
 
 export function buildMcpRequestPayload({
   conversationId,
@@ -64,11 +59,8 @@ export async function requestMcpInsight(
 
       return withMcpRuntime(
         {
-          text: hasTableBlock(answer.blocks)
-            ? removeDuplicateMarkdownTable(answer.text)
-            : answer.text,
+          text: answer.text,
           backendId: response.data.message_id,
-          visualizations: answer.blocks?.length ? answer.blocks : undefined,
         },
         audit,
         response.data.request_id,
@@ -169,11 +161,7 @@ function parseChatResponse(response: ChatResponse) {
     throw new Error("The middleware returned an unsupported response.");
   }
 
-  const structuredBlocks = normalizeVisualizationBlocks(response.answer.blocks);
-  const extracted = extractVisualizationBlocks(response.answer.text);
-  const blocks = [...(structuredBlocks ?? []), ...extracted.blocks];
-
-  return { text: extracted.text || "Query results", blocks: blocks.length ? blocks : undefined };
+  return { text: response.answer.text };
 }
 
 function readApiError(value: unknown) {
@@ -182,20 +170,6 @@ function readApiError(value: unknown) {
   if (!error || typeof error !== "object") return undefined;
   const message = "message" in error ? error.message : undefined;
   return typeof message === "string" ? message : undefined;
-}
-
-function hasTableBlock(blocks: VisualizationBlock[] | undefined) {
-  return blocks?.some((block) => block.type === "table") ?? false;
-}
-
-function removeDuplicateMarkdownTable(text: string) {
-  const lines = text.split(/\r?\n/);
-  const filtered = lines.filter((line) => {
-    const trimmed = line.trim();
-    return !(trimmed.startsWith("|") && trimmed.endsWith("|") && trimmed.split("|").length >= 4);
-  });
-  const result = filtered.join("\n").replace(/\n{3,}/g, "\n\n").trim();
-  return result || "Query results";
 }
 
 export function formatUserFriendlyError(rawMessage: string): {

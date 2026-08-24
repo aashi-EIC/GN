@@ -14,9 +14,14 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
-import type { FeedbackValue, Message } from "../../../shared/types/app";
-import { VisualizationRenderer } from "./charts/VisualizationRenderer";
+import type {
+  FeedbackValue,
+  Message,
+  VisualizationBlock,
+} from "../../../shared/types/app";
 import { IconButton } from "../../../shared/components/ui/IconButton";
+import { StructuredTable } from "./charts/VisualizationRenderer";
+import "./messageBubbleMarkdown.css";
 
 function MessageBubbleComponent({
   message,
@@ -178,8 +183,6 @@ function MessageBubbleComponent({
           </div>
         )}
 
-        {message.visualizations && <VisualizationRenderer blocks={message.visualizations} />}
-
         <div className="response-actions">
           <IconButton
             label={feedback === "helpful" ? "Remove good response rating" : "Good response"}
@@ -316,6 +319,11 @@ function SafeResponseText({ text }: { text: string }) {
         const lines = block.slice(3, -3).trim().split("\n");
         const language = lines[0]?.match(/^[a-zA-Z0-9_-]+$/) ? lines[0] : "";
         const codeContent = language ? lines.slice(1).join("\n") : lines.join("\n");
+        const tableBlock = tableFromCodeBlock(codeContent);
+
+        if (tableBlock) {
+          return <StructuredTable key={`table-code-${blockIdx}`} block={tableBlock} />;
+        }
 
         return (
           <div key={`code-${blockIdx}`} className="markdown-code-block">
@@ -395,8 +403,60 @@ function SafeResponseText({ text }: { text: string }) {
         }
       };
 
+      let skipThroughLine = -1;
+
       lines.forEach((line, lineIdx) => {
+        if (lineIdx <= skipThroughLine) return;
+
         const trimmed = line.trim();
+
+        if (
+          isMarkdownTableRow(trimmed) &&
+          lineIdx + 1 < lines.length &&
+          isMarkdownTableSeparator(lines[lineIdx + 1])
+        ) {
+          flushList(`${blockIdx}-${lineIdx}`);
+          flushKpiList(`${blockIdx}-${lineIdx}`);
+          flushBlockquote(`${blockIdx}-${lineIdx}`);
+
+          const headers = parseMarkdownTableRow(trimmed);
+          const rows: string[][] = [];
+          let nextLine = lineIdx + 2;
+
+          while (nextLine < lines.length && isMarkdownTableRow(lines[nextLine])) {
+            rows.push(parseMarkdownTableRow(lines[nextLine]));
+            nextLine += 1;
+          }
+          skipThroughLine = nextLine - 1;
+
+          elements.push(
+            <div key={`table-${blockIdx}-${lineIdx}`} className="markdown-table-wrap">
+              <table className="markdown-table">
+                <thead>
+                  <tr>
+                    {headers.map((header, columnIndex) => (
+                      <th key={`${header}-${columnIndex}`}>
+                        {renderFormattedInlineText(header)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, rowIndex) => (
+                    <tr key={`row-${rowIndex}`}>
+                      {headers.map((_, columnIndex) => (
+                        <td key={`cell-${rowIndex}-${columnIndex}`}>
+                          {renderFormattedInlineText(row[columnIndex] ?? "")}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>,
+          );
+          return;
+        }
 
         // Check for KPI metric bullet lines: - **Label**: Value (Subtext) or - Label: Value
         const metricMatch = trimmed.match(/^[-*•]\s+(?:\*\*([^*]+)\*\*|([A-Za-z0-9\s_%–-]+)):\s*([^(]+?)(?:\s*\(([^)]+)\))?$/);
@@ -497,6 +557,67 @@ function SafeResponseText({ text }: { text: string }) {
   }, [text]);
 
   return <div className="markdown-response-body">{renderedElements}</div>;
+}
+
+function isMarkdownTableRow(line: string) {
+  const trimmed = line.trim();
+  return trimmed.startsWith("|") && trimmed.endsWith("|") && trimmed.split("|").length >= 4;
+}
+
+function isMarkdownTableSeparator(line: string) {
+  if (!isMarkdownTableRow(line)) return false;
+  return parseMarkdownTableRow(line).every((cell) => /^:?-{3,}:?$/.test(cell));
+}
+
+function parseMarkdownTableRow(line: string) {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim());
+}
+
+function tableFromCodeBlock(
+  source: string,
+): Extract<VisualizationBlock, { type: "table" }> | undefined {
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(source.trim());
+  } catch {
+    return undefined;
+  }
+
+  if (!Array.isArray(parsed) || parsed.length < 2 || !parsed.every(Array.isArray)) {
+    return undefined;
+  }
+
+  const [headerRow, ...dataRows] = parsed;
+  if (
+    headerRow.length === 0 ||
+    headerRow.length > 50 ||
+    !headerRow.every((cell) => typeof cell === "string" && cell.trim())
+  ) {
+    return undefined;
+  }
+
+  const isScalar = (value: unknown) =>
+    value === null || ["string", "number", "boolean"].includes(typeof value);
+  const validRows = dataRows.filter(
+    (row) => row.length === headerRow.length && row.every(isScalar),
+  );
+  if (!validRows.length) return undefined;
+
+  return {
+    type: "table",
+    title: "Data table",
+    columns: headerRow.map((header, index) => ({
+      key: `${header}_${index}`,
+      label: header,
+    })),
+    rows: validRows.slice(0, 1000),
+  };
 }
 
 function renderFormattedInlineText(text: string): React.ReactNode {

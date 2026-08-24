@@ -13,126 +13,24 @@ import {
   X,
 } from "lucide-react";
 import type { VisualizationBlock } from "../../../../shared/types/app";
-import { UniversalChart } from "./UniversalChart";
 
 export function VisualizationRenderer({ blocks }: { blocks: VisualizationBlock[] }) {
-  const inferredChart = blocks.some((block) => block.type === "chart")
-    ? undefined
-    : blocks
-        .filter(
-          (block): block is Extract<VisualizationBlock, { type: "table" }> =>
-            block.type === "table",
-        )
-        .map(inferChartFromTable)
-        .find((block) => block !== undefined);
+  const tables = blocks.filter(
+    (block): block is Extract<VisualizationBlock, { type: "table" }> => block.type === "table",
+  );
+  const textBlocks = blocks.filter(
+    (block): block is Extract<VisualizationBlock, { type: "text" }> => block.type === "text",
+  );
 
   return (
     <div className="visualization-stack">
-      {inferredChart && <UniversalChart block={inferredChart} />}
-      {blocks.map((block, index) => {
-        if (block.type === "text") {
-          return <p key={`${block.type}-${index}`}>{block.content}</p>;
-        }
-
-        if (block.type === "table") {
-          return <StructuredTable key={`${block.type}-${index}`} block={block} />;
-        }
-
-        return <UniversalChart key={`${block.type}-${index}`} block={block} />;
-      })}
+      {tables.map((block, index) => (
+        <StructuredTable key={`${block.type}-${index}`} block={block} />
+      ))}
+      {textBlocks.map((block, index) => (
+        <p key={`${block.type}-${index}`}>{block.content}</p>
+      ))}
     </div>
-  );
-}
-
-function inferChartFromTable(
-  block: Extract<VisualizationBlock, { type: "table" }>,
-): Extract<VisualizationBlock, { type: "chart" }> | undefined {
-  const rows = block.rows.filter(
-    (row): row is Record<string, string | number | boolean | null> => !Array.isArray(row),
-  );
-  if (rows.length < 2) return undefined;
-
-  const keys = block.columns.map((column) => (typeof column === "string" ? column : column.key));
-  const numericKeys = keys.filter((key) => isMostlyNumeric(rows.map((row) => row[key])));
-  const categoryKey = keys.find((key) => !numericKeys.includes(key));
-  if (!categoryKey || numericKeys.length === 0) return undefined;
-
-  const measureKeys = numericKeys
-    .sort((left, right) => measurePriority(right) - measurePriority(left))
-    .slice(0, 3);
-  const orderedRows =
-    rows.length > 15
-      ? [...rows]
-          .sort((left, right) => toNumber(right[measureKeys[0]]) - toNumber(left[measureKeys[0]]))
-          .slice(0, 15)
-      : rows;
-  const temporal = isTemporalField(
-    categoryKey,
-    orderedRows.map((row) => row[categoryKey]),
-  );
-  const requestedChartType = chartTypeFromTitle(block.title);
-  const chartData = orderedRows.flatMap((row) =>
-    measureKeys.map((measure) => ({
-      category: String(row[categoryKey] ?? "Unknown"),
-      measure,
-      value: toNumber(row[measure]),
-    })),
-  );
-
-  const titleText = (block.title ?? "").toLowerCase();
-  let inferredType: "line" | "area" | "horizontal-bar" | "bar" | "pie" | "donut" = "bar";
-
-  if (titleText.includes("pie")) {
-    inferredType = "pie";
-  } else if (titleText.includes("donut")) {
-    inferredType = "donut";
-  } else if (titleText.includes("area")) {
-    inferredType = "area";
-  } else if (temporal) {
-    inferredType = "line";
-  } else if (
-    orderedRows.length >= 2 &&
-    orderedRows.length <= 6 &&
-    (titleText.includes("share") || titleText.includes("distribution") || titleText.includes("proportion") || titleText.includes("split"))
-  ) {
-    inferredType = "pie";
-  } else if (measureKeys.length === 1 && orderedRows.length >= 5) {
-    inferredType = "horizontal-bar";
-  }
-
-  return {
-    type: "chart",
-    chart_type: requestedChartType ?? inferredType,
-    title: block.title ? `${block.title} overview` : "Data overview",
-    description:
-      rows.length > 15
-        ? `Interactive visualization showing top 15 of ${rows.length} rows. Full result is available in the table below.`
-        : "Interactive visualization generated from query results.",
-    data: chartData,
-    encoding: {
-      x: "category",
-      y: "value",
-      ...(measureKeys.length > 1 ? { color: "measure" } : {}),
-    },
-  };
-}
-
-function chartTypeFromTitle(title?: string) {
-  if (!title) return undefined;
-  if (/\bdonut\b/i.test(title)) return "donut" as const;
-  if (/\bpie(?:\s+chart)?\b/i.test(title)) return "pie" as const;
-  if (/\bline(?:\s+chart)?\b|\btrend\b/i.test(title)) return "line" as const;
-  if (/\barea(?:\s+chart)?\b/i.test(title)) return "area" as const;
-  if (/\bhorizontal(?:\s+bar)?\b/i.test(title)) return "horizontal-bar" as const;
-  if (/\bbar(?:\s+chart)?\b/i.test(title)) return "bar" as const;
-  return undefined;
-}
-
-function isMostlyNumeric(values: Array<string | number | boolean | null | undefined>) {
-  const populated = values.filter((value) => value !== null && value !== undefined && value !== "");
-  if (!populated.length) return false;
-  return (
-    populated.filter((value) => Number.isFinite(toNumber(value))).length / populated.length >= 0.8
   );
 }
 
@@ -143,23 +41,6 @@ function toNumber(value: unknown) {
   return normalized ? Number(normalized) : Number.NaN;
 }
 
-function measurePriority(key: string) {
-  if (/completeness|percent|percentage|rate|score/i.test(key)) return 3;
-  if (/total|count|amount|value|sales|revenue/i.test(key)) return 2;
-  return 1;
-}
-
-function isTemporalField(key: string, values: Array<string | number | boolean | null>) {
-  if (/date|time|day|week|month|quarter|year/i.test(key)) return true;
-  return values
-    .filter((value) => typeof value === "string")
-    .some((value) =>
-      /^(?:\d{4}(?:-\d{1,2})?|w\d+|q[1-4]|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(
-        value,
-      ),
-    );
-}
-
 export function StructuredTable({
   block,
 }: {
@@ -168,7 +49,7 @@ export function StructuredTable({
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>(null);
-  const [pageSize, setPageSize] = useState<number>(10);
+  const [pageSize, setPageSize] = useState<number>(5);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [copied, setCopied] = useState(false);
 
@@ -409,7 +290,7 @@ export function StructuredTable({
       </div>
 
       {/* Footer Pagination Bar */}
-      {totalRows > 10 && (
+      {totalRows > 5 && (
         <div className="table-footer-pagination">
           <div className="pagination-info">
             Showing {(safePage - 1) * pageSize + 1}–
@@ -428,6 +309,7 @@ export function StructuredTable({
                 }}
                 className="page-size-select"
               >
+                <option value={5}>5</option>
                 <option value={10}>10</option>
                 <option value={25}>25</option>
                 <option value={50}>50</option>

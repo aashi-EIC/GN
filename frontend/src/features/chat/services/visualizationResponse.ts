@@ -48,9 +48,12 @@ export function extractVisualizationBlocks(text: string) {
     /```(?:[a-z][\w-]*)?\s*([\s\S]*?)```/gi,
     (fullMatch, source: string, offset: number) => {
       const title = precedingTitle(text, offset);
-      const parsed = parseJson(source);
+      const directive = readChartDirective(source);
+      const parsed = parseJson(directive.source);
       const extracted =
-        parsed === undefined ? chartFromLabelledText(source, title) : blocksFromJson(parsed, title);
+        parsed === undefined
+          ? chartFromLabelledText(directive.source, title)
+          : blocksFromJson(parsed, title, directive.chartType);
       if (!extracted.length) return fullMatch;
 
       blocks.push(...extracted);
@@ -172,12 +175,16 @@ function parseJson(source: string): unknown {
   }
 }
 
-function blocksFromJson(value: unknown, title: string): VisualizationBlock[] {
+function blocksFromJson(
+  value: unknown,
+  title: string,
+  requestedChartType?: ChartType,
+): VisualizationBlock[] {
   if (isRecord(value)) {
     const typedBlock = normalizeBlock(value);
     if (typedBlock) return [typedBlock];
 
-    const chartType = value.chart_type ?? value.chartType ?? value.chart;
+    const chartType = requestedChartType ?? value.chart_type ?? value.chartType ?? value.chart;
     if (isChartType(chartType)) {
       const chart = normalizeBlock({ ...value, type: "chart", chart_type: chartType, title });
       return chart ? [chart] : [];
@@ -201,7 +208,36 @@ function blocksFromJson(value: unknown, title: string): VisualizationBlock[] {
   if (!Array.isArray(value) || value.length < 2) return [];
 
   const table = normalizeTable({ type: "table", title, rows: value });
-  return table ? [table] : [];
+  if (!table) return [];
+
+  if (!requestedChartType) return [table];
+  const data = value.every(Array.isArray)
+    ? matrixToRecords(value)
+    : value.filter((row): row is RecordRow => isScalarRecord(row));
+  if (!data.length) return [table];
+
+  return [
+    {
+      type: "chart",
+      chart_type: requestedChartType,
+      title,
+      data: data.slice(0, 100_000),
+    },
+    table,
+  ];
+}
+
+function readChartDirective(source: string): { source: string; chartType?: ChartType } {
+  const match = source.match(
+    /^\s*(?:chartType|chart_type|chart)\s*:\s*["']?([a-z-]+)["']?\s*(?:\r?\n|$)/i,
+  );
+  if (!match) return { source };
+
+  const chartType = isChartType(match[1]) ? match[1] : undefined;
+  return {
+    source: source.slice(match[0].length),
+    ...(chartType ? { chartType } : {}),
+  };
 }
 
 function recordsFromLabelsAndValues(labels: unknown, values: unknown): RecordRow[] | undefined {

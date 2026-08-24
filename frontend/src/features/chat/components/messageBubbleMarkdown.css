@@ -1,0 +1,35 @@
+.markdown-table-wrap {
+  max-height: 300px;
+  margin: 12px 0;
+  overflow: auto;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-panel);
+}
+
+.markdown-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.markdown-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--ui-control);
+}
+
+.markdown-table th,
+.markdown-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--ui-border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.markdown-table th {
+  color: var(--ui-heading);
+  font-weight: 700;
+}
