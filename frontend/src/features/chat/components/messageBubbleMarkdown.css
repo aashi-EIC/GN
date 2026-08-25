@@ -374,11 +374,67 @@
 }
 
 .response .markdown-blockquote {
-  margin: 12px 0;
-  padding: 4px 16px;
-  border-left: 4px solid var(--ui-border);
+  margin: 12px 0 4px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--ui-border) 72%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ui-text) 2.5%, var(--ui-panel));
   color: var(--ui-secondary);
-  background: transparent;
+  font-size: 13px;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+
+.response .markdown-blockquote p {
+  margin: 0;
+}
+
+.response .markdown-blockquote p + p {
+  margin-top: 6px;
+}
+
+.response .markdown-note-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--gn-pink, #f40953) 9%, transparent);
+  color: var(--gn-pink, #f40953);
+}
+
+.response .markdown-note-content {
+  min-width: 0;
+  padding-top: 1px;
+}
+
+.response .markdown-note-label {
+  display: block;
+  margin-bottom: 1px;
+  color: var(--ui-heading);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.response .markdown-note-token {
+  display: inline-flex;
+  min-width: 20px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  border: 1px solid color-mix(in srgb, var(--ui-border) 80%, transparent);
+  border-radius: 4px;
+  background: var(--ui-panel);
+  color: var(--ui-heading);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 /* Minimalist table styles for markdown tables */
@@ -401,8 +457,32 @@
 }
 
 .response .minimal-table-scroll-area {
-  max-height: 350px;
-  overflow: auto;
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-gutter: auto;
+}
+
+/* Markdown result tables use paging rather than a second vertical scrollbar. */
+.response .minimal-table-container .table-footer-pagination {
+  min-height: 40px;
+  padding: 6px 10px;
+  background: transparent;
+}
+
+.response .minimal-table-container .markdown-table thead {
+  position: static;
+}
+
+.response .visualization-stack > p {
+  margin: 10px 0 4px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--gn-pink, #f40953);
+  border-radius: 0 7px 7px 0;
+  background: color-mix(in srgb, var(--ui-text) 2.5%, var(--ui-panel));
+  color: var(--ui-secondary);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 [data-theme="dark"] .response .minimal-table-container,

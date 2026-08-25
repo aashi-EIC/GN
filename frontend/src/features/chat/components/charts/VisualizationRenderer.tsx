@@ -9,6 +9,7 @@ import {
   Copy,
   Download,
   Search,
+  Table as TableIcon,
   X,
 } from "lucide-react";
 import type { VisualizationBlock } from "../../../../shared/types/app";
@@ -89,7 +90,7 @@ export function StructuredTable({
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>(null);
-  const [pageSize, setPageSize] = useState<number>(minimal ? -1 : 5);
+  const [pageSize, setPageSize] = useState<number>(5);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [copied, setCopied] = useState(false);
 
@@ -344,7 +345,7 @@ export function StructuredTable({
       </div>
 
       {/* Footer Pagination Bar */}
-      {!minimal && totalRows > 5 && (
+      {totalRows > 5 && (
         <div className="table-footer-pagination">
           <div className="pagination-info">
             Showing {(safePage - 1) * pageSize + 1}–

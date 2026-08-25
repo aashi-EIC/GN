@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Code2,
   Copy,
+  Info,
   MoreHorizontal,
   Pencil,
   RefreshCw,
@@ -436,9 +437,15 @@ function SafeResponseText({ text }: { text: string }) {
         if (currentBlockquote.length > 0) {
           elements.push(
             <blockquote key={`bq-${keyPrefix}-${elements.length}`} className="markdown-blockquote">
-              {currentBlockquote.map((bqLine, idx) => (
-                <p key={idx}>{renderFormattedInlineText(bqLine)}</p>
-              ))}
+              <span className="markdown-note-icon" aria-hidden="true">
+                <Info size={14} />
+              </span>
+              <div className="markdown-note-content">
+                <span className="markdown-note-label">Note</span>
+                {currentBlockquote.map((bqLine, idx) => (
+                  <p key={idx}>{renderNoteContent(bqLine)}</p>
+                ))}
+              </div>
             </blockquote>,
           );
           currentBlockquote = [];
@@ -626,6 +633,19 @@ function parseMarkdownTableRow(line: string) {
     .replace(/\|$/, "")
     .split("|")
     .map((cell) => cell.trim());
+}
+
+function renderNoteContent(text: string): React.ReactNode {
+  const quotedToken = text.trim().match(/^["'`]([^"'`]+)["'`]\s*(.*)$/);
+  if (!quotedToken) return renderFormattedInlineText(text);
+
+  const token = /^[-_]$/.test(quotedToken[1].trim()) ? "—" : quotedToken[1].trim();
+  return (
+    <>
+      <code className="markdown-note-token">{token}</code>
+      {quotedToken[2] ? <> {renderFormattedInlineText(quotedToken[2])}</> : null}
+    </>
+  );
 }
 
 function tableFromCodeBlock(
