@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import {
   Activity,
   AlertTriangle,
+  ChartNoAxesCombined,
   Check,
   CheckCircle2,
   Code2,
@@ -21,6 +22,7 @@ import type {
 } from "../../../shared/types/app";
 import { IconButton } from "../../../shared/components/ui/IconButton";
 import { StructuredTable } from "./charts/VisualizationRenderer";
+import { removeChartScriptSections } from "../utils/responseDisplay";
 import "./messageBubbleMarkdown.css";
 
 function MessageBubbleComponent({
@@ -307,18 +309,40 @@ function DebugPayload({
   );
 }
 
+const insightPrefixPattern =
+  /^\s*>?\s*(?:(?:📊|💡|📌|✨|📈|📉|🔎|⭐)\uFE0F?\s*)?(?:\*\*)?\s*(?:key\s+)?findings\s*(?:\/|&|and)\s*insights\s*:?\s*(?:\*\*)?\s*/iu;
+
+function hasInsightPrefix(value: string) {
+  return insightPrefixPattern.test(value);
+}
+
+function stripInsightPrefix(value: string) {
+  if (hasInsightPrefix(value)) {
+    return value.replace(insightPrefixPattern, "").trim();
+  }
+
+  return value.replace(/^\s*>\s*/, "").trim();
+}
+
 function SafeResponseText({ text }: { text: string }) {
   const renderedElements = useMemo(() => {
     if (!text) return null;
 
+    const visibleText = removeChartScriptSections(text);
+
     // Split text by code blocks ```code```
-    const blocks = text.split(/(```[\s\S]*?```)/g);
+    const blocks = visibleText.split(/(```[\s\S]*?```)/g);
 
     return blocks.map((block, blockIdx) => {
       if (block.startsWith("```") && block.endsWith("```")) {
         const lines = block.slice(3, -3).trim().split("\n");
         const language = lines[0]?.match(/^[a-zA-Z0-9_-]+$/) ? lines[0] : "";
         const codeContent = language ? lines.slice(1).join("\n") : lines.join("\n");
+
+        if (/^(?:chartType|chart_type|chart)\s*:/i.test(codeContent.trim())) {
+          return null;
+        }
+
         const tableBlock = tableFromCodeBlock(codeContent);
 
         if (tableBlock) {
@@ -486,12 +510,12 @@ function SafeResponseText({ text }: { text: string }) {
           return;
         }
 
-        // Blockquote lines starting with '>' or emoji indicators
-        if (trimmed.startsWith(">") || /^([📊💡📌✨]|\*\*Findings\/Insights:\*\*|Findings\/Insights:)/i.test(trimmed)) {
+        // Render insight blockquotes with one consistent card header.
+        if (trimmed.startsWith(">") || hasInsightPrefix(trimmed)) {
           flushList(`${blockIdx}-${lineIdx}`);
           flushKpiList(`${blockIdx}-${lineIdx}`);
-          const bqText = trimmed.replace(/^>\s*(?:📊\s*)?(?:\*\*Findings\/Insights:\*\*|Findings\/Insights:)?\s*/i, "");
-          currentBlockquote.push(bqText);
+          const bqText = stripInsightPrefix(trimmed);
+          if (bqText) currentBlockquote.push(bqText);
           return;
         }
 
@@ -621,10 +645,19 @@ function tableFromCodeBlock(
 }
 
 function renderFormattedInlineText(text: string): React.ReactNode {
-  // Regex to match **bold**, `code`, *italic*
-  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g);
+  // Regex to match **bold**, `code`, *italic*, and supported visual markers.
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*|📊)/g);
 
   return parts.map((part, idx) => {
+    if (part === "📊") {
+      return (
+        <ChartNoAxesCombined
+          key={idx}
+          className="markdown-inline-chart-icon"
+          aria-hidden="true"
+        />
+      );
+    }
     if (part.startsWith("**") && part.endsWith("**")) {
       return <strong key={idx}>{part.slice(2, -2)}</strong>;
     }

@@ -9,7 +9,6 @@ import {
   Copy,
   Download,
   Search,
-  Table as TableIcon,
   X,
 } from "lucide-react";
 import type { VisualizationBlock } from "../../../../shared/types/app";
@@ -167,11 +166,14 @@ export function StructuredTable({
   };
 
   return (
-    <section className="table-section interactive-table-container">
+    <section
+      className={`table-section interactive-table-container ${
+        columns.length <= 3 ? "is-compact-table" : ""
+      }`}
+    >
       {/* Header Toolbar */}
       <div className="table-header-toolbar">
         <div className="table-header-left">
-          <TableIcon size={16} className="table-icon-header" />
           <b className="table-title">{block.title || "Query Results"}</b>
           <span className="table-row-count-badge">
             {totalRows} {totalRows === 1 ? "row" : "rows"}
@@ -241,6 +243,13 @@ export function StructuredTable({
                     onClick={() => handleSort(column.key)}
                     className={`sortable-th ${isSorted ? "is-sorted" : ""}`}
                     title={`Sort by ${column.label}`}
+                    aria-sort={
+                      isSorted
+                        ? sortDirection === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : "none"
+                    }
                   >
                     <div className="th-content">
                       <span>{column.label}</span>
@@ -290,7 +299,7 @@ export function StructuredTable({
       </div>
 
       {/* Footer Pagination Bar */}
-      {totalRows > 5 && (
+      {rawRows.length > 5 && (
         <div className="table-footer-pagination">
           <div className="pagination-info">
             Showing {(safePage - 1) * pageSize + 1}–
@@ -300,7 +309,7 @@ export function StructuredTable({
 
           <div className="pagination-controls">
             <label className="page-size-label">
-              <span>Per page:</span>
+              <span>Rows</span>
               <select
                 value={pageSize}
                 onChange={(e) => {

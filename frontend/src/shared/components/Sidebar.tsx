@@ -206,7 +206,7 @@ export function Sidebar({
               type="button"
               className="rename-action-btn save"
               onClick={submitRename}
-              title="Save title"
+              title="Save Title"
             >
               <Check size={14} />
             </button>
@@ -231,7 +231,7 @@ export function Sidebar({
         <button onClick={() => openConversation(conversation)}>
           <span>
             {conversation.pinned && <Pin className="history-pin-indicator" />}
-            {clampText((conversation.title || latestUserPrompt(conversation)).toLowerCase(), 50)}
+            {clampText(conversation.title || latestUserPrompt(conversation), 50)}
           </span>
           <small>
             {groupBy === "date"
@@ -244,7 +244,7 @@ export function Sidebar({
           <button
             type="button"
             className={`history-menu-trigger ${isMenuActive ? "active" : ""}`}
-            aria-label="Chat options"
+            aria-label="Chat Options"
             onClick={(e) => {
               e.stopPropagation();
               setMenuOpenId(isMenuActive ? null : conversation.id);
@@ -264,7 +264,7 @@ export function Sidebar({
                 }}
               >
                 <Pin />
-                <span>{conversation.pinned ? "Unpin chat" : "Pin chat"}</span>
+                <span>{conversation.pinned ? "Unpin Chat" : "Pin Chat"}</span>
               </button>
 
               <button
@@ -276,7 +276,7 @@ export function Sidebar({
                 }}
               >
                 <Pencil />
-                <span>Edit title</span>
+                <span>Edit Title</span>
               </button>
 
               <button
@@ -290,7 +290,7 @@ export function Sidebar({
                 }}
               >
                 <Trash2 />
-                <span>Delete chat</span>
+                <span>Delete Chat</span>
               </button>
             </div>
           )}
@@ -310,7 +310,7 @@ export function Sidebar({
           <div className="side-brand">
             <AskBrandMark />
           </div>
-          <IconButton label="Collapse sidebar" onClick={() => setSidebarOpen(false)}>
+          <IconButton label="Collapse Sidebar" onClick={() => setSidebarOpen(false)}>
             <PanelLeftClose />
           </IconButton>
         </div>
@@ -325,8 +325,8 @@ export function Sidebar({
             <input
               value={historyQuery}
               onChange={(event) => setHistoryQuery(event.target.value)}
-              placeholder="Search chats"
-              aria-label="Search conversations"
+              placeholder="Search Chats"
+              aria-label="Search Conversations"
             />
           </label>
 
@@ -347,7 +347,7 @@ export function Sidebar({
                 type="button"
                 className={groupBy === "topic" ? "active" : ""}
                 onClick={() => setGroupBy("topic")}
-                title="Group by Model"
+                title="Group by Topic"
               >
                 Topic
               </button>
@@ -448,7 +448,7 @@ export function Sidebar({
                     </section>
                   );
                 })}
-            {conversations.length === 0 && <p className="empty-history">No saved conversations</p>}
+            {conversations.length === 0 && <p className="empty-history">No Saved Conversations</p>}
           </nav>
 
           <div className="sidebar-footer gemini-account-footer">
@@ -480,8 +480,8 @@ export function Sidebar({
           <button
             className="collapsed-brand-trigger"
             type="button"
-            aria-label="Open sidebar"
-            data-tooltip="Open sidebar"
+            aria-label="Open Sidebar"
+            data-tooltip="Open Sidebar"
             onClick={() => setSidebarOpen(true)}
           >
             <span className="collapsed-brand-default">
@@ -492,7 +492,7 @@ export function Sidebar({
           <IconButton label="New Chat" onClick={startConversation}>
             <MessageSquarePlus />
           </IconButton>
-          <IconButton label="Search chats" onClick={() => setSidebarOpen(true)}>
+          <IconButton label="Search Chats" onClick={() => setSidebarOpen(true)}>
             <Search />
           </IconButton>
 

@@ -47,6 +47,7 @@ import {
 } from "../shared/utils/session";
 import { getModel, normalizeCountryCode, normalizeModelId } from "../features/chat/utils/semantic";
 import { calculateTokenUsageAndCost } from "../features/chat/utils/tokenCost";
+import { normalizeStoredConversation } from "../features/chat/utils/responseDisplay";
 
 function AppRoot({ msalEnabled }: { msalEnabled: boolean }) {
   return <AppRouter shell={msalEnabled ? <MsalBackedShell /> : <LocalShell />} />;
@@ -310,10 +311,12 @@ function Workspace({
   const debugOpen = useAppSelector((state) => state.ui.debugOpen);
   const themeMode = useAppSelector((state) => state.ui.themeMode);
   const [conversations, setConversations] = useState<Conversation[]>(() =>
-    loadFromStorage<Conversation[]>(storageKeys.conversations, []).map((conversation) => ({
-      ...conversation,
-      id: isSessionId(conversation.id) ? conversation.id : createSessionId(),
-    })),
+    loadFromStorage<Conversation[]>(storageKeys.conversations, []).map((conversation) =>
+      normalizeStoredConversation({
+        ...conversation,
+        id: isSessionId(conversation.id) ? conversation.id : createSessionId(),
+      }),
+    ),
   );
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [selectedModelId, setSelectedModelId] = useState<ModelId>(() =>
