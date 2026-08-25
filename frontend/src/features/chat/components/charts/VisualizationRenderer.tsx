@@ -81,13 +81,15 @@ function humanizeColumnLabel(key: string): string {
 
 export function StructuredTable({
   block,
+  minimal = false,
 }: {
   block: Extract<VisualizationBlock, { type: "table" }>;
+  minimal?: boolean;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>(null);
-  const [pageSize, setPageSize] = useState<number>(5);
+  const [pageSize, setPageSize] = useState<number>(minimal ? -1 : 5);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [copied, setCopied] = useState(false);
 
@@ -209,19 +211,19 @@ export function StructuredTable({
   };
 
   return (
-    <section
-      className={`table-section interactive-table-container ${
-        columns.length <= 3 ? "is-compact-table" : ""
-      }`}
-    >
+    <section className={minimal ? "table-section minimal-table-container" : "table-section interactive-table-container"}>
       {/* Header Toolbar */}
-      <div className="table-header-toolbar">
-        <div className="table-header-left">
-          <b className="table-title">{block.title || "Query Results"}</b>
-          <span className="table-row-count-badge">
-            {totalRows} {totalRows === 1 ? "row" : "rows"}
-          </span>
-        </div>
+      <div className={minimal ? "minimal-table-toolbar" : "table-header-toolbar"}>
+        {!minimal && (
+          <div className="table-header-left">
+            <TableIcon size={16} className="table-icon-header" />
+            <b className="table-title">{block.title || "Query Results"}</b>
+            <span className="table-row-count-badge">
+              {totalRows} {totalRows === 1 ? "row" : "rows"}
+            </span>
+          </div>
+        )}
+        {minimal && <div className="table-header-left" />}
 
         <div className="table-actions-right">
           {/* Quick Search */}
@@ -274,8 +276,8 @@ export function StructuredTable({
       </div>
 
       {/* Main Table Container */}
-      <div className="table-wrap">
-        <table className="interactive-data-table">
+      <div className={minimal ? "minimal-table-scroll-area" : "table-wrap"}>
+        <table className={minimal ? "markdown-table" : "interactive-data-table"}>
           <thead>
             <tr>
               {columns.map((column) => {
@@ -342,7 +344,7 @@ export function StructuredTable({
       </div>
 
       {/* Footer Pagination Bar */}
-      {rawRows.length > 5 && (
+      {!minimal && totalRows > 5 && (
         <div className="table-footer-pagination">
           <div className="pagination-info">
             Showing {(safePage - 1) * pageSize + 1}–

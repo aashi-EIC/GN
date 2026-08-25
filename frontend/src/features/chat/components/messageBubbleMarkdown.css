@@ -57,6 +57,19 @@
   box-shadow: none;
 }
 
+.response .executive-insight-block.insight-pill {
+  padding: 8px 14px;
+  border-radius: 6px;
+  margin: 16px 0 8px 0;
+  display: inline-block;
+}
+
+.response .insight-body-text {
+  margin: 4px 0 16px 0;
+  line-height: 1.5;
+  color: var(--ui-text);
+}
+
 .response .executive-insight-header,
 .response .executive-insight-sparkle {
   color: var(--gn-pink, #f40953);
@@ -224,6 +237,8 @@
 }
 
 .response .th-content {
+  display: flex;
+  align-items: center;
   justify-content: flex-start;
   gap: 8px;
 }
@@ -356,4 +371,41 @@
 
 [data-theme="dark"] .response .interactive-data-table tbody tr:nth-child(even) {
   background: rgba(255, 255, 255, 0.018);
+}
+
+.response .markdown-blockquote {
+  margin: 12px 0;
+  padding: 4px 16px;
+  border-left: 4px solid var(--ui-border);
+  color: var(--ui-secondary);
+  background: transparent;
+}
+
+/* Minimalist table styles for markdown tables */
+.response .minimal-table-container {
+  display: block;
+  margin: 12px 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  border: 1px solid var(--ui-border);
+}
+
+.response .minimal-table-toolbar {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 4px 10px;
+  background: transparent;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.response .minimal-table-scroll-area {
+  max-height: 350px;
+  overflow: auto;
+}
+
+[data-theme="dark"] .response .minimal-table-container,
+[data-theme="dark"] .response .minimal-table-toolbar {
+  border-color: #334155;
 }

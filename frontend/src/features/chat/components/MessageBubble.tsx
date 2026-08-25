@@ -378,6 +378,7 @@ function SafeResponseText({ text }: { text: string }) {
       const elements: React.ReactNode[] = [];
       let currentList: React.ReactNode[] = [];
       let currentKpiList: Array<{ label: string; value: string; subtext?: string }> = [];
+      let currentInsight: string[] = [];
       let currentBlockquote: string[] = [];
 
       const flushList = (keyPrefix: string) => {
@@ -410,22 +411,35 @@ function SafeResponseText({ text }: { text: string }) {
         }
       };
 
-      const flushBlockquote = (keyPrefix: string) => {
-        if (currentBlockquote.length > 0) {
+      const flushInsight = (keyPrefix: string) => {
+        if (currentInsight.length > 0) {
           elements.push(
-            <div key={`bq-${keyPrefix}-${elements.length}`} className="executive-insight-block">
-              <div className="executive-insight-header">
+            <div key={`insight-${keyPrefix}-${elements.length}`} className="executive-insight-block insight-pill">
+              <div className="executive-insight-header" style={{ marginBottom: 0 }}>
                 <Sparkles size={14} className="executive-insight-sparkle" />
                 <span>Findings & Insights</span>
               </div>
-              <div className="executive-insight-content">
-                {currentBlockquote.map((bqLine, idx) => (
-                  <p key={idx} className="executive-insight-text">
-                    {renderFormattedInlineText(bqLine)}
-                  </p>
-                ))}
-              </div>
             </div>,
+          );
+          currentInsight.forEach((bqLine, idx) => {
+            elements.push(
+              <p key={`insight-p-${keyPrefix}-${idx}`} className="insight-body-text">
+                {renderFormattedInlineText(bqLine)}
+              </p>
+            );
+          });
+          currentInsight = [];
+        }
+      };
+
+      const flushBlockquote = (keyPrefix: string) => {
+        if (currentBlockquote.length > 0) {
+          elements.push(
+            <blockquote key={`bq-${keyPrefix}-${elements.length}`} className="markdown-blockquote">
+              {currentBlockquote.map((bqLine, idx) => (
+                <p key={idx}>{renderFormattedInlineText(bqLine)}</p>
+              ))}
+            </blockquote>,
           );
           currentBlockquote = [];
         }
@@ -445,6 +459,7 @@ function SafeResponseText({ text }: { text: string }) {
         ) {
           flushList(`${blockIdx}-${lineIdx}`);
           flushKpiList(`${blockIdx}-${lineIdx}`);
+          flushInsight(`${blockIdx}-${lineIdx}`);
           flushBlockquote(`${blockIdx}-${lineIdx}`);
 
           const headers = parseMarkdownTableRow(trimmed);
@@ -457,30 +472,19 @@ function SafeResponseText({ text }: { text: string }) {
           }
           skipThroughLine = nextLine - 1;
 
+          const tableBlock: Extract<VisualizationBlock, { type: "table" }> = {
+            type: "table",
+            title: "Data Table",
+            columns: headers.map((header, index) => ({
+              key: `col_${index}`,
+              label: header,
+            })),
+            rows: rows,
+          };
+
           elements.push(
-            <div key={`table-${blockIdx}-${lineIdx}`} className="markdown-table-wrap">
-              <table className="markdown-table">
-                <thead>
-                  <tr>
-                    {headers.map((header, columnIndex) => (
-                      <th key={`${header}-${columnIndex}`}>
-                        {renderFormattedInlineText(header)}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row, rowIndex) => (
-                    <tr key={`row-${rowIndex}`}>
-                      {headers.map((_, columnIndex) => (
-                        <td key={`cell-${rowIndex}-${columnIndex}`}>
-                          {renderFormattedInlineText(row[columnIndex] ?? "")}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div key={`table-${blockIdx}-${lineIdx}`}>
+              <StructuredTable block={tableBlock} minimal={true} />
             </div>,
           );
           return;
@@ -514,18 +518,36 @@ function SafeResponseText({ text }: { text: string }) {
           return;
         }
 
-        // Render insight blockquotes with one consistent card header.
-        if (trimmed.startsWith(">") || hasInsightPrefix(trimmed)) {
+        // Render insight blocks with one consistent card header.
+        if (hasInsightPrefix(trimmed)) {
           flushList(`${blockIdx}-${lineIdx}`);
           flushKpiList(`${blockIdx}-${lineIdx}`);
+          flushBlockquote(`${blockIdx}-${lineIdx}`);
           const bqText = stripInsightPrefix(trimmed);
-          if (bqText) currentBlockquote.push(bqText);
+          if (bqText) currentInsight.push(bqText);
+          return;
+        }
+
+        // Render regular blockquotes (or continue insight block)
+        if (trimmed.startsWith(">")) {
+          flushList(`${blockIdx}-${lineIdx}`);
+          flushKpiList(`${blockIdx}-${lineIdx}`);
+          const bqText = trimmed.replace(/^\s*>\s*/, "").trim();
+          
+          if (bqText) {
+            if (currentInsight.length > 0) {
+              currentInsight.push(bqText);
+            } else {
+              currentBlockquote.push(bqText);
+            }
+          }
           return;
         }
 
         // Flush all buffers if we hit a normal line
         flushList(`${blockIdx}-${lineIdx}`);
         flushKpiList(`${blockIdx}-${lineIdx}`);
+        flushInsight(`${blockIdx}-${lineIdx}`);
         flushBlockquote(`${blockIdx}-${lineIdx}`);
 
         if (!trimmed) {
