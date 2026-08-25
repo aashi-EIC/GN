@@ -8928,6 +8928,67 @@ body {
   }
 }
 
+/* Refined sidebar typography: compact controls with clear history hierarchy. */
+.sidebar.open .ask-brand {
+  font-size: 16.5px;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+}
+
+.sidebar.open .new-chat {
+  font-size: 13.5px !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.006em;
+}
+
+.sidebar.open .history-search input {
+  font-size: 13px !important;
+  font-weight: 450;
+  letter-spacing: -0.004em;
+}
+
+.sidebar.open .history-label span {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.085em !important;
+}
+
+.history-toggle-group button {
+  font-size: 11px !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.005em;
+}
+
+.sidebar.open .history-date-heading,
+.sidebar.open .history-model-name {
+  font-size: 12.75px !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.006em !important;
+}
+
+.sidebar.open .history-date-heading strong {
+  font-size: 10.5px !important;
+  font-weight: 650 !important;
+  letter-spacing: 0;
+}
+
+.sidebar.open .history-item span {
+  font-size: 12.5px !important;
+  font-weight: 480 !important;
+  line-height: 1.35 !important;
+  letter-spacing: -0.008em !important;
+}
+
+.sidebar.open .history-item.active span {
+  font-weight: 625 !important;
+}
+
+.sidebar-account-name {
+  font-size: 12.75px;
+  font-weight: 600;
+  letter-spacing: -0.006em;
+}
+
 .universal-chart-panel {
   position: relative;
   overflow: hidden;
