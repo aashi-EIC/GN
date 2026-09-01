@@ -13,7 +13,3 @@ export function formatRelativeDate(dateValue: string) {
   }
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
-
-export function formatClock(date: Date) {
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}

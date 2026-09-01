@@ -32,20 +32,3 @@ export function IconButton({
     </Button>
   );
 }
-
-export function IconTextButton({
-  label,
-  onClick,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <Button variant="outline" size="sm" className="outline" onClick={onClick} type="button">
-      {children}
-      <span>{label}</span>
-    </Button>
-  );
-}

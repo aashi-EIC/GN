@@ -1,11 +1,7 @@
 import axios from "axios";
 import { storageKeys } from "../../../shared/config/storage";
 import { bffClient } from "../../../shared/services/axios";
-import type {
-  McpRequestAudit,
-  McpRequestPayload,
-  Message,
-} from "../../../shared/types/app";
+import type { McpRequestAudit, McpRequestPayload, Message } from "../../../shared/types/app";
 import type { ModelId } from "../types/semantic";
 import { createId } from "../../../shared/utils/session";
 import { loadFromStorage, saveToStorage } from "../../../shared/utils/storage";
@@ -128,9 +124,7 @@ function withMcpRuntime(
         stage: "bff_response",
         status: "success",
         detail: "Response returned by the Node BFF",
-        ...(runtimeDebug?.bff_response !== undefined
-          ? { payload: runtimeDebug.bff_response }
-          : {}),
+        ...(runtimeDebug?.bff_response !== undefined ? { payload: runtimeDebug.bff_response } : {}),
       },
       {
         stage: "response_render",
@@ -178,63 +172,65 @@ export function formatUserFriendlyError(rawMessage: string): {
   statusLabel: string;
 } {
   const normalized = rawMessage.toLowerCase();
+  return (
+    FRIENDLY_ERROR_RULES.find((rule) =>
+      rule.matchingTerms.some((term) => normalized.includes(term)),
+    )?.response ?? DEFAULT_FRIENDLY_ERROR
+  );
+}
 
-  if (
-    normalized.includes("mcp host returned an unsuccessful response") ||
-    normalized.includes("upstream") ||
-    normalized.includes("502") ||
-    normalized.includes("503") ||
-    normalized.includes("504")
-  ) {
-    return {
+type FriendlyError = {
+  userMessage: string;
+  suggestion: string;
+  statusLabel: string;
+};
+
+const FRIENDLY_ERROR_RULES: Array<{ matchingTerms: string[]; response: FriendlyError }> = [
+  {
+    matchingTerms: ["mcp host returned an unsuccessful response", "upstream", "502", "503", "504"],
+    response: {
       userMessage:
         "The backend analytics engine is currently experiencing a temporary pause or maintenance.",
       suggestion:
         "Please try submitting your question again in a few moments, or select a different semantic model.",
       statusLabel: "Service Pause",
-    };
-  }
-
-  if (
-    normalized.includes("invalid or expired access token") ||
-    normalized.includes("expired") ||
-    normalized.includes("access token") ||
-    normalized.includes("sign in with microsoft")
-  ) {
-    return {
+    },
+  },
+  {
+    matchingTerms: [
+      "invalid or expired access token",
+      "expired",
+      "access token",
+      "sign in with microsoft",
+    ],
+    response: {
       userMessage: "Your Microsoft Entra ID session has expired.",
       suggestion: "Please sign out and sign in again to refresh your authorization.",
       statusLabel: "Session Expired",
-    };
-  }
-
-  if (
-    normalized.includes("timeout") ||
-    normalized.includes("took too long") ||
-    normalized.includes("econnaborted")
-  ) {
-    return {
+    },
+  },
+  {
+    matchingTerms: ["timeout", "took too long", "econnaborted"],
+    response: {
       userMessage: "The analysis request took longer than expected to process.",
-      suggestion: "Try narrowing your question to a specific metric or selecting a shorter time period.",
+      suggestion:
+        "Try narrowing your question to a specific metric or selecting a shorter time period.",
       statusLabel: "Request Timeout",
-    };
-  }
-
-  if (
-    normalized.includes("middleware is unavailable") ||
-    normalized.includes("bff is running") ||
-    normalized.includes("network error")
-  ) {
-    return {
+    },
+  },
+  {
+    matchingTerms: ["middleware is unavailable", "bff is running", "network error"],
+    response: {
       userMessage: "Unable to connect to the Conversational BI server.",
-      suggestion: "Please check your network connection or verify that the server service is active.",
+      suggestion:
+        "Please check your network connection or verify that the server service is active.",
       statusLabel: "Connection Unavailable",
-    };
-  }
+    },
+  },
+];
 
-  return {
-    userMessage: "We could not complete this analytical query at the moment.",
-    suggestion: "Try rephrasing your prompt or picking another semantic model from the top bar.",
-    statusLabel: "Notice",
-  };
-}
+const DEFAULT_FRIENDLY_ERROR: FriendlyError = {
+  userMessage: "We could not complete this analytical query at the moment.",
+  suggestion: "Try rephrasing your prompt or picking another semantic model from the top bar.",
+  statusLabel: "Notice",
+};

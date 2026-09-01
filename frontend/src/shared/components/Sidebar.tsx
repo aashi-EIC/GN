@@ -301,11 +301,7 @@ export function Sidebar({
 
   return (
     <aside className={`sidebar ${open ? "open" : "closed"}`}>
-      <div
-        className="sidebar-expanded-content"
-        aria-hidden={!open}
-        inert={!open}
-      >
+      <div className="sidebar-expanded-content" aria-hidden={!open} inert={!open}>
         <div className="side-head">
           <div className="side-brand">
             <AskBrandMark />
@@ -315,205 +311,208 @@ export function Sidebar({
           </IconButton>
         </div>
 
-          <button className="new-chat" onClick={startConversation}>
-            <MessageSquarePlus />
-            <span>New Chat</span>
-          </button>
+        <button className="new-chat" onClick={startConversation}>
+          <MessageSquarePlus />
+          <span>New Chat</span>
+        </button>
 
-          <label className="history-search">
-            <Search />
-            <input
-              value={historyQuery}
-              onChange={(event) => setHistoryQuery(event.target.value)}
-              placeholder="Search Chats"
-              aria-label="Search Conversations"
-            />
-          </label>
+        <label className="history-search">
+          <Search />
+          <input
+            value={historyQuery}
+            onChange={(event) => setHistoryQuery(event.target.value)}
+            placeholder="Search Chats"
+            aria-label="Search Conversations"
+          />
+        </label>
 
-          <div className="history-label-row">
-            <div className="history-label">
-              <span>Recents</span>
-            </div>
-            <div className="history-toggle-group">
-              <button
-                type="button"
-                className={groupBy === "date" ? "active" : ""}
-                onClick={() => setGroupBy("date")}
-                title="Group by Date"
-              >
-                Date
-              </button>
-              <button
-                type="button"
-                className={groupBy === "topic" ? "active" : ""}
-                onClick={() => setGroupBy("topic")}
-                title="Group by Topic"
-              >
-                Topic
-              </button>
-            </div>
+        <div className="history-label-row">
+          <div className="history-label">
+            <span>Recents</span>
           </div>
-
-          <nav className="history" aria-label="Conversation history">
-            {pinnedConversations.length > 0 && (
-              <section className="history-date-section pinned-section">
-                <div className="history-date-heading">
-                  <Pin className="pinned-heading-icon" />
-                  <span>Pinned</span>
-                  <strong>{pinnedConversations.length}</strong>
-                </div>
-                <div className="history-item-list">
-                  {pinnedConversations.map(renderHistoryItem)}
-                </div>
-              </section>
-            )}
-
-            {groupBy === "date"
-              ? groupHistoryByDate(unpinnedConversations).map((dateGroup) => {
-                  const isCollapsed = Boolean(collapsedDates[dateGroup.label]);
-                  return (
-                    <section
-                      className={`history-date-section ${isCollapsed ? "is-collapsed" : ""}`}
-                      key={dateGroup.label}
-                    >
-                      <div
-                        className="history-date-heading clickable-heading"
-                        onClick={() => toggleDateCollapse(dateGroup.label)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") toggleDateCollapse(dateGroup.label);
-                        }}
-                        title={isCollapsed ? `Expand ${dateGroup.label}` : `Collapse ${dateGroup.label}`}
-                      >
-                        <div className="history-heading-left">
-                          {isCollapsed ? (
-                            <ChevronRight className="history-collapse-icon" size={13} />
-                          ) : (
-                            <ChevronDown className="history-collapse-icon" size={13} />
-                          )}
-                          <CalendarDays size={13} />
-                          <span>{dateGroup.label}</span>
-                        </div>
-                        <strong className="history-group-count">{dateGroup.conversations.length}</strong>
-                      </div>
-
-                      {!isCollapsed && (
-                        <div className="history-item-list">
-                          {dateGroup.conversations.map(renderHistoryItem)}
-                        </div>
-                      )}
-                    </section>
-                  );
-                })
-              : groupHistoryByModel(unpinnedConversations).map((modelGroup) => {
-                  const isCollapsed = Boolean(collapsedTopics[modelGroup.label]);
-                  return (
-                    <section
-                      className={`history-date-section ${isCollapsed ? "is-collapsed" : ""}`}
-                      key={modelGroup.label}
-                    >
-                      <div
-                        className="history-date-heading clickable-heading"
-                        onClick={() => toggleTopicCollapse(modelGroup.label)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") toggleTopicCollapse(modelGroup.label);
-                        }}
-                        title={isCollapsed ? `Expand ${modelGroup.label}` : `Collapse ${modelGroup.label}`}
-                      >
-                        <div className="history-heading-left">
-                          {isCollapsed ? (
-                            <ChevronRight className="history-collapse-icon" size={13} />
-                          ) : (
-                            <ChevronDown className="history-collapse-icon" size={13} />
-                          )}
-                          <span
-                            className="history-model-badge"
-                            style={{ backgroundColor: modelGroup.color }}
-                          >
-                            {modelGroup.short}
-                          </span>
-                          <span className="history-model-name">{modelGroup.label}</span>
-                        </div>
-                        <strong className="history-group-count">{modelGroup.conversations.length}</strong>
-                      </div>
-
-                      {!isCollapsed && (
-                        <div className="history-item-list">
-                          {modelGroup.conversations.map(renderHistoryItem)}
-                        </div>
-                      )}
-                    </section>
-                  );
-                })}
-            {conversations.length === 0 && <p className="empty-history">No Saved Conversations</p>}
-          </nav>
-
-          <div className="sidebar-footer gemini-account-footer">
-            <div className="sidebar-account-wrap expanded-account-wrap">
-              <button
-                className="sidebar-account-trigger"
-                type="button"
-                aria-label={`${user.name} account`}
-              >
-                <span className="avatar sidebar-avatar">{initials(user.name)}</span>
-                <span className="sidebar-account-name">{user.name}</span>
-              </button>
-            </div>
-            <IconButton
-              label="Settings"
-              className="sidebar-settings-btn gemini-footer-icon"
-              onClick={() => setSettingsOpen(true)}
+          <div className="history-toggle-group">
+            <button
+              type="button"
+              className={groupBy === "date" ? "active" : ""}
+              onClick={() => setGroupBy("date")}
+              title="Group by Date"
             >
-              <Settings />
-            </IconButton>
+              Date
+            </button>
+            <button
+              type="button"
+              className={groupBy === "topic" ? "active" : ""}
+              onClick={() => setGroupBy("topic")}
+              title="Group by Topic"
+            >
+              Topic
+            </button>
           </div>
+        </div>
+
+        <nav className="history" aria-label="Conversation history">
+          {pinnedConversations.length > 0 && (
+            <section className="history-date-section pinned-section">
+              <div className="history-date-heading">
+                <Pin className="pinned-heading-icon" />
+                <span>Pinned</span>
+                <strong>{pinnedConversations.length}</strong>
+              </div>
+              <div className="history-item-list">{pinnedConversations.map(renderHistoryItem)}</div>
+            </section>
+          )}
+
+          {groupBy === "date"
+            ? groupHistoryByDate(unpinnedConversations).map((dateGroup) => {
+                const isCollapsed = Boolean(collapsedDates[dateGroup.label]);
+                return (
+                  <section
+                    className={`history-date-section ${isCollapsed ? "is-collapsed" : ""}`}
+                    key={dateGroup.label}
+                  >
+                    <div
+                      className="history-date-heading clickable-heading"
+                      onClick={() => toggleDateCollapse(dateGroup.label)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") toggleDateCollapse(dateGroup.label);
+                      }}
+                      title={
+                        isCollapsed ? `Expand ${dateGroup.label}` : `Collapse ${dateGroup.label}`
+                      }
+                    >
+                      <div className="history-heading-left">
+                        {isCollapsed ? (
+                          <ChevronRight className="history-collapse-icon" size={13} />
+                        ) : (
+                          <ChevronDown className="history-collapse-icon" size={13} />
+                        )}
+                        <CalendarDays size={13} />
+                        <span>{dateGroup.label}</span>
+                      </div>
+                      <strong className="history-group-count">
+                        {dateGroup.conversations.length}
+                      </strong>
+                    </div>
+
+                    {!isCollapsed && (
+                      <div className="history-item-list">
+                        {dateGroup.conversations.map(renderHistoryItem)}
+                      </div>
+                    )}
+                  </section>
+                );
+              })
+            : groupHistoryByModel(unpinnedConversations).map((modelGroup) => {
+                const isCollapsed = Boolean(collapsedTopics[modelGroup.label]);
+                return (
+                  <section
+                    className={`history-date-section ${isCollapsed ? "is-collapsed" : ""}`}
+                    key={modelGroup.label}
+                  >
+                    <div
+                      className="history-date-heading clickable-heading"
+                      onClick={() => toggleTopicCollapse(modelGroup.label)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ")
+                          toggleTopicCollapse(modelGroup.label);
+                      }}
+                      title={
+                        isCollapsed ? `Expand ${modelGroup.label}` : `Collapse ${modelGroup.label}`
+                      }
+                    >
+                      <div className="history-heading-left">
+                        {isCollapsed ? (
+                          <ChevronRight className="history-collapse-icon" size={13} />
+                        ) : (
+                          <ChevronDown className="history-collapse-icon" size={13} />
+                        )}
+                        <span
+                          className="history-model-badge"
+                          style={{ backgroundColor: modelGroup.color }}
+                        >
+                          {modelGroup.short}
+                        </span>
+                        <span className="history-model-name">{modelGroup.label}</span>
+                      </div>
+                      <strong className="history-group-count">
+                        {modelGroup.conversations.length}
+                      </strong>
+                    </div>
+
+                    {!isCollapsed && (
+                      <div className="history-item-list">
+                        {modelGroup.conversations.map(renderHistoryItem)}
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
+          {conversations.length === 0 && <p className="empty-history">No Saved Conversations</p>}
+        </nav>
+
+        <div className="sidebar-footer account-footer">
+          <div className="sidebar-account-wrap expanded-account-wrap">
+            <button
+              className="sidebar-account-trigger"
+              type="button"
+              aria-label={`${user.name} account`}
+            >
+              <span className="avatar sidebar-avatar">{initials(user.name)}</span>
+              <span className="sidebar-account-name">{user.name}</span>
+            </button>
+          </div>
+          <IconButton
+            label="Settings"
+            className="sidebar-settings-btn footer-icon"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Settings />
+          </IconButton>
+        </div>
       </div>
 
-      <div
-        className="sidebar-collapsed-nav"
-        aria-hidden={open}
-        inert={open}
-      >
-          <button
-            className="collapsed-brand-trigger"
-            type="button"
-            aria-label="Open Sidebar"
-            data-tooltip="Open Sidebar"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <span className="collapsed-brand-default">
-              <AskBrandMark />
-            </span>
-            <PanelLeftOpen className="collapsed-brand-open-icon" />
-          </button>
-          <IconButton label="New Chat" onClick={startConversation}>
-            <MessageSquarePlus />
-          </IconButton>
-          <IconButton label="Search Chats" onClick={() => setSidebarOpen(true)}>
-            <Search />
-          </IconButton>
+      <div className="sidebar-collapsed-nav" aria-hidden={open} inert={open}>
+        <button
+          className="collapsed-brand-trigger"
+          type="button"
+          aria-label="Open Sidebar"
+          data-tooltip="Open Sidebar"
+          onClick={() => setSidebarOpen(true)}
+        >
+          <span className="collapsed-brand-default">
+            <AskBrandMark />
+          </span>
+          <PanelLeftOpen className="collapsed-brand-open-icon" />
+        </button>
+        <IconButton label="New Chat" onClick={startConversation}>
+          <MessageSquarePlus />
+        </IconButton>
+        <IconButton label="Search Chats" onClick={() => setSidebarOpen(true)}>
+          <Search />
+        </IconButton>
 
-          <div className="collapsed-footer">
-            <IconButton
-              label="Settings"
-              className="gemini-footer-icon"
-              onClick={() => setSettingsOpen(true)}
+        <div className="collapsed-footer">
+          <IconButton
+            label="Settings"
+            className="footer-icon"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Settings />
+          </IconButton>
+          <div className="sidebar-account-wrap">
+            <button
+              className="avatar sidebar-avatar collapsed-avatar"
+              type="button"
+              aria-label={`${user.name} account`}
             >
-              <Settings />
-            </IconButton>
-            <div className="sidebar-account-wrap">
-              <button
-                className="avatar sidebar-avatar collapsed-avatar"
-                type="button"
-                aria-label={`${user.name} account`}
-              >
-                {initials(user.name)}
-              </button>
-            </div>
+              {initials(user.name)}
+            </button>
           </div>
+        </div>
       </div>
     </aside>
   );

@@ -33,7 +33,10 @@ export function removeChartScriptSections(text: string) {
 }
 
 function isChartDirectiveBlock(block: string) {
-  const content = block.replace(/^```[^\r\n]*\r?\n/, "").replace(/```$/, "").trim();
+  const content = block
+    .replace(/^```[^\r\n]*\r?\n/, "")
+    .replace(/```$/, "")
+    .trim();
   return /^(?:chartType|chart_type|chart)\s*:\s*(?:pie|donut|bar|line|area|scatter|radar|heatmap|treemap|funnel|gauge|waterfall|bubble|histogram|boxplot|horizontal-bar|stacked-bar)\b/i.test(
     content,
   );

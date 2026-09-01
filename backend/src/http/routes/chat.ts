@@ -17,7 +17,6 @@ import {
   renameOwnedSession,
 } from "../../persistence/repositories/sessionRepository.js";
 import type { AuthenticatedRequest } from "../../types.js";
-import { rateLimit } from "../middleware/rateLimit.js";
 
 const chatBody = z
   .object({
@@ -106,7 +105,7 @@ chatRouter.post("/chat/:requestId/cancel", async (request, res) => {
   res.status(202).json({ request_id: requestId, status: "cancelling" });
 });
 
-chatRouter.post("/chat", rateLimit, async (request, res) => {
+chatRouter.post("/chat", async (request, res) => {
   const req = request as AuthenticatedRequest;
   const body = chatBody.parse(req.body);
   getAccessibleModel(req.user, body.semantic_model_id);

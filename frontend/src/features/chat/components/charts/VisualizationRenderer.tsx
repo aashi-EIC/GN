@@ -123,7 +123,6 @@ export function StructuredTable({
     [block.rows, columns],
   );
 
-  // Search filtering
   const filteredRows = useMemo(() => {
     if (!searchQuery.trim()) return rawRows;
     const q = searchQuery.toLowerCase().trim();
@@ -135,7 +134,6 @@ export function StructuredTable({
     );
   }, [rawRows, columns, searchQuery]);
 
-  // Column Sorting
   const sortedRows = useMemo(() => {
     if (!sortKey || !sortDirection) return filteredRows;
     return [...filteredRows].sort((a, b) => {
@@ -154,7 +152,6 @@ export function StructuredTable({
     });
   }, [filteredRows, sortKey, sortDirection]);
 
-  // Pagination
   const totalRows = sortedRows.length;
   const isAll = pageSize >= totalRows || pageSize <= 0;
   const totalPages = isAll ? 1 : Math.ceil(totalRows / pageSize);
@@ -212,8 +209,13 @@ export function StructuredTable({
   };
 
   return (
-    <section className={minimal ? "table-section minimal-table-container" : "table-section interactive-table-container"}>
-      {/* Header Toolbar */}
+    <section
+      className={
+        minimal
+          ? "table-section minimal-table-container"
+          : "table-section interactive-table-container"
+      }
+    >
       <div className={minimal ? "minimal-table-toolbar" : "table-header-toolbar"}>
         {!minimal && (
           <div className="table-header-left">
@@ -227,7 +229,6 @@ export function StructuredTable({
         {minimal && <div className="table-header-left" />}
 
         <div className="table-actions-right">
-          {/* Quick Search */}
           <div className="table-search-box">
             <Search size={14} className="search-icon" />
             <input
@@ -252,7 +253,6 @@ export function StructuredTable({
             )}
           </div>
 
-          {/* Copy TSV button */}
           <button
             type="button"
             className="btn-table-action"
@@ -290,11 +290,7 @@ export function StructuredTable({
                     className={`sortable-th ${isSorted ? "is-sorted" : ""}`}
                     title={`Sort by ${column.label}`}
                     aria-sort={
-                      isSorted
-                        ? sortDirection === "asc"
-                          ? "ascending"
-                          : "descending"
-                        : "none"
+                      isSorted ? (sortDirection === "asc" ? "ascending" : "descending") : "none"
                     }
                   >
                     <div className="th-content">
@@ -323,10 +319,7 @@ export function StructuredTable({
                     const numVal = toNumber(rawVal);
                     const isNum = !Number.isNaN(numVal) && typeof rawVal !== "boolean";
                     return (
-                      <td
-                        key={column.key}
-                        className={isNum ? "cell-number" : "cell-text"}
-                      >
+                      <td key={column.key} className={isNum ? "cell-number" : "cell-text"}>
                         {formatCell(rawVal, column.key)}
                       </td>
                     );
@@ -395,7 +388,7 @@ export function StructuredTable({
                 >
                   <ChevronRight size={16} />
                 </button>
-                </div>
+              </div>
             )}
           </div>
         </div>
@@ -409,42 +402,49 @@ function formatCell(value: unknown, columnKey: string) {
   if (typeof value === "boolean") return value ? "Yes" : "No";
 
   const str = String(value).trim();
-  const lower = str.toLowerCase();
-
-  if (lower === "complete" || lower === "100%" || lower === "mapped" || lower === "success") {
-    return <span className="table-badge badge-success">{str}</span>;
-  }
-  if (lower === "tba" || lower === "to be mapped" || lower === "in progress" || lower === "partial") {
-    return <span className="table-badge badge-warning">{str}</span>;
-  }
-  if (lower === "sign-off" || lower === "signoff" || lower === "generic" || lower === "unmappable" || lower === "failed") {
-    return <span className="table-badge badge-danger">{str}</span>;
-  }
+  const badgeClass = STATUS_BADGE_CLASSES.get(str.toLowerCase());
+  if (badgeClass) return <span className={`table-badge ${badgeClass}`}>{str}</span>;
 
   if (typeof value === "number") {
-    const keyLower = columnKey.toLowerCase();
-    if (
-      keyLower.includes("pct") ||
-      keyLower.includes("rate") ||
-      keyLower.includes("percent") ||
-      keyLower.includes("completeness")
-    ) {
-      const formatted = value <= 1 && value > 0 ? (value * 100).toFixed(1) : value.toFixed(1);
-      const numFormatted = Number(formatted);
-      const isHigh = numFormatted >= 95;
-      const isLow = numFormatted < 80;
-      return (
-        <span className={`table-pct-val ${isHigh ? "high-pct" : isLow ? "low-pct" : ""}`}>
-          {formatted}%
-        </span>
-      );
-    }
-    if (Number.isInteger(value)) {
-      return value.toLocaleString();
-    }
-    return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    return isPercentageColumn(columnKey) ? formatPercentage(value) : formatNumber(value);
   }
 
   return str;
 }
 
+const STATUS_BADGE_CLASSES = new Map<string, string>([
+  ["complete", "badge-success"],
+  ["100%", "badge-success"],
+  ["mapped", "badge-success"],
+  ["success", "badge-success"],
+  ["tba", "badge-warning"],
+  ["to be mapped", "badge-warning"],
+  ["in progress", "badge-warning"],
+  ["partial", "badge-warning"],
+  ["sign-off", "badge-danger"],
+  ["signoff", "badge-danger"],
+  ["generic", "badge-danger"],
+  ["unmappable", "badge-danger"],
+  ["failed", "badge-danger"],
+]);
+
+const PERCENTAGE_COLUMN_TERMS = ["pct", "rate", "percent", "completeness"];
+
+function isPercentageColumn(columnKey: string) {
+  const normalizedKey = columnKey.toLowerCase();
+  return PERCENTAGE_COLUMN_TERMS.some((term) => normalizedKey.includes(term));
+}
+
+function formatPercentage(value: number) {
+  const normalizedValue = value <= 1 && value > 0 ? value * 100 : value;
+  const formatted = normalizedValue.toFixed(1);
+  const toneClass = normalizedValue >= 95 ? "high-pct" : normalizedValue < 80 ? "low-pct" : "";
+
+  return <span className={`table-pct-val ${toneClass}`}>{formatted}%</span>;
+}
+
+function formatNumber(value: number) {
+  return Number.isInteger(value)
+    ? value.toLocaleString()
+    : value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}

@@ -8,6 +8,10 @@ import {
   deleteMessageFeedback,
   saveMessageFeedback,
 } from "../../persistence/repositories/interactionRepository.js";
+import {
+  getUserSettings,
+  saveUserSettings,
+} from "../../persistence/repositories/settingsRepository.js";
 import type { AuthenticatedRequest, AuthenticatedUser } from "../../types.js";
 
 const modelParams = z.object({ modelId: z.string().trim().min(1).max(256) });
@@ -26,6 +30,16 @@ const issueBody = z
     category: z.string().trim().min(1).max(120),
     severity: z.enum(["low", "medium", "high", "critical"]),
     description: z.string().trim().min(12).max(10_000),
+  })
+  .strict();
+const settingsBody = z
+  .object({
+    displayName: z.string().trim().max(120).optional(),
+    region: z.string().trim().min(1).max(80).optional(),
+    density: z.enum(["comfortable", "compact"]).optional(),
+    keepDebugOpen: z.boolean().optional(),
+    theme: z.enum(["light", "dark"]).optional(),
+    tourSeen: z.boolean().optional(),
   })
   .strict();
 
@@ -72,6 +86,25 @@ platformRouter.get("/bootstrap", (request, res) => {
       maximum_history_items: config.MAX_HISTORY_ITEMS,
     },
   });
+});
+
+platformRouter.get("/settings", (request, res) => {
+  const req = request as AuthenticatedRequest;
+  res.json({ settings: getUserSettings(req.user) });
+});
+
+platformRouter.put("/settings", (request, res) => {
+  const req = request as AuthenticatedRequest;
+  const input = settingsBody.parse(req.body);
+  const settings = saveUserSettings(req.user, {
+    ...(input.displayName !== undefined ? { displayName: input.displayName } : {}),
+    ...(input.region !== undefined ? { region: input.region } : {}),
+    ...(input.density !== undefined ? { density: input.density } : {}),
+    ...(input.keepDebugOpen !== undefined ? { keepDebugOpen: input.keepDebugOpen } : {}),
+    ...(input.theme !== undefined ? { theme: input.theme } : {}),
+    ...(input.tourSeen !== undefined ? { tourSeen: input.tourSeen } : {}),
+  });
+  res.json({ settings });
 });
 
 platformRouter.get("/semantic-models", (request, res) => {

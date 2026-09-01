@@ -24,7 +24,7 @@ const schema = z.object({
 
   ENTRA_TENANT_ID: optionalText,
   ENTRA_API_AUDIENCE: optionalText,
-  ENTRA_ACCEPT_V1_TOKENS: bool.default(true),
+  ENTRA_ACCEPT_V1_TOKENS: bool.default(false),
   ENTRA_REQUIRED_SCOPE: optionalText,
   ENTRA_ALLOWED_ROLES: optionalText,
   DISABLE_AUTH: bool.default(false),
@@ -38,15 +38,12 @@ const schema = z.object({
   RATE_LIMIT_WINDOW_MS: integer(60_000),
   RATE_LIMIT_MAX: integer(30),
 
-  MCP_BASE_URL: z.preprocess(
-    (value) => (value === "" ? undefined : value),
-    z.string().min(1).default("https://mcp-np.gvsa-np.cloud.gracenote.com"),
-  ),
+  MCP_BASE_URL: optionalText,
   MCP_ENDPOINT_PATH: z.preprocess(
     (value) => (value === "" ? undefined : value),
     z.string().min(1).default("/chat"),
   ),
-  MCP_TIMEOUT_MS: integer(30_000),
+  MCP_TIMEOUT_MS: integer(60_000),
   MCP_MAX_RESPONSE_BYTES: integer(5_242_880),
   MCP_SAFE_RETRY_ENABLED: bool.default(false),
   MCP_MAX_RETRIES: z.preprocess(

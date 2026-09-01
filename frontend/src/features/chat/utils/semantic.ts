@@ -28,9 +28,3 @@ export function normalizeCountryCode(value?: string): CountryCode {
   const upper = value?.toUpperCase();
   return countries.some((country) => country.code === upper) ? (upper as CountryCode) : "US";
 }
-
-export function getCountry(countryCode: CountryCode) {
-  return (
-    countries.find((country) => country.code === normalizeCountryCode(countryCode)) ?? countries[0]
-  );
-}

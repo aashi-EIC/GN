@@ -1,21 +1,3 @@
-export function BrandMark({
-  light = false,
-  compact = false,
-}: {
-  light?: boolean;
-  compact?: boolean;
-}) {
-  return (
-    <div className={`brand ${light ? "light" : ""} ${compact ? "compact" : ""}`}>
-      <img
-        src={compact ? "/gracenote-favicon.svg" : "/gracenote-logo.svg"}
-        alt={compact ? "Conversational BI" : "Conversational BI, a Nielsen company"}
-        className="brand-logo-img"
-      />
-    </div>
-  );
-}
-
 export function AskBrandMark() {
   return (
     <span className="ask-brand">

@@ -31,7 +31,6 @@ export function GuideModal({
   return (
     <Modal close={close} label={`${activeModel.name} User Guide`}>
       <div className="guide-modal-container">
-        {/* Header Hero Banner */}
         <div className="guide-modal-header">
           <div
             className="guide-modal-avatar"
@@ -50,7 +49,6 @@ export function GuideModal({
           </div>
         </div>
 
-        {/* Key Highlights Metrics Grid */}
         {activeModel.highlights && activeModel.highlights.length > 0 && (
           <div className="guide-highlights-grid">
             {activeModel.highlights.map((item) => (
@@ -62,7 +60,6 @@ export function GuideModal({
           </div>
         )}
 
-        {/* Navigation Tabs */}
         <div className="guide-tabs">
           <button
             type="button"
@@ -82,10 +79,8 @@ export function GuideModal({
           </button>
         </div>
 
-        {/* Tab Content 1: Overview */}
         {activeTab === "overview" && (
           <div className="guide-tab-pane">
-            {/* Overall Objective Card */}
             {activeModel.objective && (
               <div className="guide-card guide-objective-card-wrapper">
                 <div className="guide-card-header">
@@ -117,7 +112,6 @@ export function GuideModal({
               </div>
             )}
 
-            {/* Business Purpose Card */}
             {activeModel.businessPurpose && (
               <div className="guide-card">
                 <div className="guide-card-header">
@@ -138,7 +132,6 @@ export function GuideModal({
               </div>
             )}
 
-            {/* Quick Tip Banner */}
             {activeModel.quickTip && (
               <div className="guide-quick-tip">
                 <Lightbulb size={16} className="guide-quick-tip-icon" />
@@ -150,7 +143,6 @@ export function GuideModal({
           </div>
         )}
 
-        {/* Tab Content 2: Suggested Prompts */}
         {activeTab === "prompts" && (
           <div className="guide-tab-pane">
             <div className="guide-prompts-section">

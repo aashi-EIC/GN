@@ -35,7 +35,7 @@ export function SettingsModal({
       onMouseDown={(event) => event.target === event.currentTarget && close()}
     >
       <aside
-        className="gemini-sidebar-settings-panel"
+        className="sidebar-settings-panel"
         role="dialog"
         aria-modal="true"
         aria-label="Workspace settings"

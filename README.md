@@ -1,97 +1,92 @@
 # Conversational BI
 
-This package contains the React frontend and Node.js Backend for Frontend (BFF). Real `.env` files, installed dependencies, build output and credentials are intentionally excluded.
+Conversational BI is a React application with a Node.js Backend for Frontend (BFF). The browser authenticates users with Microsoft Entra ID and sends analytical prompts only to the BFF. The BFF validates access, enforces model permissions, manages sessions, and calls the external MCP host.
 
-## Package layout
+## Repository structure
 
 ```text
-Conversational-BI/
-|-- frontend/
-|   |-- .env.example
-|   |-- package.json
-|   `-- package-lock.json
-|-- backend/
-|   |-- .env.example
-|   |-- package.json
-|   `-- package-lock.json
+.
+|-- frontend/                 React, Vite, MSAL and the chat interface
+|   |-- public/               Brand assets
+|   `-- src/
+|       |-- app/              Application shell, routing and providers
+|       |-- features/         Authentication, chat, debug and settings
+|       `-- shared/           Reusable components, types and utilities
+|-- backend/                  Express BFF and MCP integration
+|   `-- src/
+|       |-- application/      Chat orchestration
+|       |-- http/             Routes and middleware
+|       |-- integrations/     MCP request, response and authentication adapters
+|       |-- persistence/      Replaceable process-local repositories
+|       `-- security/         Content validation
+|-- package.json              Workspace scripts and quality checks
 `-- README.md
 ```
 
+Generated output, dependencies, local environment files, installers, archives and credentials are intentionally excluded from source control.
+
 ## Requirements
 
-- Node.js 20 or newer for the backend
-- Node.js 22 or newer for the frontend
-- npm, included with Node.js
-- The frontend URL registered as a Single-page application redirect URI in Microsoft Entra ID
+- Node.js 22 LTS or newer
+- npm 10 or newer
+- A Microsoft Entra app registration with the frontend redirect URI configured as a Single-page application
+- Client-provided BFF audience/scope and MCP connection settings
 
-## Install dependencies after extraction
+## Setup
 
-`node_modules` is intentionally excluded. From the extracted package root, install the exact dependency versions from the lockfiles:
-
-```powershell
-cd frontend
-npm ci
-cd ../backend
-npm ci
-cd ..
-```
-
-If PowerShell blocks `npm.ps1`, use:
+Install the complete workspace from the repository root:
 
 ```powershell
-cd frontend
 npm.cmd ci
-cd ../backend
-npm.cmd ci
-cd ..
-```
-
-## Configure the environments
-
-Create local environment files from the supplied templates:
-
-```powershell
 Copy-Item frontend/.env.example frontend/.env
 Copy-Item backend/.env.example backend/.env
 ```
 
-Replace the placeholders with client-provided values. The frontend environment requires:
+Replace every required blank or placeholder value in the two local `.env` files. The frontend must request the delegated BFF scope, not Microsoft Graph `User.Read`:
 
 ```dotenv
-VITE_ENTRA_CLIENT_ID=<application-client-id>
-VITE_ENTRA_TENANT_ID=<directory-tenant-id>
-VITE_ENTRA_API_SCOPE=User.Read
-VITE_API_BASE_URL=http://localhost:3000/api/v1
+VITE_ENTRA_API_SCOPE=api://<backend-application-id>/access_as_user
 ```
 
-After the BFF delegated scope is configured, replace `User.Read` with the client-approved BFF scope, such as `api://<backend-application-id>/access_as_user`.
+All `VITE_*` values are compiled into browser JavaScript. Never place a client secret, MCP API key, password, private key or access token in `frontend/.env`. Server-only values belong in `backend/.env` or the deployment secret manager.
 
-All `VITE_*` values are compiled into browser JavaScript. Never place an Entra client secret, MCP API key, password, private key or access token in the frontend environment. Server-only values belong in `backend/.env` or the deployment secret manager.
+## Development
 
-## Run locally
-
-Start the backend from one terminal:
+Run the BFF and frontend in separate terminals from the repository root:
 
 ```powershell
-cd backend
-npm run dev
+npm.cmd run dev --workspace backend
+npm.cmd run dev --workspace frontend
 ```
 
-Start the frontend from another terminal:
+The default URLs are <http://localhost:3000> for the BFF and <http://localhost:5173> for the frontend.
+
+## Quality checks
 
 ```powershell
-cd frontend
-npm run dev
+npm.cmd run lint
+npm.cmd run typecheck
+npm.cmd run format:check
+npm.cmd run build
 ```
 
-## Run the frontend with Docker
+Run all checks together with `npm.cmd run check`.
 
-Docker installs frontend dependencies during the image build, so running `npm ci` locally is not required for this workflow.
+## Frontend container
+
+After creating `frontend/.env`, build from the repository root:
 
 ```powershell
-cd frontend
-docker compose -f docker-compose.frontend.yml up --build -d
+docker compose --env-file frontend/.env -f frontend/docker-compose.frontend.yml up --build -d
 ```
 
-The default frontend address is <http://localhost:5173>.
+The container serves the compiled single-page application at <http://localhost:5173>.
 
+## Security and persistence
+
+- Every protected BFF route validates the Entra token and derives ownership from validated claims.
+- The browser never receives the MCP API key, OBO client secret or downstream token.
+- MCP output is size-limited, validated and rendered as data/text; scripts are never executed.
+- Sessions, settings, feedback and issue reports currently use process-local repositories and reset when the BFF restarts. Replace these repositories with client-owned persistent storage before horizontal production scaling.
+
+See [backend/README.md](backend/README.md) for the API contract, authentication modes and deployment configuration.

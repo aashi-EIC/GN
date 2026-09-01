@@ -25,7 +25,10 @@ import {
   persistMcpRequestAudit,
   requestMcpInsight,
 } from "../features/chat/services/mcp.service";
-import { getUserSettings, updateUserSettings } from "../features/chat/services/chat.service";
+import {
+  getUserSettings,
+  updateUserSettings,
+} from "../features/settings/services/settings.service";
 import type {
   Conversation,
   FeedbackValue,
@@ -579,10 +582,7 @@ function Workspace({
       try {
         answer = await requestMcpInsight(mcpRequest.payload, requestAudit, token);
       } catch (err) {
-        if (
-          err instanceof Error &&
-          err.message.includes("Invalid or expired access token")
-        ) {
+        if (err instanceof Error && err.message.includes("Invalid or expired access token")) {
           const freshToken = await acquireToken(true);
           if (freshToken) {
             answer = await requestMcpInsight(mcpRequest.payload, requestAudit, freshToken);
@@ -727,10 +727,7 @@ function Workspace({
       try {
         answer = await requestMcpInsight(mcpRequest.payload, requestAudit, token);
       } catch (err) {
-        if (
-          err instanceof Error &&
-          err.message.includes("Invalid or expired access token")
-        ) {
+        if (err instanceof Error && err.message.includes("Invalid or expired access token")) {
           const freshToken = await acquireToken(true);
           if (freshToken) {
             answer = await requestMcpInsight(mcpRequest.payload, requestAudit, freshToken);
@@ -1041,9 +1038,7 @@ function Workspace({
           close={() => setSettingsOpen(false)}
           settings={settings}
           saveSettings={saveSettings}
-          toggleDebug={() =>
-            saveSettings({ ...settings, keepDebugOpen: !debugOpen })
-          }
+          toggleDebug={() => saveSettings({ ...settings, keepDebugOpen: !debugOpen })}
           themeMode={themeMode}
           toggleTheme={() => dispatch(uiActions.toggleThemeMode())}
           onSignOut={onSignOut}

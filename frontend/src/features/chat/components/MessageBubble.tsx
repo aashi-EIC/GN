@@ -16,11 +16,7 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
-import type {
-  FeedbackValue,
-  Message,
-  VisualizationBlock,
-} from "../../../shared/types/app";
+import type { FeedbackValue, Message, VisualizationBlock } from "../../../shared/types/app";
 import { IconButton } from "../../../shared/components/ui/IconButton";
 import { StructuredTable, VisualizationRenderer } from "./charts/VisualizationRenderer";
 import { removeChartScriptSections } from "../utils/responseDisplay";
@@ -250,11 +246,7 @@ function MessageBubbleComponent({
               <span>Admin debug mode</span>
               <b>node-bff</b>
             </div>
-            <DebugPayload
-              title="Request sent to BFF"
-              value={message.mcpRequest}
-              defaultOpen
-            />
+            <DebugPayload title="Request sent to BFF" value={message.mcpRequest} defaultOpen />
             <DebugPayload
               title="Raw MCP response"
               value={message.debug.find((event) => event.stage === "mcp_response")?.payload}
@@ -315,7 +307,7 @@ function DebugPayload({
 }
 
 const insightPrefixPattern =
-  /^\s*>?\s*(?:(?:📊|💡|📌|✨|📈|📉|🔎|⭐)\uFE0F?\s*)?(?:\*\*)?\s*(?:key\s+)?findings\s*(?:\/|&|and)\s*insights\s*:?\s*(?:\*\*)?\s*/iu;
+  /^\s*>?\s*(?:#{1,6}\s*)?(?:\p{Extended_Pictographic}\uFE0F?\s*)?(?:\*\*)?\s*(?:key\s+)?findings\s*(?:\/|&|and)\s*insights\s*:?\s*(?:\*\*)?\s*/iu;
 
 function hasInsightPrefix(value: string) {
   return insightPrefixPattern.test(value);
@@ -380,6 +372,7 @@ function SafeResponseText({ text }: { text: string }) {
       let currentList: React.ReactNode[] = [];
       let currentKpiList: Array<{ label: string; value: string; subtext?: string }> = [];
       let currentInsight: string[] = [];
+      let collectingInsight = false;
       let currentBlockquote: string[] = [];
 
       const flushList = (keyPrefix: string) => {
@@ -413,23 +406,17 @@ function SafeResponseText({ text }: { text: string }) {
       };
 
       const flushInsight = (keyPrefix: string) => {
-        if (currentInsight.length > 0) {
-          elements.push(
-            <div key={`insight-${keyPrefix}-${elements.length}`} className="executive-insight-block insight-pill">
-              <div className="executive-insight-header" style={{ marginBottom: 0 }}>
-                <Sparkles size={14} className="executive-insight-sparkle" />
-                <span>Findings & Insights</span>
-              </div>
-            </div>,
-          );
+        if (collectingInsight) {
+          elements.push(<InsightHeader key={`insight-${keyPrefix}-${elements.length}`} />);
           currentInsight.forEach((bqLine, idx) => {
             elements.push(
               <p key={`insight-p-${keyPrefix}-${idx}`} className="insight-body-text">
                 {renderFormattedInlineText(bqLine)}
-              </p>
+              </p>,
             );
           });
           currentInsight = [];
+          collectingInsight = false;
         }
       };
 
@@ -498,8 +485,10 @@ function SafeResponseText({ text }: { text: string }) {
         }
 
         // Check for KPI metric bullet lines: - **Label**: Value (Subtext) or - Label: Value
-        const metricMatch = trimmed.match(/^[-*•]\s+(?:\*\*([^*]+)\*\*|([A-Za-z0-9\s_%–-]+)):\s*([^(]+?)(?:\s*\(([^)]+)\))?$/);
-        if (metricMatch) {
+        const metricMatch = trimmed.match(
+          /^[-*•]\s+(?:\*\*([^*]+)\*\*|([A-Za-z0-9\s_%–-]+)):\s*([^(]+?)(?:\s*\(([^)]+)\))?$/,
+        );
+        if (metricMatch && !collectingInsight) {
           flushList(`${blockIdx}-${lineIdx}`);
           flushBlockquote(`${blockIdx}-${lineIdx}`);
           const label = metricMatch[1] || metricMatch[2];
@@ -519,9 +508,11 @@ function SafeResponseText({ text }: { text: string }) {
           flushKpiList(`${blockIdx}-${lineIdx}`);
           flushBlockquote(`${blockIdx}-${lineIdx}`);
           const listText = trimmed.replace(/^[-*•]\s+/, "");
-          currentList.push(
-            <li key={`li-${lineIdx}`}>{renderFormattedInlineText(listText)}</li>,
-          );
+          if (collectingInsight) {
+            currentInsight.push(`• ${listText}`);
+            return;
+          }
+          currentList.push(<li key={`li-${lineIdx}`}>{renderFormattedInlineText(listText)}</li>);
           return;
         }
 
@@ -530,6 +521,7 @@ function SafeResponseText({ text }: { text: string }) {
           flushList(`${blockIdx}-${lineIdx}`);
           flushKpiList(`${blockIdx}-${lineIdx}`);
           flushBlockquote(`${blockIdx}-${lineIdx}`);
+          collectingInsight = true;
           const bqText = stripInsightPrefix(trimmed);
           if (bqText) currentInsight.push(bqText);
           return;
@@ -540,9 +532,9 @@ function SafeResponseText({ text }: { text: string }) {
           flushList(`${blockIdx}-${lineIdx}`);
           flushKpiList(`${blockIdx}-${lineIdx}`);
           const bqText = trimmed.replace(/^\s*>\s*/, "").trim();
-          
+
           if (bqText) {
-            if (currentInsight.length > 0) {
+            if (collectingInsight) {
               currentInsight.push(bqText);
             } else {
               currentBlockquote.push(bqText);
@@ -567,14 +559,7 @@ function SafeResponseText({ text }: { text: string }) {
         }
 
         if (/^[^a-z0-9]*findings\s*\/\s*insights\s*:/i.test(trimmed)) {
-          elements.push(
-            <div key={`insight-${lineIdx}`} className="markdown-insight-heading">
-              <span className="markdown-insight-icon" aria-hidden="true">
-                <Sparkles />
-              </span>
-              <span>Findings &amp; insights</span>
-            </div>,
-          );
+          elements.push(<InsightHeader key={`insight-${lineIdx}`} />);
           return;
         }
 
@@ -608,12 +593,24 @@ function SafeResponseText({ text }: { text: string }) {
 
       flushList(`${blockIdx}-end`);
       flushKpiList(`${blockIdx}-end`);
+      flushInsight(`${blockIdx}-end`);
       flushBlockquote(`${blockIdx}-end`);
       return <div key={`block-${blockIdx}`}>{elements}</div>;
     });
   }, [text]);
 
   return <div className="markdown-response-body">{renderedElements}</div>;
+}
+
+function InsightHeader() {
+  return (
+    <div className="executive-insight-block insight-pill">
+      <div className="executive-insight-header" style={{ marginBottom: 0 }}>
+        <Sparkles size={14} className="executive-insight-sparkle" />
+        <span>Findings &amp; Insights</span>
+      </div>
+    </div>
+  );
 }
 
 function isMarkdownTableRow(line: string) {
@@ -636,8 +633,9 @@ function parseMarkdownTableRow(line: string) {
 }
 
 function renderNoteContent(text: string): React.ReactNode {
-  const quotedToken = text.trim().match(/^["'`]([^"'`]+)["'`]\s*(.*)$/);
-  if (!quotedToken) return renderFormattedInlineText(text);
+  const content = text.replace(NOTE_PREFIX_PATTERN, "").trim();
+  const quotedToken = content.match(/^["'`]([^"'`]+)["'`]\s*(.*)$/);
+  if (!quotedToken) return renderFormattedInlineText(content);
 
   const token = /^[-_]$/.test(quotedToken[1].trim()) ? "—" : quotedToken[1].trim();
   return (
@@ -647,6 +645,9 @@ function renderNoteContent(text: string): React.ReactNode {
     </>
   );
 }
+
+const NOTE_PREFIX_PATTERN =
+  /^\s*(?:\p{Extended_Pictographic}\uFE0F?\s*)?(?:\*\*)?\s*(?:note|important)\s*:?\s*(?:\*\*)?\s*/iu;
 
 function tableFromCodeBlock(
   source: string,
@@ -697,18 +698,18 @@ function renderFormattedInlineText(text: string): React.ReactNode {
   return parts.map((part, idx) => {
     if (part === "📊") {
       return (
-        <ChartNoAxesCombined
-          key={idx}
-          className="markdown-inline-chart-icon"
-          aria-hidden="true"
-        />
+        <ChartNoAxesCombined key={idx} className="markdown-inline-chart-icon" aria-hidden="true" />
       );
     }
     if (part.startsWith("**") && part.endsWith("**")) {
       return <strong key={idx}>{part.slice(2, -2)}</strong>;
     }
     if (part.startsWith("`") && part.endsWith("`")) {
-      return <code key={idx} className="markdown-inline-code">{part.slice(1, -1)}</code>;
+      return (
+        <code key={idx} className="markdown-inline-code">
+          {part.slice(1, -1)}
+        </code>
+      );
     }
     if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
       return <em key={idx}>{part.slice(1, -1)}</em>;

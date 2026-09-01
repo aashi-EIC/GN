@@ -437,7 +437,7 @@
   font-weight: 700;
 }
 
-/* Minimalist table styles for markdown tables */
+/* Tables rendered from response markdown */
 .response .minimal-table-container {
   display: block;
   margin: 12px 0;

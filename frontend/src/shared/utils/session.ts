@@ -103,10 +103,6 @@ const STOP_WORDS = new Set([
   "your",
 ]);
 
-function capitalizeWord(word: string): string {
-  return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-}
-
 export function titleFromUserMessages(userMessages: string[]): string {
   const topMessages = userMessages.filter((m) => m && m.trim().length > 0).slice(0, 5);
   if (topMessages.length === 0) return "new chat";
