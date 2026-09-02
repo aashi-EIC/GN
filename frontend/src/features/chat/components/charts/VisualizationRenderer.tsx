@@ -80,6 +80,23 @@ function humanizeColumnLabel(key: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+/**
+ * Table data is plain text, so remove inline Markdown markers that an LLM may
+ * include for emphasis. Without this normalization values such as
+ * `**Total Channels**` are displayed with the asterisks intact.
+ */
+function normalizeTableText(value: string): string {
+  return value
+    .replace(/\[([^\]]+)]\([^)]+\)/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/`([^`]+)`/g, "$1");
+}
+
+function normalizeTableValue(value: unknown): unknown {
+  return typeof value === "string" ? normalizeTableText(value.trim()) : value;
+}
+
 export function StructuredTable({
   block,
   minimal = false,
@@ -97,8 +114,13 @@ export function StructuredTable({
   const columns = useMemo(() => {
     const allCols = block.columns.map((column) =>
       typeof column === "string"
-        ? { key: column, label: humanizeColumnLabel(column) }
-        : { key: column.key, label: column.label ? column.label : humanizeColumnLabel(column.key) },
+        ? { key: column, label: normalizeTableText(humanizeColumnLabel(column)) }
+        : {
+            key: column.key,
+            label: normalizeTableText(
+              column.label ? column.label : humanizeColumnLabel(column.key),
+            ),
+          },
     );
 
     if (allCols.length > 3) {
@@ -114,11 +136,13 @@ export function StructuredTable({
         if (Array.isArray(row)) {
           const record: Record<string, unknown> = {};
           columns.forEach((col, idx) => {
-            record[col.key] = row[idx];
+            record[col.key] = normalizeTableValue(row[idx]);
           });
           return record;
         }
-        return row;
+        return Object.fromEntries(
+          Object.entries(row).map(([key, value]) => [key, normalizeTableValue(value)]),
+        );
       }),
     [block.rows, columns],
   );
