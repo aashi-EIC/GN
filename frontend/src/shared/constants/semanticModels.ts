@@ -60,13 +60,13 @@ export const semanticModels: SemanticModel[] = [
     short: "VOD",
     nickname: "VOD Mapping Performance",
     description:
-      "Measures VOD mapping performance, volume, and median turnaround time for assets created since 2019 across entitled catalogs.",
+      "Measures VOD mapping performance, volume, and turnaround time for assets created since 2019 across entitled catalogs.",
     guide:
-      "Provides visibility into ~18 million VOD assets (Mapped, To Be Mapped, Unmappable) with drill-through capabilities.",
+      "Provides visibility into ~35 million VOD assets (Mapped, To Be Mapped, Unmappable) with drill-through capabilities.",
     objective:
-      "Mapping Stats (VOD) provides a standardized view of VOD mapping performance across all entitled catalogs. Its core purpose is to measure mapping volume and turnaround time (C2M) for assets created since 2019.",
+      "Mapping Stats (VOD) is intended to provide a standardized view of VOD mapping performance across all entitled catalogs. Its core purpose is to measure mapping volume and turnaround time for assets created since 2019, with analysis by mapping status, availability window, create-date range, C2M/turnaround time, and individual assets. It also supports weekly, monthly, and yearly trend analysis.",
     objectiveNote:
-      "Provides visibility into ~18 million VOD assets with drill-through to individual assets for backlog and exception investigation.",
+      "It provides visibility into approximately 35 million VOD assets, categorized as Mapped, To Be Mapped, or Unmappable, with drill-through to individual assets for backlog and exception investigation.",
     objectivePoints: [
       {
         label: "Mapped",
@@ -82,21 +82,22 @@ export const semanticModels: SemanticModel[] = [
       },
     ],
     businessPurpose:
-      "Serves as a single source of truth for VOD mapping insights. Provides transparent, client-specific evidence of how efficiently VOD assets are mapped and made available.",
+      "It serves as a single source of truth for VOD mapping insights. It supports:",
     businessPoints: [
       "Monitor the operational health and efficiency of VOD mapping",
       "Track mapped volumes, mapping percentages, and median turnaround time",
       "Identify backlog spikes, delayed assets, and high levels of unmappable content",
-      "Investigate underlying assets and mapping schemes causing performance issues",
-      "Use historical trends to assess consistency and proactively address problems before client concerns",
+      "Investigate the underlying assets and mapping schemes causing performance issues",
+      "Use historical trends to assess consistency and proactively address problems before they become client concerns",
     ],
     highlights: [
-      { label: "Asset Volume", value: "~18 Million" },
+      { label: "Asset Volume", value: "~35 Million" },
       { label: "Historical Catalog", value: "2019 - Present" },
       { label: "Key Performance Metric", value: "C2M Turnaround Time" },
       { label: "Mapping Categories", value: "Mapped / TBM / Unmappable" },
     ],
-    quickTip: "Filter by create-date range to analyze turnaround time bottlenecks.",
+    quickTip:
+      "In short, Mapping Stats (VOD) provides transparent, client-specific evidence of how efficiently VOD assets are mapped and made available, supporting operational oversight, client conversations, backlog management, and continuous process improvement.",
     color: "#94073F",
     prompts: [
       "How long are VOD provider imports taking today?",
