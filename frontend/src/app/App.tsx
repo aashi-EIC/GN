@@ -329,7 +329,7 @@ function Workspace({
     normalizeCountryCode(undefined),
   );
   const [prompt, setPrompt] = useState("");
-  const [isThinking, setIsThinking] = useState(false);
+  const [thinkingConversations, setThinkingConversations] = useState<Record<string, boolean>>({});
   const [modelsOpen, setModelsOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
@@ -400,7 +400,7 @@ function Workspace({
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeConversation?.messages.length, isThinking]);
+  }, [activeConversation?.messages.length, thinkingConversations]);
 
   useEffect(() => {
     if (!toast) {
@@ -515,7 +515,8 @@ function Workspace({
 
   const submitPrompt = async (question = prompt) => {
     const trimmedQuestion = question.trim();
-    if (!trimmedQuestion || isThinking) {
+    const conversationId = activeConversation?.id ?? createSessionId();
+    if (!trimmedQuestion || thinkingConversations[conversationId]) {
       return;
     }
 
@@ -524,7 +525,6 @@ function Workspace({
       activeConversation?.countryCode ?? selectedCountryCode,
     );
     const createdAt = new Date().toISOString();
-    const conversationId = activeConversation?.id ?? createSessionId();
     const userMessage: Message = {
       id: createId("msg"),
       role: "user",
@@ -534,7 +534,7 @@ function Workspace({
 
     setPrompt("");
     setModelsOpen(false);
-    setIsThinking(true);
+    setThinkingConversations((prev) => ({ ...prev, [conversationId]: true }));
 
     setConversations((current) => {
       const existing = current.find((conversation) => conversation.id === conversationId);
@@ -671,13 +671,13 @@ function Workspace({
         ),
       );
     } finally {
-      setIsThinking(false);
+      setThinkingConversations((prev) => ({ ...prev, [conversationId]: false }));
     }
   };
 
   const handleEditUserMessage = async (messageId: string, newText: string) => {
     const trimmedQuestion = newText.trim();
-    if (!trimmedQuestion || isThinking || !activeConversation) {
+    if (!trimmedQuestion || !activeConversation || thinkingConversations[activeConversation.id]) {
       return;
     }
 
@@ -696,7 +696,7 @@ function Workspace({
     };
     const nextMessages = [...previousMessages, updatedUserMessage];
 
-    setIsThinking(true);
+    setThinkingConversations((prev) => ({ ...prev, [conversationId]: true }));
 
     setConversations((current) =>
       current.map((conversation) => {
@@ -817,12 +817,12 @@ function Workspace({
       );
       showToast("Unable to analyze request", "warning");
     } finally {
-      setIsThinking(false);
+      setThinkingConversations((prev) => ({ ...prev, [conversationId]: false }));
     }
   };
 
   const regenerateResponse = (messageId: string) => {
-    if (!activeConversation || isThinking) return;
+    if (!activeConversation || thinkingConversations[activeConversation.id]) return;
 
     const responseIndex = activeConversation.messages.findIndex(
       (message) => message.id === messageId && message.role === "assistant",
@@ -967,10 +967,10 @@ function Workspace({
                     onReportError={() => setIssueOpen(true)}
                     onEditUserMessage={handleEditUserMessage}
                     onRegenerateResponse={regenerateResponse}
-                    busy={isThinking}
+                    busy={!!(activeConversationId && thinkingConversations[activeConversationId])}
                   />
                 ))}
-                {isThinking && (
+                {activeConversationId && thinkingConversations[activeConversationId] && (
                   <div className="assistant-row">
                     <div className="ai-mark">
                       <Sparkles />
@@ -993,7 +993,7 @@ function Workspace({
                 prompt={prompt}
                 setPrompt={setPrompt}
                 submitPrompt={submitPrompt}
-                busy={isThinking}
+                busy={!!(activeConversationId && thinkingConversations[activeConversationId])}
                 modelId={normalizeModelId(activeConversation.modelId)}
                 setModelId={setActiveConversationModel}
                 modelsOpen={modelsOpen}
