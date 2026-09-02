@@ -3,10 +3,28 @@ function readPositiveNumber(value: string | undefined, fallback: number) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+const runtimeConfig = window.__APP_CONFIG__ ?? {};
+
+function readConfig(runtimeValue: string | undefined, buildValue: string | undefined) {
+  return runtimeValue?.trim() || buildValue?.trim() || "";
+}
+
 export const env = {
-  entraTenantId: import.meta.env.VITE_ENTRA_TENANT_ID || "organizations",
-  entraClientId: import.meta.env.VITE_ENTRA_CLIENT_ID || "",
-  entraApiScope: import.meta.env.VITE_ENTRA_API_SCOPE || "User.Read",
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api/v1",
-  apiTimeoutMs: readPositiveNumber(import.meta.env.VITE_API_TIMEOUT_MS, 70_000),
+  entraTenantId:
+    readConfig(runtimeConfig.VITE_ENTRA_TENANT_ID, import.meta.env.VITE_ENTRA_TENANT_ID) ||
+    "organizations",
+  entraClientId: readConfig(
+    runtimeConfig.VITE_ENTRA_CLIENT_ID,
+    import.meta.env.VITE_ENTRA_CLIENT_ID,
+  ),
+  entraApiScope:
+    readConfig(runtimeConfig.VITE_ENTRA_API_SCOPE, import.meta.env.VITE_ENTRA_API_SCOPE) ||
+    "User.Read",
+  apiBaseUrl:
+    readConfig(runtimeConfig.VITE_API_BASE_URL, import.meta.env.VITE_API_BASE_URL) ||
+    "http://localhost:3000/api/v1",
+  apiTimeoutMs: readPositiveNumber(
+    readConfig(runtimeConfig.VITE_API_TIMEOUT_MS, import.meta.env.VITE_API_TIMEOUT_MS),
+    70_000,
+  ),
 } as const;

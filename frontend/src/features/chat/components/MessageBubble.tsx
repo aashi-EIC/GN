@@ -307,7 +307,7 @@ function DebugPayload({
 }
 
 const insightPrefixPattern =
-  /^\s*>?\s*(?:#{1,6}\s*)?(?:\p{Extended_Pictographic}\uFE0F?\s*)?(?:\*\*)?\s*(?:key\s+)?findings\s*(?:\/|&|and)\s*insights\s*:?\s*(?:\*\*)?\s*/iu;
+  /^\s*>?\s*(?:#{1,6}\s*)?(?:(?:[-\u2022]|\*(?!\*))\s+)?(?:(?:\*\*|__)\s*)?(?:\p{Extended_Pictographic}\uFE0F?\s*)*(?:(?:\*\*|__)\s*)?(?:(?:key\s+)?findings?\s*(?:\/|&|and)\s*insights?|(?:key\s+)?insights?)\s*:?\s*(?:(?:\*\*|__)\s*)*/iu;
 
 function hasInsightPrefix(value: string) {
   return insightPrefixPattern.test(value);
@@ -503,6 +503,17 @@ function SafeResponseText({ text }: { text: string }) {
           return;
         }
 
+        // Identify an insight heading before generic bullet and blockquote handling.
+        if (hasInsightPrefix(trimmed)) {
+          flushList(`${blockIdx}-${lineIdx}`);
+          flushKpiList(`${blockIdx}-${lineIdx}`);
+          flushBlockquote(`${blockIdx}-${lineIdx}`);
+          collectingInsight = true;
+          const insightText = stripInsightPrefix(trimmed);
+          if (insightText) currentInsight.push(insightText);
+          return;
+        }
+
         // Regular bullet point lines (- item or * item or • item)
         if (/^[-*•]\s+/.test(trimmed)) {
           flushKpiList(`${blockIdx}-${lineIdx}`);
@@ -513,17 +524,6 @@ function SafeResponseText({ text }: { text: string }) {
             return;
           }
           currentList.push(<li key={`li-${lineIdx}`}>{renderFormattedInlineText(listText)}</li>);
-          return;
-        }
-
-        // Render insight blocks with one consistent card header.
-        if (hasInsightPrefix(trimmed)) {
-          flushList(`${blockIdx}-${lineIdx}`);
-          flushKpiList(`${blockIdx}-${lineIdx}`);
-          flushBlockquote(`${blockIdx}-${lineIdx}`);
-          collectingInsight = true;
-          const bqText = stripInsightPrefix(trimmed);
-          if (bqText) currentInsight.push(bqText);
           return;
         }
 
@@ -543,15 +543,21 @@ function SafeResponseText({ text }: { text: string }) {
           return;
         }
 
+        // Blank lines are visual spacing, not the end of an insight section.
+        // Keeping the insight buffer open prevents subsequent quoted findings
+        // from falling back to separate Note cards.
+        if (!trimmed) {
+          flushList(`${blockIdx}-${lineIdx}`);
+          flushKpiList(`${blockIdx}-${lineIdx}`);
+          flushBlockquote(`${blockIdx}-${lineIdx}`);
+          return;
+        }
+
         // Flush all buffers if we hit a normal line
         flushList(`${blockIdx}-${lineIdx}`);
         flushKpiList(`${blockIdx}-${lineIdx}`);
         flushInsight(`${blockIdx}-${lineIdx}`);
         flushBlockquote(`${blockIdx}-${lineIdx}`);
-
-        if (!trimmed) {
-          return;
-        }
 
         if (/^_{3,}$|^-{3,}$|^\*{3,}$/.test(trimmed)) {
           elements.push(<hr key={`hr-${lineIdx}`} className="markdown-divider" />);

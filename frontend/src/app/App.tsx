@@ -329,7 +329,9 @@ function Workspace({
     normalizeCountryCode(undefined),
   );
   const [prompt, setPrompt] = useState("");
-  const [thinkingConversations, setThinkingConversations] = useState<Record<string, boolean>>({});
+  const [thinkingConversationIds, setThinkingConversationIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [modelsOpen, setModelsOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
@@ -355,6 +357,9 @@ function Workspace({
   const activeConversation = conversations.find(
     (conversation) => conversation.id === activeConversationId,
   );
+  const activeConversationIsThinking = activeConversationId
+    ? thinkingConversationIds.has(activeConversationId)
+    : false;
   const lastMessage = activeConversation?.messages.at(-1);
   const selectedModel = getModel(selectedModelId);
   const sortedConversations = useMemo(
@@ -400,7 +405,7 @@ function Workspace({
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeConversation?.messages.length, thinkingConversations]);
+  }, [activeConversation?.messages.length, activeConversationIsThinking]);
 
   useEffect(() => {
     if (!toast) {
@@ -515,10 +520,12 @@ function Workspace({
 
   const submitPrompt = async (question = prompt) => {
     const trimmedQuestion = question.trim();
-    const conversationId = activeConversation?.id ?? createSessionId();
-    if (!trimmedQuestion || thinkingConversations[conversationId]) {
+    if (!trimmedQuestion) {
       return;
     }
+
+    const conversationId = activeConversation?.id ?? createSessionId();
+    if (thinkingConversationIds.has(conversationId)) return;
 
     const currentModelId = normalizeModelId(activeConversation?.modelId ?? selectedModelId);
     const currentCountryCode = normalizeCountryCode(
@@ -534,7 +541,7 @@ function Workspace({
 
     setPrompt("");
     setModelsOpen(false);
-    setThinkingConversations((prev) => ({ ...prev, [conversationId]: true }));
+    setThinkingConversationIds((current) => new Set(current).add(conversationId));
 
     setConversations((current) => {
       const existing = current.find((conversation) => conversation.id === conversationId);
@@ -671,19 +678,24 @@ function Workspace({
         ),
       );
     } finally {
-      setThinkingConversations((prev) => ({ ...prev, [conversationId]: false }));
+      setThinkingConversationIds((current) => {
+        const next = new Set(current);
+        next.delete(conversationId);
+        return next;
+      });
     }
   };
 
   const handleEditUserMessage = async (messageId: string, newText: string) => {
     const trimmedQuestion = newText.trim();
-    if (!trimmedQuestion || !activeConversation || thinkingConversations[activeConversation.id]) {
+    if (!trimmedQuestion || !activeConversation) {
       return;
     }
 
     const currentModelId = normalizeModelId(activeConversation.modelId ?? selectedModelId);
     const createdAt = new Date().toISOString();
     const conversationId = activeConversation.id;
+    if (thinkingConversationIds.has(conversationId)) return;
 
     const msgIndex = activeConversation.messages.findIndex((m) => m.id === messageId);
     if (msgIndex === -1) return;
@@ -696,7 +708,7 @@ function Workspace({
     };
     const nextMessages = [...previousMessages, updatedUserMessage];
 
-    setThinkingConversations((prev) => ({ ...prev, [conversationId]: true }));
+    setThinkingConversationIds((current) => new Set(current).add(conversationId));
 
     setConversations((current) =>
       current.map((conversation) => {
@@ -817,12 +829,16 @@ function Workspace({
       );
       showToast("Unable to analyze request", "warning");
     } finally {
-      setThinkingConversations((prev) => ({ ...prev, [conversationId]: false }));
+      setThinkingConversationIds((current) => {
+        const next = new Set(current);
+        next.delete(conversationId);
+        return next;
+      });
     }
   };
 
   const regenerateResponse = (messageId: string) => {
-    if (!activeConversation || thinkingConversations[activeConversation.id]) return;
+    if (!activeConversation || thinkingConversationIds.has(activeConversation.id)) return;
 
     const responseIndex = activeConversation.messages.findIndex(
       (message) => message.id === messageId && message.role === "assistant",
@@ -967,10 +983,10 @@ function Workspace({
                     onReportError={() => setIssueOpen(true)}
                     onEditUserMessage={handleEditUserMessage}
                     onRegenerateResponse={regenerateResponse}
-                    busy={!!(activeConversationId && thinkingConversations[activeConversationId])}
+                    busy={activeConversationIsThinking}
                   />
                 ))}
-                {activeConversationId && thinkingConversations[activeConversationId] && (
+                {activeConversationIsThinking && (
                   <div className="assistant-row">
                     <div className="ai-mark">
                       <Sparkles />
@@ -993,7 +1009,7 @@ function Workspace({
                 prompt={prompt}
                 setPrompt={setPrompt}
                 submitPrompt={submitPrompt}
-                busy={!!(activeConversationId && thinkingConversations[activeConversationId])}
+                busy={activeConversationIsThinking}
                 modelId={normalizeModelId(activeConversation.modelId)}
                 setModelId={setActiveConversationModel}
                 modelsOpen={modelsOpen}

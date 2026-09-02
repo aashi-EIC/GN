@@ -19,6 +19,18 @@ const allowedOrigins =
     .map((value) => value.trim())
     .filter(Boolean) ?? [];
 
+function isAllowedOrigin(origin?: string) {
+  if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) return true;
+  if (config.NODE_ENV !== "development") return false;
+
+  try {
+    const url = new URL(origin);
+    return url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 app.disable("x-powered-by");
 app.use(correlation);
 app.use(
@@ -56,7 +68,7 @@ app.use(
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      if (isAllowedOrigin(origin)) {
         callback(null, true);
       } else {
         callback(new Error("CORS policy violation: Request origin not permitted"));

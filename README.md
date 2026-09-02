@@ -48,7 +48,7 @@ Replace every required blank or placeholder value in the two local `.env` files.
 VITE_ENTRA_API_SCOPE=api://<backend-application-id>/access_as_user
 ```
 
-All `VITE_*` values are compiled into browser JavaScript. Never place a client secret, MCP API key, password, private key or access token in `frontend/.env`. Server-only values belong in `backend/.env` or the deployment secret manager.
+All frontend configuration is visible to the browser. Never place a client secret, MCP API key, password, private key or access token in `frontend/.env`. Server-only values belong in `backend/.env` or the deployment secret manager.
 
 ## Development
 
@@ -81,6 +81,28 @@ docker compose --env-file frontend/.env -f frontend/docker-compose.frontend.yml 
 ```
 
 The container serves the compiled single-page application at <http://localhost:5173>.
+
+The production container writes `/runtime-config.js` from its environment when it starts. This
+allows the same image to be promoted across Kubernetes environments without rebuilding it. Supply
+the following public settings through `env`, `envFrom` or a ConfigMap:
+
+```yaml
+env:
+  - name: VITE_ENTRA_CLIENT_ID
+    value: "<frontend-application-id>"
+  - name: VITE_ENTRA_TENANT_ID
+    value: "<tenant-id>"
+  - name: VITE_ENTRA_API_SCOPE
+    value: "api://<backend-application-id>/access_as_user"
+  - name: VITE_API_BASE_URL
+    value: "https://<public-bff-host>/api/v1"
+  - name: VITE_API_TIMEOUT_MS
+    value: "70000"
+```
+
+The entrypoint also accepts `ENTRA_CLIENT_ID`, `ENTRA_TENANT_ID`, `ENTRA_API_SCOPE`,
+`API_BASE_URL` and `API_TIMEOUT_MS` as aliases. Do not add an Entra client secret to the frontend;
+client IDs, tenant IDs, scopes and public API URLs are identifiers rather than credentials.
 
 ## Security and persistence
 
