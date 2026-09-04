@@ -1,0 +1,35 @@
+# Dependencies and package-manager caches
+node_modules/
+.npm/
+.npm-cache/
+.pnpm-store/
+.yarn/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Generated output and caches
+dist/
+build/
+coverage/
+.vite/
+.cache/
+*.tsbuildinfo
+*.log
+*.pid
+.eslintcache
+
+# Local editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local handoff, installer and scratch artifacts
+*.zip
+*.tgz
+*.msi
+tmp/
+.design-previews/

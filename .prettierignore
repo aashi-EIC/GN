@@ -1,0 +1,8 @@
+node_modules/
+dist/
+build/
+.vite/
+.design-previews/
+tmp/
+coverage/
+package-lock.json
