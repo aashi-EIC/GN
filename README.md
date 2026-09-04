@@ -57,6 +57,11 @@ The example files document every supported setting:
 - `frontend/.env.example` contains the public BFF URL and request timeout.
 - `backend/.env.example` contains server, CORS, model catalogue, rate-limit, Redis, and MCP options.
 
+The current MCP request contract uses `message` and `semantic_model_id` as dynamic fields. Required
+static fields such as `user_id`, `email`, and `bearer_token` are supplied through
+`MCP_REQUEST_STATIC_FIELDS_JSON` in the backend environment. Keep the populated value in a local
+`.env` file or deployment Secret; never commit it.
+
 Use `MCP_AUTH_MODE=none` when the MCP endpoint accepts unauthenticated server-to-server requests.
 For an API key, use `MCP_AUTH_MODE=api-key` and set `MCP_API_KEY_HEADER` and
 `MCP_API_KEY_VALUE`. Never put the API key in a frontend variable or commit a populated `.env`

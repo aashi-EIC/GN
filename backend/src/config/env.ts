@@ -52,11 +52,10 @@ const schema = z.object({
     (value) => (value === "" ? undefined : value),
     z.string().min(1).default("message"),
   ),
-  MCP_REQUEST_SESSION_FIELD: z.preprocess(
-    (value) => (value === "" ? undefined : value),
-    z.string().min(1).default("session_id"),
-  ),
+  MCP_REQUEST_SESSION_FIELD: optionalText,
   MCP_REQUEST_MODEL_FIELD: optionalText,
+  MCP_REQUEST_STATIC_FIELDS_JSON: optionalText,
+  MCP_MODEL_ID_MAP_JSON: optionalText,
   MCP_REQUEST_CORRELATION_FIELD: optionalText,
   MCP_REQUEST_USER_FIELD: optionalText,
   MCP_REQUEST_USER_VALUE_SOURCE: z.preprocess(
@@ -87,12 +86,7 @@ export function getRequired<K extends keyof typeof config>(key: K): string {
 }
 
 export function assertRuntimeConfiguration() {
-  requireConfig(
-    "MCP_BASE_URL",
-    "MCP_ENDPOINT_PATH",
-    "MCP_REQUEST_PROMPT_FIELD",
-    "MCP_REQUEST_SESSION_FIELD",
-  );
+  requireConfig("MCP_BASE_URL", "MCP_ENDPOINT_PATH", "MCP_REQUEST_PROMPT_FIELD");
 
   if (config.MCP_AUTH_MODE === "api-key") {
     requireConfig("MCP_API_KEY_HEADER", "MCP_API_KEY_VALUE");
