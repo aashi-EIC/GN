@@ -34,21 +34,6 @@
   font-weight: 700;
 }
 
-.markdown-inline-chart-icon {
-  display: inline-block;
-  box-sizing: border-box;
-  width: 23px;
-  height: 23px;
-  margin-right: 7px;
-  padding: 4px;
-  border: 1px solid rgba(244, 9, 83, 0.2);
-  border-radius: 7px;
-  background: rgba(244, 9, 83, 0.075);
-  color: var(--gn-pink, #f40953);
-  stroke-width: 2.15;
-  vertical-align: -0.38em;
-}
-
 /* Nielsen palette for findings cards; intentionally flat and restrained. */
 .response .executive-insight-block {
   border: 1px solid rgba(244, 9, 83, 0.16);
@@ -73,17 +58,6 @@
 .response .executive-insight-header,
 .response .executive-insight-sparkle {
   color: var(--gn-pink, #f40953);
-}
-
-[data-theme="dark"] .response .executive-insight-block {
-  border-color: rgba(244, 9, 83, 0.28);
-  border-left-color: var(--gn-pink, #f40953);
-  background: linear-gradient(105deg, rgba(244, 9, 83, 0.12), rgba(15, 23, 42, 0.94));
-}
-
-[data-theme="dark"] .response .executive-insight-header,
-[data-theme="dark"] .response .executive-insight-sparkle {
-  color: #ff5b8e;
 }
 
 /* Align the assistant mark with the first response heading. */
@@ -351,28 +325,6 @@
   }
 }
 
-[data-theme="dark"] .response .interactive-table-container {
-  border-color: #334155;
-  background: #111827;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
-}
-
-[data-theme="dark"] .response .table-header-toolbar,
-[data-theme="dark"] .response .table-footer-pagination {
-  background: #17202d;
-  border-color: #334155;
-}
-
-[data-theme="dark"] .response .interactive-data-table thead,
-[data-theme="dark"] .response .sortable-th:hover,
-[data-theme="dark"] .response .sortable-th.is-sorted {
-  background: #1e293b;
-}
-
-[data-theme="dark"] .response .interactive-data-table tbody tr:nth-child(even) {
-  background: rgba(255, 255, 255, 0.018);
-}
-
 .response .markdown-blockquote {
   margin: 12px 0 4px;
   padding: 10px 12px;
@@ -483,9 +435,4 @@
   color: var(--ui-secondary);
   font-size: 13px;
   line-height: 1.5;
-}
-
-[data-theme="dark"] .response .minimal-table-container,
-[data-theme="dark"] .response .minimal-table-toolbar {
-  border-color: #334155;
 }

@@ -1,6 +1,7 @@
 import type { CountryCode, ModelId } from "../../features/chat/types/semantic";
 
 export type Density = "comfortable" | "compact";
+export type TablePageSize = number;
 export type MessageRole = "user" | "assistant";
 export type FeedbackValue = "helpful" | "not-helpful";
 export type UserProfile = {
@@ -14,6 +15,7 @@ export type SettingsState = {
   region: string;
   density: Density;
   keepDebugOpen: boolean;
+  tablePageSize: TablePageSize;
 };
 
 export type InsightMetric = {
@@ -81,7 +83,9 @@ export type TextBlock = {
 export type VisualizationBlock = ChartBlock | TableBlock | TextBlock;
 
 export type McpRequestPayload = {
+  browser_user_id: string;
   session_id: string;
+  mcp_session_id?: string;
   semantic_model_id: ModelId;
   prompt: string;
   debug?: boolean;
@@ -104,6 +108,7 @@ export type Message = {
   role: MessageRole;
   text: string;
   createdAt: string;
+  tablePageSize?: TablePageSize;
   metrics?: InsightMetric[];
   visualizations?: VisualizationBlock[];
   debug?: DebugEvent[];
@@ -113,6 +118,9 @@ export type Message = {
 
 export type Conversation = {
   id: string;
+  mcpSessionId?: string;
+  mcpMessageCount?: number;
+  mcpSessionStatus?: string;
   title: string;
   modelId: ModelId;
   countryCode?: CountryCode;

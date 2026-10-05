@@ -20,7 +20,8 @@ export function isSessionId(value: string) {
 
 export function titleFromQuestion(question: string) {
   const compact = question.replace(/\s+/g, " ").trim();
-  return compact.length > 48 ? `${compact.slice(0, 45)}...` : compact;
+  const text = compact.length > 48 ? `${compact.slice(0, 45)}...` : compact;
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 const STOP_WORDS = new Set([
@@ -127,7 +128,8 @@ export function titleFromUserMessages(userMessages: string[]): string {
 
   if (orderedWords.length === 0) {
     const rawFallback = topMessages[0].trim().split(/\s+/).slice(0, 2);
-    return rawFallback.join(" ").toLowerCase() || "new chat";
+    const text = rawFallback.join(" ").toLowerCase() || "new chat";
+    return text.charAt(0).toUpperCase() + text.slice(1);
   }
 
   const sortedWords = [...orderedWords].sort((a, b) => {
@@ -137,5 +139,6 @@ export function titleFromUserMessages(userMessages: string[]): string {
     return orderedWords.indexOf(a) - orderedWords.indexOf(b);
   });
 
-  return sortedWords.slice(0, 3).join(" ").toLowerCase();
+  const text = sortedWords.slice(0, 3).join(" ").toLowerCase();
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

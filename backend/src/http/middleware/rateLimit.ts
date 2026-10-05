@@ -1,17 +1,15 @@
-import type { RequestHandler } from "express";
+import type { Request, RequestHandler } from "express";
 import { config } from "../../config/env.js";
 import { AppError } from "../../errors.js";
-import { getRedis } from "../../infrastructure/cache/redis.js";
-import type { AuthenticatedRequest } from "../../types.js";
 
 const memory = new Map<string, { count: number; reset: number }>();
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const rateLimit: RequestHandler = async (request, res, next) => {
   try {
-    const req = request as AuthenticatedRequest;
     const now = Date.now();
-    const key = getRateLimitKey(req, now);
-    const count = await incrementCounter(key, now);
+    const key = getRateLimitKey(request, now);
+    const count = incrementMemoryCounter(key, now);
 
     res.setHeader("x-ratelimit-limit", config.RATE_LIMIT_MAX);
     res.setHeader("x-ratelimit-remaining", Math.max(0, config.RATE_LIMIT_MAX - count));
@@ -27,24 +25,14 @@ export const rateLimit: RequestHandler = async (request, res, next) => {
   }
 };
 
-function getRateLimitKey(req: Partial<AuthenticatedRequest>, now: number) {
+function getRateLimitKey(req: Request, now: number) {
   const bucket = Math.floor(now / config.RATE_LIMIT_WINDOW_MS);
-  const userKey = req.user ? `${req.user.tenantId}:${req.user.objectId}` : req.ip || "anonymous";
-  return `bff:rate:${userKey}:${bucket}`;
-}
-
-async function incrementCounter(key: string, now: number) {
-  const redis = await getRedis();
-
-  if (redis) {
-    const pipeline = redis.multi();
-    pipeline.incr(key);
-    pipeline.pExpire(key, config.RATE_LIMIT_WINDOW_MS, "NX");
-    const results = await pipeline.exec();
-    return (results?.[0] as unknown as number) ?? 1;
-  }
-
-  return incrementMemoryCounter(key, now);
+  const suppliedBrowserId = req.get("x-browser-user-id")?.trim();
+  const identity =
+    suppliedBrowserId && uuidPattern.test(suppliedBrowserId)
+      ? `browser:${suppliedBrowserId.toLowerCase()}`
+      : `ip:${req.ip || "anonymous"}`;
+  return `bff:rate:${identity}:${bucket}`;
 }
 
 let lastCleanup = 0;

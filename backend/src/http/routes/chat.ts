@@ -20,7 +20,10 @@ import type { AuthenticatedRequest } from "../../types.js";
 
 const chatBody = z
   .object({
+    // Anonymous correlation only; never use this browser-controlled ID for authorization.
+    browser_user_id: z.string().uuid().optional(),
     session_id: z.string().uuid(),
+    mcp_session_id: z.string().trim().min(1).max(256).optional(),
     semantic_model_id: z.string().trim().min(1).max(256),
     prompt: z.string().trim().min(1).max(config.MAX_PROMPT_LENGTH),
     debug: z.boolean().optional(),
@@ -113,12 +116,16 @@ chatRouter.post("/chat", async (request, res) => {
   const controller = registerChatRequest(req.correlationId, req.user);
   const signal = AbortSignal.any([req.requestSignal, controller.signal]);
   try {
-    const includeDebug =
-      body.debug === true &&
-      (config.NODE_ENV !== "production" || getFeatureFlags(req.user).debugMode);
+    // Capture redacted diagnostics whenever this deployment permits debug access.
+    // The frontend setting controls visibility only, so users can inspect an
+    // earlier response after turning the debug panel on.
+    const includeDebug = config.NODE_ENV !== "production" || getFeatureFlags(req.user).debugMode;
     const result = await processChat({
       prompt: body.prompt,
+      // Falling back to the session keeps rolling deployments compatible with older frontends.
+      browserUserId: body.browser_user_id ?? body.session_id,
       sessionId: body.session_id,
+      ...(body.mcp_session_id ? { mcpSessionId: body.mcp_session_id } : {}),
       semanticModelId: body.semantic_model_id,
       correlationId: req.correlationId,
       user: req.user,
@@ -130,6 +137,8 @@ chatRouter.post("/chat", async (request, res) => {
       answer: result.answer,
       message_id: result.message_id,
       user_message_id: result.user_message_id,
+      ...(result.mcp_session_id ? { mcp_session_id: result.mcp_session_id } : {}),
+      ...(result.mcp_session ? { mcp_session: result.mcp_session } : {}),
     };
     const response = { ...publicResult, request_id: req.correlationId };
     res.status(200).json(

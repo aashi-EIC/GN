@@ -114,6 +114,7 @@ export function Sidebar({
   onRenameConversation,
   onTogglePinConversation,
   setSidebarOpen,
+  settingsOpen,
   setSettingsOpen,
 }: {
   open: boolean;
@@ -128,6 +129,7 @@ export function Sidebar({
   onRenameConversation?: (id: string, newTitle: string) => void;
   onTogglePinConversation?: (id: string) => void;
   setSidebarOpen: (open: boolean) => void;
+  settingsOpen: boolean;
   setSettingsOpen: (open: boolean) => void;
 }) {
   const [groupBy, setGroupBy] = useState<"date" | "topic">("date");
@@ -467,7 +469,8 @@ export function Sidebar({
           <IconButton
             label="Settings"
             className="sidebar-settings-btn footer-icon"
-            onClick={() => setSettingsOpen(true)}
+            active={settingsOpen}
+            onClick={() => setSettingsOpen(!settingsOpen)}
           >
             <Settings />
           </IconButton>
@@ -497,8 +500,9 @@ export function Sidebar({
         <div className="collapsed-footer">
           <IconButton
             label="Settings"
-            className="footer-icon"
-            onClick={() => setSettingsOpen(true)}
+            className="sidebar-settings-btn footer-icon"
+            active={settingsOpen}
+            onClick={() => setSettingsOpen(!settingsOpen)}
           >
             <Settings />
           </IconButton>

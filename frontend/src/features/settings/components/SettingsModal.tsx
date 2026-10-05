@@ -1,4 +1,4 @@
-import { Braces, CircleGauge, UserRound } from "lucide-react";
+import { Braces, CircleGauge, UserRound, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { SettingsState } from "../../../shared/types/app";
 
@@ -7,30 +7,47 @@ export function SettingsModal({
   settings,
   saveSettings,
   toggleDebug,
+  settingsSaveError,
 }: {
   close: () => void;
   settings: SettingsState;
   saveSettings: (settings: SettingsState) => void;
   toggleDebug?: () => void;
-  themeMode?: "light" | "dark";
-  toggleTheme?: () => void;
+  settingsSaveError?: string | null;
 }) {
   const panelRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    const trigger = document.activeElement;
     panelRef.current?.focus({ preventScroll: true });
+    return () => {
+      if (trigger instanceof HTMLElement && document.activeElement === document.body) {
+        trigger.focus({ preventScroll: true });
+      }
+    };
+  }, []);
 
+  useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
+      if (event.key !== "Escape" || event.isComposing) return;
+      event.preventDefault();
+      event.stopPropagation();
+      close();
     };
 
     const closeOnOutsideClick = (event: PointerEvent) => {
+      if (event.target instanceof Element && event.target.closest(".sidebar-settings-btn")) {
+        return;
+      }
       if (!panelRef.current?.contains(event.target as Node)) close();
     };
 
     const scrollChat = (event: WheelEvent) => {
       const panel = panelRef.current;
       const target = event.target as Node;
+
+      // Outside the panel, keep native chat and sidebar scrolling (and zoom).
+      if (!panel?.contains(target) || event.ctrlKey || !event.deltaY) return;
 
       if (panel?.contains(target)) {
         const atTop = panel.scrollTop <= 0;
@@ -43,16 +60,17 @@ export function SettingsModal({
       const messages = document.querySelector<HTMLElement>(".chat > .messages");
       if (!messages) return;
 
-      messages.scrollTop += event.deltaY;
+      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? messages.clientHeight : 1;
+      messages.scrollTop += event.deltaY * unit;
       event.preventDefault();
     };
 
-    document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("keydown", closeOnEscape, true);
     document.addEventListener("pointerdown", closeOnOutsideClick);
     document.addEventListener("wheel", scrollChat, { capture: true, passive: false });
 
     return () => {
-      document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("keydown", closeOnEscape, true);
       document.removeEventListener("pointerdown", closeOnOutsideClick);
       document.removeEventListener("wheel", scrollChat, { capture: true });
     };
@@ -72,6 +90,12 @@ export function SettingsModal({
         aria-label="Workspace settings"
         tabIndex={-1}
       >
+        <div className="settings-panel-heading">
+          <span>Settings</span>
+          <button type="button" aria-label="Close settings" onClick={close}>
+            <X size={18} />
+          </button>
+        </div>
         <div className="sidebar-settings-form">
           <label className="sidebar-settings-row">
             <UserRound />
@@ -80,8 +104,15 @@ export function SettingsModal({
               value={settings.displayName}
               onChange={(event) => updateDisplayName(event.target.value)}
               aria-label="Display name"
+              maxLength={120}
+              autoComplete="nickname"
             />
           </label>
+          {settingsSaveError && (
+            <p className="settings-save-status" role="alert">
+              {settingsSaveError}
+            </p>
+          )}
 
           <div className="sidebar-settings-usage">
             <div className="usage-title">
@@ -90,7 +121,6 @@ export function SettingsModal({
             </div>
             <div>
               <span>Input tokens</span>
-              <strong>-</strong>
             </div>
           </div>
 

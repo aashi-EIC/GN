@@ -45,7 +45,6 @@ export const semanticModels: SemanticModel[] = [
     highlights: [
       { label: "Coverage Horizon", value: "14 Days" },
       { label: "Evaluation Cycle", value: "24-Hour" },
-      { label: "Target Quality", value: "100% Complete" },
       { label: "Core Categories", value: "TBA / Sign-off / Generic" },
     ],
     color: "#9B1B5A",

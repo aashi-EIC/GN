@@ -3,10 +3,8 @@ import { motion } from "framer-motion";
 import {
   Activity,
   AlertTriangle,
-  ChartNoAxesCombined,
   Check,
   CheckCircle2,
-  Code2,
   Copy,
   Info,
   MoreHorizontal,
@@ -16,14 +14,22 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
-import type { FeedbackValue, Message, VisualizationBlock } from "../../../shared/types/app";
+import type {
+  FeedbackValue,
+  Message,
+  TablePageSize,
+  VisualizationBlock,
+} from "../../../shared/types/app";
 import { IconButton } from "../../../shared/components/ui/IconButton";
 import { StructuredTable, VisualizationRenderer } from "./charts/VisualizationRenderer";
 import { removeChartScriptSections } from "../utils/responseDisplay";
+import { DebugDrawer } from "../../debug/components/DebugDrawer";
+import { renderInlineVisualMarkers } from "./InlineVisualMarkers";
 import "./messageBubbleMarkdown.css";
 
 function MessageBubbleComponent({
   message,
+  tablePageSize,
   debugOpen,
   feedback,
   copyMessage,
@@ -34,6 +40,7 @@ function MessageBubbleComponent({
   busy = false,
 }: {
   message: Message;
+  tablePageSize: TablePageSize;
   debugOpen: boolean;
   feedback?: FeedbackValue;
   copyMessage: (message: Message) => void;
@@ -47,6 +54,7 @@ function MessageBubbleComponent({
   const [editText, setEditText] = useState(message.text);
   const [copied, setCopied] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [debugDrawerOpen, setDebugDrawerOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -135,6 +143,18 @@ function MessageBubbleComponent({
   const [errorSummary, errorSuggestion = ""] = message.text.split(suggestionMarker);
   const errorStatus =
     message.metrics?.find((metric) => metric.tone === "watch")?.value || "Request failed";
+  const debugTrigger =
+    debugOpen && message.debug ? (
+      <button
+        type="button"
+        className="debug-details-trigger"
+        aria-haspopup="dialog"
+        onClick={() => setDebugDrawerOpen(true)}
+      >
+        <span className={`debug-status-dot ${isError ? "warning" : ""}`} aria-hidden="true" />
+        Debug details
+      </button>
+    ) : null;
 
   return (
     <div className="assistant-row">
@@ -171,7 +191,7 @@ function MessageBubbleComponent({
           </div>
         ) : (
           <>
-            <SafeResponseText text={message.text} />
+            <SafeResponseText text={message.text} tablePageSize={tablePageSize} />
 
             {message.metrics && message.metrics.length > 0 && (
               <div className="metric-grid kpi-card-grid">
@@ -195,10 +215,13 @@ function MessageBubbleComponent({
             )}
 
             {message.visualizations && message.visualizations.length > 0 && (
-              <VisualizationRenderer blocks={message.visualizations} />
+              <VisualizationRenderer
+                blocks={message.visualizations}
+                defaultPageSize={tablePageSize}
+              />
             )}
 
-            <div className="response-actions">
+            <div className={`response-actions ${moreOpen ? "menu-open" : ""}`}>
               <IconButton
                 label={feedback === "helpful" ? "Remove good response rating" : "Good response"}
                 active={feedback === "helpful"}
@@ -225,7 +248,7 @@ function MessageBubbleComponent({
               <IconButton label={copied ? "Copied" : "Copy response"} onClick={handleCopy}>
                 {copied ? <Check /> : <Copy />}
               </IconButton>
-              <div className="response-more" ref={moreMenuRef}>
+              <div className={`response-more ${moreOpen ? "open" : ""}`} ref={moreMenuRef}>
                 <IconButton
                   label="More options"
                   active={moreOpen}
@@ -249,74 +272,21 @@ function MessageBubbleComponent({
                   </div>
                 )}
               </div>
+              {debugTrigger}
             </div>
           </>
         )}
 
+        {isError && debugTrigger}
         {debugOpen && message.debug && (
-          <div className="debug-panel">
-            <div className="debug-panel-heading">
-              <Code2 />
-              <span>Admin debug mode</span>
-              <b>node-bff</b>
-            </div>
-            <DebugPayload title="Request sent to BFF" value={message.mcpRequest} defaultOpen />
-            <DebugPayload
-              title="Raw MCP response"
-              value={message.debug.find((event) => event.stage === "mcp_response")?.payload}
-              defaultOpen
-            />
-            <DebugPayload
-              title="Processed BFF response"
-              value={message.debug.find((event) => event.stage === "bff_response")?.payload}
-              defaultOpen
-            />
-            <DebugPayload title="Processing events" value={message.debug} />
-          </div>
+          <DebugDrawer
+            message={message}
+            open={debugDrawerOpen}
+            onClose={() => setDebugDrawerOpen(false)}
+          />
         )}
       </motion.article>
     </div>
-  );
-}
-
-function DebugPayload({
-  title,
-  value,
-  defaultOpen = false,
-}: {
-  title: string;
-  value: unknown;
-  defaultOpen?: boolean;
-}) {
-  const available = value !== undefined;
-  const content = available ? JSON.stringify(value, null, 2) : "";
-
-  return (
-    <details className="debug-payload" open={defaultOpen}>
-      <summary>
-        <span>{title}</span>
-        {available && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              void navigator.clipboard.writeText(content);
-            }}
-          >
-            <Copy />
-            Copy JSON
-          </button>
-        )}
-      </summary>
-      {available ? (
-        <pre>{content}</pre>
-      ) : (
-        <p className="debug-payload-empty">
-          Not captured for this message. Keep debug enabled and send a new prompt.
-        </p>
-      )}
-    </details>
   );
 }
 
@@ -335,7 +305,7 @@ function stripInsightPrefix(value: string) {
   return value.replace(/^\s*>\s*/, "").trim();
 }
 
-function SafeResponseText({ text }: { text: string }) {
+function SafeResponseText({ text, tablePageSize }: { text: string; tablePageSize: TablePageSize }) {
   const renderedElements = useMemo(() => {
     if (!text) return null;
 
@@ -350,6 +320,13 @@ function SafeResponseText({ text }: { text: string }) {
         const language = lines[0]?.match(/^[a-zA-Z0-9_-]+$/) ? lines[0] : "";
         const codeContent = language ? lines.slice(1).join("\n") : lines.join("\n");
 
+        // MCP may include an empty JSON result before its explanatory text. An
+        // empty payload is not useful to end users and otherwise renders as a
+        // large code panel containing only [] or {}.
+        if (isEmptyStructuredPayload(codeContent, language)) {
+          return null;
+        }
+
         if (/^(?:chartType|chart_type|chart)\s*:/i.test(codeContent.trim())) {
           return null;
         }
@@ -357,7 +334,13 @@ function SafeResponseText({ text }: { text: string }) {
         const tableBlock = tableFromCodeBlock(codeContent);
 
         if (tableBlock) {
-          return <StructuredTable key={`table-code-${blockIdx}`} block={tableBlock} />;
+          return (
+            <StructuredTable
+              key={`table-code-${blockIdx}`}
+              block={tableBlock}
+              defaultPageSize={tablePageSize}
+            />
+          );
         }
 
         return (
@@ -492,7 +475,7 @@ function SafeResponseText({ text }: { text: string }) {
 
           elements.push(
             <div key={`table-${blockIdx}-${lineIdx}`}>
-              <StructuredTable block={tableBlock} minimal={true} />
+              <StructuredTable block={tableBlock} minimal={true} defaultPageSize={tablePageSize} />
             </div>,
           );
           return;
@@ -617,7 +600,7 @@ function SafeResponseText({ text }: { text: string }) {
       flushBlockquote(`${blockIdx}-end`);
       return <div key={`block-${blockIdx}`}>{elements}</div>;
     });
-  }, [text]);
+  }, [tablePageSize, text]);
 
   return <div className="markdown-response-body">{renderedElements}</div>;
 }
@@ -631,6 +614,27 @@ function InsightHeader() {
       </div>
     </div>
   );
+}
+
+function isEmptyStructuredPayload(content: string, language: string) {
+  const trimmed = content.trim();
+  if (!trimmed) return true;
+
+  const normalizedLanguage = language.trim().toLowerCase();
+  const isJson =
+    normalizedLanguage === "json" ||
+    normalizedLanguage === "jsonc" ||
+    (!normalizedLanguage && (trimmed.startsWith("[") || trimmed.startsWith("{")));
+  if (!isJson) return false;
+
+  try {
+    const parsed: unknown = JSON.parse(trimmed);
+    if (parsed === null) return true;
+    if (Array.isArray(parsed)) return parsed.length === 0;
+    return typeof parsed === "object" && Object.keys(parsed).length === 0;
+  } catch {
+    return false;
+  }
 }
 
 function isMarkdownTableRow(line: string) {
@@ -712,17 +716,17 @@ function tableFromCodeBlock(
 }
 
 function renderFormattedInlineText(text: string): React.ReactNode {
-  // Regex to match **bold**, `code`, *italic*, and supported visual markers.
-  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*|📊)/g);
+  // Preserve Markdown emphasis/code boundaries, then normalize visual markers
+  // only in the remaining prose so code samples are left untouched.
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g);
 
   return parts.map((part, idx) => {
-    if (part === "📊") {
-      return (
-        <ChartNoAxesCombined key={idx} className="markdown-inline-chart-icon" aria-hidden="true" />
-      );
-    }
     if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={idx}>{part.slice(2, -2)}</strong>;
+      return (
+        <strong key={idx}>
+          {renderInlineVisualMarkers(part.slice(2, -2), `response-bold-${idx}`)}
+        </strong>
+      );
     }
     if (part.startsWith("`") && part.endsWith("`")) {
       return (
@@ -732,9 +736,11 @@ function renderFormattedInlineText(text: string): React.ReactNode {
       );
     }
     if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
-      return <em key={idx}>{part.slice(1, -1)}</em>;
+      return (
+        <em key={idx}>{renderInlineVisualMarkers(part.slice(1, -1), `response-italic-${idx}`)}</em>
+      );
     }
-    return part;
+    return renderInlineVisualMarkers(part, `response-${idx}`);
   });
 }
 

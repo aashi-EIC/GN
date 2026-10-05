@@ -16,7 +16,9 @@ export type AuthenticatedRequest = Request & {
 
 export type McpRequestContext = {
   prompt: string;
+  browserUserId: string;
   sessionId: string;
+  mcpSessionId?: string;
   semanticModelId: string;
   correlationId: string;
   user: AuthenticatedUser;
@@ -67,4 +69,12 @@ export type McpHostResponse = {
     text: string;
     blocks?: McpContentBlock[];
   };
+  mcp_session_id?: string;
+  mcp_session?: {
+    id?: string;
+    message_count?: number;
+    status?: string;
+    requires_new_session: boolean;
+  };
+  generated_dax_queries?: string[];
 };

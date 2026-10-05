@@ -35,8 +35,8 @@ export function adaptMcpRequest(context: McpRequestContext): Record<string, unkn
 
   setPath(body, getRequired("MCP_REQUEST_PROMPT_FIELD"), context.prompt);
 
-  if (config.MCP_REQUEST_SESSION_FIELD) {
-    setPath(body, config.MCP_REQUEST_SESSION_FIELD, context.sessionId);
+  if (config.MCP_REQUEST_SESSION_FIELD && context.mcpSessionId) {
+    setPath(body, config.MCP_REQUEST_SESSION_FIELD, context.mcpSessionId);
   }
 
   if (config.MCP_REQUEST_MODEL_FIELD) {
@@ -49,11 +49,13 @@ export function adaptMcpRequest(context: McpRequestContext): Record<string, unkn
     if (!config.MCP_REQUEST_USER_VALUE_SOURCE)
       throw new ConfigurationError("MCP_REQUEST_USER_VALUE_SOURCE is not configured");
     const userValue =
-      config.MCP_REQUEST_USER_VALUE_SOURCE === "oid"
-        ? context.user.objectId
-        : config.MCP_REQUEST_USER_VALUE_SOURCE === "sub"
-          ? context.user.subject
-          : context.user.preferredUsername;
+      config.MCP_REQUEST_USER_VALUE_SOURCE === "browser_user_id"
+        ? context.browserUserId
+        : config.MCP_REQUEST_USER_VALUE_SOURCE === "oid"
+          ? context.user.objectId
+          : config.MCP_REQUEST_USER_VALUE_SOURCE === "sub"
+            ? context.user.subject
+            : context.user.preferredUsername;
     if (!userValue)
       throw new ConfigurationError(
         `The configured user claim ${config.MCP_REQUEST_USER_VALUE_SOURCE} is absent`,

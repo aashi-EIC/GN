@@ -64,14 +64,14 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["content-type", "x-correlation-id"],
+    allowedHeaders: ["content-type", "x-browser-user-id", "x-correlation-id"],
   }),
 );
 
 app.use(express.json({ limit: "256kb", strict: true }));
 app.use(cancellation);
-app.use("/api", rateLimit);
 app.use("/api/v1/health", healthRouter);
+app.use("/api", rateLimit);
 app.use("/api/v1", workspaceIdentity, platformRouter);
 app.use("/api/v1", workspaceIdentity, chatRouter);
 app.use(notFound);

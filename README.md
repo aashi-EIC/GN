@@ -52,23 +52,45 @@ Open <http://localhost:5173>. The BFF listens on <http://localhost:3000>.
 
 ## Configuration
 
+Display name and Settings preferences are saved automatically in the current browser. They remain
+available after a backend restart and are not shared with other browsers. Clearing site data removes
+these preferences. If browser storage is blocked or full, Settings shows a save warning.
+
+The response indicator stays visible while an analysis is pending and respects reduced-motion
+preferences. Failed analysis requests are not automatically repeated; use **Try again** to retry.
+
 The example files document every supported setting:
 
 - `frontend/.env.example` contains the public BFF URL and request timeout.
-- `backend/.env.example` contains server, CORS, model catalogue, rate-limit, Redis, and MCP options.
+- `backend/.env.example` contains server, CORS, model catalogue, rate-limit, and MCP options.
 
-The current MCP request contract uses `message` and `semantic_model_id` as dynamic fields. Required
-static fields such as `user_id`, `email`, and `bearer_token` are supplied through
-`MCP_REQUEST_STATIC_FIELDS_JSON` in the backend environment. Keep the populated value in a local
-`.env` file or deployment Secret; never commit it.
+The no-login frontend creates an anonymous UUID once per browser profile and sends it to the BFF
+with each chat request. The BFF forwards that value as MCP `user_id`. The frontend also keeps a
+separate local conversation UUID for BFF history and ownership. The first prompt omits the MCP
+`session_id`; MCP creates it, the BFF returns it as `mcp_session_id`, and the frontend persists and
+resends it for subsequent prompts in that conversation. These identifiers isolate demo traffic but
+are not authenticated identities and must never be used for authorization. The BFF also uses the
+validated browser UUID to separate anonymous rate-limit buckets, falling back to the network address
+for older clients. Health checks are excluded from request limits.
+
+The MCP request contract uses `message`, `user_id`, and `semantic_model_id` as dynamic fields, and
+adds `session_id` after MCP has created one. Keep only service-controlled values such as the MCP `bearer_token` in
+`MCP_REQUEST_STATIC_FIELDS_JSON`. Store the populated value in a local `.env` file or deployment
+Secret; never commit it.
+
+The BFF exposes MCP session status and message count as validated conversation metadata. Generated
+DAX is returned only inside the authorized debug payload. Terminal MCP statuses (`expired`, `closed`,
+`terminated`, `invalid`, or `inactive`) clear the stored MCP session so the next prompt starts a new
+MCP session without automatically replaying an analytical request.
 
 Use `MCP_AUTH_MODE=none` when the MCP endpoint accepts unauthenticated server-to-server requests.
 For an API key, use `MCP_AUTH_MODE=api-key` and set `MCP_API_KEY_HEADER` and
 `MCP_API_KEY_VALUE`. Never put the API key in a frontend variable or commit a populated `.env`
 file.
 
-Redis is optional. Without `REDIS_URL`, rate limiting and chat state are process-local. Keep the
-backend at one replica until shared persistence is introduced.
+Rate limiting uses an in-memory counter in each backend process. This requires no external service
+for a single backend instance. Before scaling to multiple backend replicas, replace it with a shared
+rate-limit store so limits remain consistent across instances.
 
 ## Run with Docker Compose
 

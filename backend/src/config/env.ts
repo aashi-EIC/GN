@@ -27,7 +27,6 @@ const schema = z.object({
   MAX_PROMPT_LENGTH: integer(20_000),
   MAX_HISTORY_ITEMS: integer(10),
 
-  REDIS_URL: optionalText,
   RATE_LIMIT_WINDOW_MS: integer(60_000),
   RATE_LIMIT_MAX: integer(30),
 
@@ -36,7 +35,7 @@ const schema = z.object({
     (value) => (value === "" ? undefined : value),
     z.string().min(1).default("/chat"),
   ),
-  MCP_TIMEOUT_MS: integer(60_000),
+  MCP_TIMEOUT_MS: integer(300_000),
   MCP_MAX_RESPONSE_BYTES: integer(5_242_880),
   MCP_SAFE_RETRY_ENABLED: bool.default(false),
   MCP_MAX_RETRIES: z.preprocess(
@@ -60,8 +59,12 @@ const schema = z.object({
   MCP_REQUEST_USER_FIELD: optionalText,
   MCP_REQUEST_USER_VALUE_SOURCE: z.preprocess(
     (value) => (value === "" ? undefined : value),
-    z.enum(["oid", "sub", "preferred_username"]).optional(),
+    z.enum(["browser_user_id", "oid", "sub", "preferred_username"]).optional(),
   ),
+  MCP_RESPONSE_TEXT_PATH: optionalText,
+  MCP_RESPONSE_DATA_PATH: optionalText,
+  MCP_RESPONSE_DEBUG_PATH: optionalText,
+  MCP_RESPONSE_VISUALIZATION_PATH: optionalText,
 });
 
 const parsed = schema.safeParse(process.env);

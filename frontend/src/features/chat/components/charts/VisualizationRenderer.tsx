@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Copy,
@@ -12,9 +13,16 @@ import {
   Table as TableIcon,
   X,
 } from "lucide-react";
-import type { VisualizationBlock } from "../../../../shared/types/app";
+import type { TablePageSize, VisualizationBlock } from "../../../../shared/types/app";
+import { renderInlineVisualMarkers } from "../InlineVisualMarkers";
 
-export function VisualizationRenderer({ blocks }: { blocks: VisualizationBlock[] }) {
+export function VisualizationRenderer({
+  blocks,
+  defaultPageSize,
+}: {
+  blocks: VisualizationBlock[];
+  defaultPageSize: TablePageSize;
+}) {
   const tables = blocks.filter(
     (block): block is Extract<VisualizationBlock, { type: "table" }> => block.type === "table",
   );
@@ -25,7 +33,11 @@ export function VisualizationRenderer({ blocks }: { blocks: VisualizationBlock[]
   return (
     <div className="visualization-stack">
       {tables.map((block, index) => (
-        <StructuredTable key={`${block.type}-${index}`} block={block} />
+        <StructuredTable
+          key={`${block.type}-${index}`}
+          block={block}
+          defaultPageSize={defaultPageSize}
+        />
       ))}
       {textBlocks.map((block, index) => (
         <p key={`${block.type}-${index}`}>{block.content}</p>
@@ -100,16 +112,64 @@ function normalizeTableValue(value: unknown): unknown {
 export function StructuredTable({
   block,
   minimal = false,
+  defaultPageSize = 5,
 }: {
   block: Extract<VisualizationBlock, { type: "table" }>;
   minimal?: boolean;
+  defaultPageSize?: TablePageSize;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>(null);
-  const [pageSize, setPageSize] = useState<number>(5);
+  const [pageSize, setPageSize] = useState<number>(defaultPageSize);
+  const [pageSizeDraft, setPageSizeDraft] = useState(() => String(defaultPageSize));
+  const [pageSizeMenuOpen, setPageSizeMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [copied, setCopied] = useState(false);
+  const pageSizeMenuId = useId();
+  const pageSizeControlRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setPageSize(defaultPageSize);
+    setPageSizeDraft(String(defaultPageSize));
+    setCurrentPage(1);
+  }, [defaultPageSize]);
+
+  useEffect(() => {
+    if (!pageSizeMenuOpen) return;
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!pageSizeControlRef.current?.contains(event.target as Node)) {
+        setPageSizeMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
+  }, [pageSizeMenuOpen]);
+
+  const applyPageSize = (nextPageSize: number) => {
+    setPageSize(nextPageSize);
+    setPageSizeDraft(nextPageSize <= 0 ? "All" : String(nextPageSize));
+    setCurrentPage(1);
+    setPageSizeMenuOpen(false);
+  };
+
+  const commitPageSize = () => {
+    const normalizedDraft = pageSizeDraft.trim();
+    const parsed = Number(normalizedDraft);
+    const nextPageSize =
+      normalizedDraft.toLowerCase() === "all"
+        ? 0
+        : Number.isFinite(parsed) && normalizedDraft
+          ? Math.min(100, Math.max(1, Math.trunc(parsed)))
+          : pageSize;
+    applyPageSize(nextPageSize);
+  };
+
+  const pageSizeOptions = Array.from(new Set([pageSize, 5, 10, 15, 20, 25, 50, 75, 100]))
+    .filter((option) => option > 0)
+    .sort((a, b) => a - b);
 
   const columns = useMemo(() => {
     const allCols = block.columns.map((column) =>
@@ -371,23 +431,76 @@ export function StructuredTable({
           </div>
 
           <div className="pagination-controls">
-            <label className="page-size-label">
+            <div className="page-size-label">
               <span>Rows</span>
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="page-size-select"
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={totalRows}>All</option>
-              </select>
-            </label>
+              <div className="page-size-combobox" ref={pageSizeControlRef}>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={pageSizeDraft}
+                  onChange={(event) => setPageSizeDraft(event.target.value)}
+                  onBlur={commitPageSize}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      commitPageSize();
+                      event.currentTarget.blur();
+                    }
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setPageSizeDraft(pageSize <= 0 ? "All" : String(pageSize));
+                      setPageSizeMenuOpen(false);
+                    }
+                  }}
+                  className="page-size-input"
+                  role="combobox"
+                  aria-label="Rows per page"
+                  aria-expanded={pageSizeMenuOpen}
+                  aria-controls={pageSizeMenuId}
+                  aria-autocomplete="list"
+                  title="Enter 1-100 rows or select a preset"
+                />
+                <button
+                  type="button"
+                  className="page-size-dropdown-toggle"
+                  aria-label="Choose rows per page"
+                  aria-expanded={pageSizeMenuOpen}
+                  aria-controls={pageSizeMenuId}
+                  onPointerDown={(event) => event.preventDefault()}
+                  onClick={() => setPageSizeMenuOpen((isOpen) => !isOpen)}
+                >
+                  <ChevronDown size={14} aria-hidden="true" />
+                </button>
+
+                {pageSizeMenuOpen && (
+                  <div id={pageSizeMenuId} className="page-size-options" role="listbox">
+                    {pageSizeOptions.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        role="option"
+                        aria-selected={pageSize === option}
+                        onPointerDown={(event) => event.preventDefault()}
+                        onClick={() => applyPageSize(option)}
+                      >
+                        <span>{option}</span>
+                        {pageSize === option && <Check size={12} aria-hidden="true" />}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={pageSize <= 0}
+                      onPointerDown={(event) => event.preventDefault()}
+                      onClick={() => applyPageSize(0)}
+                    >
+                      <span>All</span>
+                      {pageSize <= 0 && <Check size={12} aria-hidden="true" />}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
 
             {!isAll && totalPages > 1 && (
               <div className="page-nav-buttons">
@@ -433,7 +546,7 @@ function formatCell(value: unknown, columnKey: string) {
     return isPercentageColumn(columnKey) ? formatPercentage(value) : formatNumber(value);
   }
 
-  return str;
+  return renderInlineVisualMarkers(str, `table-${columnKey}`);
 }
 
 const STATUS_BADGE_CLASSES = new Map<string, string>([

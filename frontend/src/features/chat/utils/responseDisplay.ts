@@ -1,4 +1,4 @@
-import type { Conversation, Message } from "../../../shared/types/app";
+import type { Conversation, Message, TablePageSize } from "../../../shared/types/app";
 
 export function removeChartScriptSections(text: string) {
   const withoutDuplicateArraySections = text.replace(
@@ -58,18 +58,33 @@ function isAsciiChartBlock(block: string) {
   return barLines.length >= 2 && barLines.length >= Math.ceil(dataLines.length / 2);
 }
 
-export function normalizeStoredConversation(conversation: Conversation): Conversation {
+export function normalizeStoredConversation(
+  conversation: Conversation,
+  fallbackTablePageSize: TablePageSize = 5,
+): Conversation {
   return {
     ...conversation,
-    messages: conversation.messages.map(normalizeStoredMessage),
+    messages: conversation.messages.map((message) =>
+      normalizeStoredMessage(message, fallbackTablePageSize),
+    ),
   };
 }
 
-function normalizeStoredMessage(message: Message): Message {
+function normalizeStoredMessage(message: Message, fallbackTablePageSize: TablePageSize): Message {
   if (message.role !== "assistant") return message;
 
   const text = removeChartScriptSections(message.text);
-  if (text === message.text && !message.visualizations?.length) return message;
+  const tablePageSize =
+    typeof message.tablePageSize === "number" && Number.isFinite(message.tablePageSize)
+      ? Math.min(100, Math.max(1, Math.trunc(message.tablePageSize)))
+      : fallbackTablePageSize;
+  if (
+    text === message.text &&
+    !message.visualizations?.length &&
+    message.tablePageSize === tablePageSize
+  ) {
+    return message;
+  }
 
-  return { ...message, text, visualizations: undefined };
+  return { ...message, text, tablePageSize, visualizations: undefined };
 }

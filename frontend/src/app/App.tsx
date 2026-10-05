@@ -1,7 +1,7 @@
 import { Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppRouter } from "./router";
-import { store, uiActions, useAppDispatch, useAppSelector } from "./store";
+import { uiActions, useAppDispatch, useAppSelector } from "./store";
 import { Composer } from "../features/chat/components/Composer";
 import { MessageBubble } from "../features/chat/components/MessageBubble";
 import { WelcomePanel } from "../features/chat/components/WelcomePanel";
@@ -11,7 +11,7 @@ import { SettingsModal } from "../features/settings/components/SettingsModal";
 import { TourModal } from "../shared/components/TourModal";
 import { Navbar } from "../shared/components/Navbar";
 import { Sidebar } from "../shared/components/Sidebar";
-import { defaultSettings, storageKeys } from "../shared/config/storage";
+import { storageKeys } from "../shared/config/storage";
 import { loadFromStorage, saveToStorageDeferred } from "../shared/utils/storage";
 import {
   buildMcpRequestPayload,
@@ -19,10 +19,11 @@ import {
   persistMcpRequestAudit,
   requestMcpInsight,
 } from "../features/chat/services/mcp.service";
+import type { McpSessionMetadata } from "../features/chat/services/mcp.service";
 import {
-  getUserSettings,
-  updateUserSettings,
-} from "../features/settings/services/settings.service";
+  readBrowserSettings,
+  persistBrowserSettings,
+} from "../features/settings/services/browserSettings";
 import type {
   Conversation,
   FeedbackValue,
@@ -51,65 +52,31 @@ const WORKSPACE_USER: UserProfile = {
   authProvider: "No Authentication",
 };
 
+function applyMcpSessionMetadata(
+  conversation: Conversation,
+  metadata: McpSessionMetadata | undefined,
+): Conversation {
+  if (!metadata) return conversation;
+  const next = { ...conversation };
+  if (metadata.requiresNewSession) delete next.mcpSessionId;
+  else if (metadata.id) next.mcpSessionId = metadata.id;
+  if (metadata.messageCount !== undefined) next.mcpMessageCount = metadata.messageCount;
+  if (metadata.status) next.mcpSessionStatus = metadata.status;
+  return next;
+}
+
 function AppRoot() {
   return <AppRouter shell={<IntelligenceApp />} />;
 }
 
 function IntelligenceApp() {
-  const [settings, setSettings] = useState<SettingsState>(defaultSettings);
-  const settingsSaveTimerRef = useRef<number | null>(null);
-  const dispatch = useAppDispatch();
-
-  useEffect(() => {
-    let active = true;
-    const fetchSettings = async () => {
-      try {
-        const serverSettings = await getUserSettings();
-        if (active && serverSettings) {
-          setSettings({
-            displayName: serverSettings.displayName ?? "",
-            region: serverSettings.region ?? "Global",
-            density: serverSettings.density ?? "comfortable",
-            keepDebugOpen: serverSettings.keepDebugOpen ?? false,
-          });
-          if (serverSettings.theme) {
-            dispatch(uiActions.setThemeMode(serverSettings.theme));
-          }
-        }
-      } catch {
-        // Silently use local settings when the BFF is unavailable.
-      }
-    };
-    void fetchSettings();
-    return () => {
-      active = false;
-    };
-  }, [dispatch]);
-
-  useEffect(
-    () => () => {
-      if (settingsSaveTimerRef.current !== null) {
-        window.clearTimeout(settingsSaveTimerRef.current);
-      }
-    },
-    [],
-  );
+  const [settings, setSettings] = useState<SettingsState>(readBrowserSettings);
+  const [settingsSaveError, setSettingsSaveError] = useState<string | null>(null);
 
   const handleUpdateSettings = (nextSettings: SettingsState) => {
     setSettings(nextSettings);
 
-    if (settingsSaveTimerRef.current !== null) {
-      window.clearTimeout(settingsSaveTimerRef.current);
-    }
-
-    settingsSaveTimerRef.current = window.setTimeout(() => {
-      const currentTheme = store.getState().ui.themeMode;
-      void updateUserSettings({
-        ...nextSettings,
-        theme: currentTheme,
-      }).catch((error) => console.error("Failed to update settings:", error));
-      settingsSaveTimerRef.current = null;
-    }, 350);
+    setSettingsSaveError(persistBrowserSettings(nextSettings));
   };
 
   const effectiveUser = {
@@ -117,28 +84,39 @@ function IntelligenceApp() {
     name: settings.displayName.trim() || WORKSPACE_USER.name,
   };
 
-  return <Workspace user={effectiveUser} settings={settings} setSettings={handleUpdateSettings} />;
+  return (
+    <Workspace
+      user={effectiveUser}
+      settings={settings}
+      setSettings={handleUpdateSettings}
+      settingsSaveError={settingsSaveError}
+    />
+  );
 }
 
 function Workspace({
   user,
   settings,
   setSettings,
+  settingsSaveError,
 }: {
   user: UserProfile;
   settings: SettingsState;
   setSettings: (settings: SettingsState) => void;
+  settingsSaveError: string | null;
 }) {
   const dispatch = useAppDispatch();
   const sidebarOpen = useAppSelector((state) => state.ui.sidebarOpen);
   const debugOpen = useAppSelector((state) => state.ui.debugOpen);
-  const themeMode = useAppSelector((state) => state.ui.themeMode);
   const [conversations, setConversations] = useState<Conversation[]>(() =>
     loadFromStorage<Conversation[]>(storageKeys.conversations, []).map((conversation) =>
-      normalizeStoredConversation({
-        ...conversation,
-        id: isSessionId(conversation.id) ? conversation.id : createSessionId(),
-      }),
+      normalizeStoredConversation(
+        {
+          ...conversation,
+          id: isSessionId(conversation.id) ? conversation.id : createSessionId(),
+        },
+        settings.tablePageSize,
+      ),
     ),
   );
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -203,17 +181,14 @@ function Workspace({
   }, [dispatch, settings.keepDebugOpen]);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = themeMode;
-    document
-      .querySelector('meta[name="theme-color"]')
-      ?.setAttribute("content", themeMode === "dark" ? "#25282d" : "#ffffff");
-
     document.title = "Conversational BI | Gracenote";
-  }, [themeMode]);
+  }, []);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeConversation?.messages.length, activeConversationIsThinking]);
+    bottomRef.current?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
+  }, [activeConversationId, activeConversation?.messages.length, activeConversationIsThinking]);
 
   useEffect(() => {
     if (!toast) {
@@ -257,16 +232,12 @@ function Workspace({
     setToast({ message, tone });
   };
 
-  const closeTour = async () => {
+  const closeTour = () => {
     setTourOpen(false);
     try {
-      await updateUserSettings({
-        ...settings,
-        theme: themeMode,
-        tourSeen: true,
-      });
-    } catch (err) {
-      console.error("Failed to save tour status:", err);
+      localStorage.setItem(storageKeys.tourSeen, "true");
+    } catch {
+      showToast("Could not save guide preferences in this browser", "warning");
     }
   };
 
@@ -335,6 +306,7 @@ function Workspace({
     const currentCountryCode = normalizeCountryCode(
       activeConversation?.countryCode ?? selectedCountryCode,
     );
+    const responseTablePageSize = settings.tablePageSize;
     const createdAt = new Date().toISOString();
     const userMessage: Message = {
       id: createId("msg"),
@@ -382,13 +354,17 @@ function Workspace({
     try {
       const mcpRequest = buildMcpRequestPayload({
         conversationId,
+        mcpSessionId: activeConversation?.mcpSessionId,
         modelId: currentModelId,
         prompt: trimmedQuestion,
-        debug: debugOpen,
       });
       requestAudit = mcpRequest.audit;
       persistMcpRequestAudit(requestAudit);
-      const answer = await requestMcpInsight(mcpRequest.payload, requestAudit);
+      const insight = await requestMcpInsight(mcpRequest.payload, requestAudit);
+      const answer = insight.answer;
+      if (insight.mcpSession?.requiresNewSession) {
+        showToast("MCP session ended. Your next prompt will start a new session.", "warning");
+      }
       const tokenUsage = calculateTokenUsageAndCost(
         currentModelId,
         trimmedQuestion,
@@ -398,6 +374,7 @@ function Workspace({
         id: createId("msg"),
         role: "assistant",
         createdAt: new Date().toISOString(),
+        tablePageSize: responseTablePageSize,
         mcpRequest: requestAudit,
         tokenUsage,
         ...answer,
@@ -407,7 +384,7 @@ function Workspace({
         current.map((conversation) =>
           conversation.id === conversationId
             ? {
-                ...conversation,
+                ...applyMcpSessionMetadata(conversation, insight.mcpSession),
                 messages: [...conversation.messages, responseMessage],
                 updatedAt: responseMessage.createdAt,
               }
@@ -426,6 +403,7 @@ function Workspace({
         id: createId("msg"),
         role: "assistant",
         createdAt: new Date().toISOString(),
+        tablePageSize: responseTablePageSize,
         text: displayText,
         metrics: [
           {
@@ -482,6 +460,7 @@ function Workspace({
     }
 
     const currentModelId = normalizeModelId(activeConversation.modelId ?? selectedModelId);
+    const responseTablePageSize = settings.tablePageSize;
     const createdAt = new Date().toISOString();
     const conversationId = activeConversation.id;
     if (thinkingConversationIds.has(conversationId)) return;
@@ -517,13 +496,17 @@ function Workspace({
     try {
       const mcpRequest = buildMcpRequestPayload({
         conversationId,
+        mcpSessionId: activeConversation.mcpSessionId,
         modelId: currentModelId,
         prompt: trimmedQuestion,
-        debug: debugOpen,
       });
       requestAudit = mcpRequest.audit;
       persistMcpRequestAudit(requestAudit);
-      const answer = await requestMcpInsight(mcpRequest.payload, requestAudit);
+      const insight = await requestMcpInsight(mcpRequest.payload, requestAudit);
+      const answer = insight.answer;
+      if (insight.mcpSession?.requiresNewSession) {
+        showToast("MCP session ended. Your next prompt will start a new session.", "warning");
+      }
       const tokenUsage = calculateTokenUsageAndCost(
         currentModelId,
         trimmedQuestion,
@@ -533,6 +516,7 @@ function Workspace({
         id: createId("msg"),
         role: "assistant",
         createdAt: new Date().toISOString(),
+        tablePageSize: responseTablePageSize,
         mcpRequest: requestAudit,
         tokenUsage,
         ...answer,
@@ -542,7 +526,7 @@ function Workspace({
         current.map((conversation) =>
           conversation.id === conversationId
             ? {
-                ...conversation,
+                ...applyMcpSessionMetadata(conversation, insight.mcpSession),
                 messages: [...nextMessages, responseMessage],
                 updatedAt: responseMessage.createdAt,
               }
@@ -561,6 +545,7 @@ function Workspace({
         id: createId("msg"),
         role: "assistant",
         createdAt: new Date().toISOString(),
+        tablePageSize: responseTablePageSize,
         text: displayText,
         metrics: [
           {
@@ -702,7 +687,7 @@ function Workspace({
   };
 
   return (
-    <div className={`app-shell density-${settings.density} theme-${themeMode}`}>
+    <div className={`app-shell density-${settings.density}`}>
       <Sidebar
         open={sidebarOpen}
         user={user}
@@ -716,6 +701,7 @@ function Workspace({
         onRenameConversation={handleRenameConversation}
         onTogglePinConversation={handleTogglePinConversation}
         setSidebarOpen={(open) => dispatch(uiActions.setSidebarOpen(open))}
+        settingsOpen={settingsOpen}
         setSettingsOpen={setSettingsOpen}
       />
 
@@ -748,6 +734,7 @@ function Workspace({
                   <MessageBubble
                     key={message.id}
                     message={message}
+                    tablePageSize={message.tablePageSize ?? settings.tablePageSize}
                     debugOpen={debugOpen}
                     feedback={feedback[message.id]}
                     copyMessage={copyMessage}
@@ -759,8 +746,8 @@ function Workspace({
                   />
                 ))}
                 {activeConversationIsThinking && (
-                  <div className="assistant-row">
-                    <div className="ai-mark">
+                  <div className="assistant-row" key={`loading-${activeConversationId}`}>
+                    <div className="ai-mark" aria-hidden="true">
                       <Sparkles />
                     </div>
                     <div className="thinking" role="status" aria-live="polite">
@@ -825,10 +812,9 @@ function Workspace({
         <SettingsModal
           close={() => setSettingsOpen(false)}
           settings={settings}
+          settingsSaveError={settingsSaveError}
           saveSettings={saveSettings}
           toggleDebug={() => saveSettings({ ...settings, keepDebugOpen: !debugOpen })}
-          themeMode={themeMode}
-          toggleTheme={() => dispatch(uiActions.toggleThemeMode())}
         />
       )}
       {toast && <div className={`toast ${toast.tone}`}>{toast.message}</div>}
