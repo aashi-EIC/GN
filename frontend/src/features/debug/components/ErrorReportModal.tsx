@@ -1,12 +1,9 @@
 import { AlertTriangle, Clipboard } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import type { FeedbackValue, IssueReport, Message } from "../../../shared/types/app";
+import type { IssueReport, Message } from "../../../shared/types/app";
 import type { ModelId } from "../../chat/types/semantic";
-import { messageToPlainText } from "../../../shared/utils/clipboard";
 import { createId } from "../../../shared/utils/session";
 import { Modal } from "../../../shared/components/Modal";
-import { IconButton } from "../../../shared/components/ui/IconButton";
-import { Copy, ThumbsDown, ThumbsUp } from "lucide-react";
 
 export function ErrorReportModal({
   close,
@@ -14,20 +11,14 @@ export function ErrorReportModal({
   activeConversationId,
   modelId,
   modelName,
-  lastMessage,
-  lastMessageFeedback,
-  copyMessage,
-  markFeedback,
+  lastUserMessage,
 }: {
   close: () => void;
   submitIssue: (issue: IssueReport) => void;
   activeConversationId: string | null;
   modelId: ModelId;
   modelName: string;
-  lastMessage?: Message;
-  lastMessageFeedback?: FeedbackValue;
-  copyMessage: (message: Message) => void;
-  markFeedback: (messageId: string, value: FeedbackValue) => void;
+  lastUserMessage?: Message;
 }) {
   const [category, setCategory] = useState("Answer quality");
   const [severity, setSeverity] = useState("Medium");
@@ -49,12 +40,12 @@ export function ErrorReportModal({
       conversationId: activeConversationId,
       modelId,
       modelName,
-      lastMessage: lastMessage
+      lastMessage: lastUserMessage
         ? {
-            id: lastMessage.id,
-            role: lastMessage.role,
-            text: lastMessage.text,
-            createdAt: lastMessage.createdAt,
+            id: lastUserMessage.id,
+            role: lastUserMessage.role,
+            text: lastUserMessage.text,
+            createdAt: lastUserMessage.createdAt,
           }
         : undefined,
       createdAt: new Date().toISOString(),
@@ -90,33 +81,10 @@ export function ErrorReportModal({
           Selected model
           <input value={modelName} readOnly />
         </label>
-        {lastMessage && (
+        {lastUserMessage && (
           <label>
-            Last message sent
-            <textarea
-              value={messageToPlainText(lastMessage)}
-              readOnly
-              aria-label="Last message sent"
-            />
-            <div className="response-actions">
-              <IconButton label="Copy response" onClick={() => copyMessage(lastMessage)}>
-                <Copy />
-              </IconButton>
-              <IconButton
-                label="Mark helpful"
-                active={lastMessageFeedback === "helpful"}
-                onClick={() => markFeedback(lastMessage.id, "helpful")}
-              >
-                <ThumbsUp />
-              </IconButton>
-              <IconButton
-                label="Mark not helpful"
-                active={lastMessageFeedback === "not-helpful"}
-                onClick={() => markFeedback(lastMessage.id, "not-helpful")}
-              >
-                <ThumbsDown />
-              </IconButton>
-            </div>
+            Your last question
+            <textarea value={lastUserMessage.text} readOnly aria-label="Your last question" />
           </label>
         )}
         <label>

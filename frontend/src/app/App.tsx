@@ -1,34 +1,33 @@
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
-import { useIsAuthenticated, useMsal } from "@azure/msal-react";
-import { useQuery } from "@tanstack/react-query";
-import { Sparkles } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence } from "framer-motion";
+import { ArrowDown } from "lucide-react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AppRouter } from "./router";
-import { store, uiActions, useAppDispatch, useAppSelector } from "./store";
+import { uiActions, useAppDispatch, useAppSelector } from "./store";
 import { Composer } from "../features/chat/components/Composer";
-import { MessageBubble } from "../features/chat/components/MessageBubble";
+import { MessageBubble, PendingResponse } from "../features/chat/components/MessageBubble";
 import { WelcomePanel } from "../features/chat/components/WelcomePanel";
-import { LoadingScreen } from "../shared/components/LoadingScreen";
 import { ErrorReportModal } from "../features/debug/components/ErrorReportModal";
 import { GuideModal } from "../features/settings/components/GuideModal";
 import { SettingsModal } from "../features/settings/components/SettingsModal";
 import { TourModal } from "../shared/components/TourModal";
 import { Navbar } from "../shared/components/Navbar";
 import { Sidebar } from "../shared/components/Sidebar";
-import { defaultSettings, storageKeys } from "../shared/config/storage";
-import { loadFromStorage, saveToStorageDeferred } from "../shared/utils/storage";
-import { apiScope } from "../features/auth/lib/msal";
-import { LoginPage } from "../features/auth/pages/LoginPage";
+import { ToastNotification } from "../shared/components/ToastNotification";
+import { AssistantMark } from "../shared/components/AssistantMark";
+import { storageKeys } from "../shared/config/storage";
+import { useConversationHistory } from "../features/chat/hooks/useConversationHistory";
+import { createStreamProgress } from "../features/chat/services/streamProgress";
 import {
   buildMcpRequestPayload,
   formatUserFriendlyError,
   persistMcpRequestAudit,
   requestMcpInsight,
 } from "../features/chat/services/mcp.service";
+import type { McpSessionMetadata } from "../features/chat/services/mcp.service";
 import {
-  getUserSettings,
-  updateUserSettings,
-} from "../features/settings/services/settings.service";
+  readBrowserSettings,
+  persistBrowserSettings,
+} from "../features/settings/services/browserSettings";
 import type {
   Conversation,
   FeedbackValue,
@@ -41,248 +40,47 @@ import type {
 } from "../shared/types/app";
 import type { CountryCode, ModelId } from "../features/chat/types/semantic";
 import { copyText, messageToPlainText } from "../shared/utils/clipboard";
-import { accountToProfile } from "../shared/utils/identity";
-import {
-  createId,
-  createSessionId,
-  isSessionId,
-  titleFromUserMessages,
-} from "../shared/utils/session";
+import { createId, createSessionId, titleFromUserMessages } from "../shared/utils/session";
 import { getModel, normalizeCountryCode, normalizeModelId } from "../features/chat/utils/semantic";
 import { calculateTokenUsageAndCost } from "../features/chat/utils/tokenCost";
-import { normalizeStoredConversation } from "../features/chat/utils/responseDisplay";
+import { replaceAssistantResponse } from "../features/chat/utils/regeneration";
 
-function AppRoot({ msalEnabled }: { msalEnabled: boolean }) {
-  return <AppRouter shell={msalEnabled ? <MsalBackedShell /> : <LocalShell />} />;
+const WORKSPACE_USER: UserProfile = {
+  name: "Workspace User",
+  email: "workspace@local",
+  authProvider: "No Authentication",
+};
+
+function applyMcpSessionMetadata(
+  conversation: Conversation,
+  metadata: McpSessionMetadata | undefined,
+): Conversation {
+  if (!metadata) return conversation;
+  const next = { ...conversation };
+  if (metadata.requiresNewSession) delete next.mcpSessionId;
+  else if (metadata.id) next.mcpSessionId = metadata.id;
+  if (metadata.messageCount !== undefined) next.mcpMessageCount = metadata.messageCount;
+  if (metadata.status) next.mcpSessionStatus = metadata.status;
+  return next;
 }
 
-function LocalShell() {
-  const [localUser, setLocalUser] = useState<UserProfile | null>(null);
-  const [authStatus, setAuthStatus] = useState<"signing-in" | "signing-out" | null>(null);
-
-  const localSignIn = async (credentials: { username: string; name?: string }) => {
-    const displayName =
-      credentials.name || credentials.username.split("@")[0] || credentials.username;
-    const userProfile: UserProfile = {
-      name: displayName,
-      email: credentials.username,
-      authProvider: "Local Auth",
-    };
-    setLocalUser(userProfile);
-  };
-
-  const signOut = async () => {
-    setAuthStatus("signing-out");
-    try {
-      setLocalUser(null);
-    } finally {
-      setAuthStatus(null);
-    }
-  };
-
-  const acquireToken = async () => null;
-
-  if (authStatus === "signing-out") {
-    return <LoadingScreen text="Signing out..." />;
-  }
-
-  return (
-    <IntelligenceApp
-      user={localUser}
-      entraAvailable={false}
-      onLocalSignIn={localSignIn}
-      onSignOut={signOut}
-      acquireToken={acquireToken}
-    />
-  );
+function AppRoot() {
+  return <AppRouter shell={<IntelligenceApp />} />;
 }
 
-function MsalBackedShell() {
-  const { instance, accounts } = useMsal();
-  const isAuthenticated = useIsAuthenticated();
-  const account = instance.getActiveAccount() ?? accounts[0];
-  const profile = accountToProfile(account);
-  const [localUser, setLocalUser] = useState<UserProfile | null>(null);
-  const activeUser = (isAuthenticated ? profile : null) || localUser;
-  const [authStatus, setAuthStatus] = useState<"signing-in" | "signing-out" | null>(null);
+function IntelligenceApp() {
+  const [settings, setSettings] = useState<SettingsState>(readBrowserSettings);
+  const [settingsSaveError, setSettingsSaveError] = useState<string | null>(null);
 
-  const signIn = async () => {
-    try {
-      setAuthStatus("signing-in");
-      await instance.loginRedirect({
-        scopes: ["openid", "profile", "email", apiScope],
-      });
-    } finally {
-      setAuthStatus(null);
-    }
-  };
-
-  const localSignIn = async (credentials: { username: string; name?: string }) => {
-    const displayName =
-      credentials.name || credentials.username.split("@")[0] || credentials.username;
-    const userProfile: UserProfile = {
-      name: displayName,
-      email: credentials.username,
-      authProvider: "Local Auth",
-    };
-    setLocalUser(userProfile);
-  };
-
-  const signOut = async () => {
-    try {
-      setAuthStatus("signing-out");
-      setLocalUser(null);
-      if (isAuthenticated && account) {
-        try {
-          await instance.logoutRedirect({ account });
-        } catch {
-          instance.setActiveAccount(null);
-        }
-      }
-    } finally {
-      setAuthStatus(null);
-    }
-  };
-
-  const acquireToken = async (forceRefresh = false) => {
-    if (!account) {
-      return null;
-    }
-
-    try {
-      const result = await instance.acquireTokenSilent({
-        account,
-        scopes: [apiScope],
-        forceRefresh,
-      });
-      return result.accessToken;
-    } catch (error) {
-      if (error instanceof InteractionRequiredAuthError) {
-        await instance.acquireTokenRedirect({
-          account,
-          scopes: [apiScope],
-        });
-        return null;
-      }
-      throw error;
-    }
-  };
-
-  if (authStatus === "signing-in") {
-    return <LoadingScreen text="Signing in..." />;
-  }
-
-  if (authStatus === "signing-out") {
-    return <LoadingScreen text="Signing out..." />;
-  }
-
-  return (
-    <IntelligenceApp
-      user={activeUser}
-      entraAvailable
-      onEntraSignIn={signIn}
-      onLocalSignIn={localSignIn}
-      onSignOut={signOut}
-      acquireToken={acquireToken}
-    />
-  );
-}
-
-function IntelligenceApp({
-  user,
-  entraAvailable,
-  onEntraSignIn,
-  onLocalSignIn,
-  onSignOut,
-  acquireToken,
-}: {
-  user: UserProfile | null;
-  entraAvailable: boolean;
-  onEntraSignIn?: () => Promise<void>;
-  onLocalSignIn?: (credentials: { username: string; name?: string }) => Promise<void>;
-  onSignOut: () => void;
-  acquireToken: (forceRefresh?: boolean) => Promise<string | null>;
-}) {
-  const [settings, setSettings] = useState<SettingsState>(defaultSettings);
-  const [loading, setLoading] = useState(true);
-  const dispatch = useAppDispatch();
-
-  useEffect(() => {
-    if (!user) {
-      document.documentElement.dataset.theme = "light";
-      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#ffffff");
-      setLoading(false);
-      return;
-    }
-
-    let active = true;
-    const fetchSettings = async () => {
-      try {
-        setLoading(true);
-        const token = await acquireToken();
-        if (!token) {
-          if (active) setLoading(false);
-          return;
-        }
-        const serverSettings = await getUserSettings(token);
-        if (active && serverSettings) {
-          setSettings({
-            displayName: serverSettings.displayName ?? "",
-            region: serverSettings.region ?? "Global",
-            density: serverSettings.density ?? "comfortable",
-            keepDebugOpen: serverSettings.keepDebugOpen ?? false,
-          });
-          if (serverSettings.theme) {
-            dispatch(uiActions.setThemeMode(serverSettings.theme));
-          }
-        }
-      } catch {
-        // Silently use local settings when unauthenticated
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-    fetchSettings();
-    return () => {
-      active = false;
-    };
-  }, [user, acquireToken, dispatch]);
-
-  const handleUpdateSettings = async (nextSettings: SettingsState) => {
+  const handleUpdateSettings = (nextSettings: SettingsState) => {
     setSettings(nextSettings);
-    try {
-      const token = await acquireToken();
-      const currentTheme = store.getState().ui.themeMode;
-      await updateUserSettings(
-        {
-          ...nextSettings,
-          theme: currentTheme,
-        },
-        token,
-      );
-    } catch (err) {
-      console.error("Failed to update settings:", err);
-    }
+
+    setSettingsSaveError(persistBrowserSettings(nextSettings));
   };
-
-  if (!user) {
-    return (
-      <LoginPage
-        user={user}
-        entraAvailable={entraAvailable}
-        onEntraSignIn={onEntraSignIn}
-        onLocalSignIn={onLocalSignIn}
-      />
-    );
-  }
-
-  if (loading) {
-    return <LoadingScreen text="Loading settings..." />;
-  }
 
   const effectiveUser = {
-    ...user,
-    name: settings.displayName.trim() || user.name,
+    ...WORKSPACE_USER,
+    name: settings.displayName.trim() || WORKSPACE_USER.name,
   };
 
   return (
@@ -290,8 +88,7 @@ function IntelligenceApp({
       user={effectiveUser}
       settings={settings}
       setSettings={handleUpdateSettings}
-      onSignOut={onSignOut}
-      acquireToken={acquireToken}
+      settingsSaveError={settingsSaveError}
     />
   );
 }
@@ -300,27 +97,18 @@ function Workspace({
   user,
   settings,
   setSettings,
-  onSignOut,
-  acquireToken,
+  settingsSaveError,
 }: {
   user: UserProfile;
   settings: SettingsState;
   setSettings: (settings: SettingsState) => void;
-  onSignOut: () => void;
-  acquireToken: (forceRefresh?: boolean) => Promise<string | null>;
+  settingsSaveError: string | null;
 }) {
   const dispatch = useAppDispatch();
   const sidebarOpen = useAppSelector((state) => state.ui.sidebarOpen);
   const debugOpen = useAppSelector((state) => state.ui.debugOpen);
   const themeMode = useAppSelector((state) => state.ui.themeMode);
-  const [conversations, setConversations] = useState<Conversation[]>(() =>
-    loadFromStorage<Conversation[]>(storageKeys.conversations, []).map((conversation) =>
-      normalizeStoredConversation({
-        ...conversation,
-        id: isSessionId(conversation.id) ? conversation.id : createSessionId(),
-      }),
-    ),
-  );
+  const [conversations, setConversations] = useConversationHistory(settings.tablePageSize);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [selectedModelId, setSelectedModelId] = useState<ModelId>(() =>
     normalizeModelId(undefined),
@@ -329,30 +117,58 @@ function Workspace({
     normalizeCountryCode(undefined),
   );
   const [prompt, setPrompt] = useState("");
+  const [magicHintDismissed, setMagicHintDismissed] = useState(false);
   const [thinkingConversationIds, setThinkingConversationIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [regeneratingResponseIds, setRegeneratingResponseIds] = useState<Record<string, string>>(
+    {},
+  );
   const [modelsOpen, setModelsOpen] = useState(false);
+  const [streamProgress] = useState(createStreamProgress);
+  useEffect(() => () => streamProgress.dispose(), [streamProgress]);
+  const streamingCallbacks = (conversationId: string) => ({
+    onTextDelta: (delta: string) => streamProgress.append(conversationId, delta),
+    onStatus: (message: string) => streamProgress.setStatus(conversationId, message),
+    // Retain the authoritative MCP session even if this stream later disconnects.
+    onSession: (id: string) =>
+      setConversations((current) =>
+        current.map((conversation) =>
+          conversation.id === conversationId
+            ? applyMcpSessionMetadata(conversation, { id, requiresNewSession: false })
+            : conversation,
+        ),
+      ),
+  });
+  const clearGenerationStatus = (conversationId: string) => streamProgress.clear(conversationId);
   const [guideOpen, setGuideOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
+  const [walkthroughDismissed, setWalkthroughDismissed] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyQuery, setHistoryQuery] = useState("");
   const [feedback, setFeedback] = useState<Record<string, FeedbackValue>>({});
   const [toast, setToast] = useState<ToastState | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const messagesRef = useRef<HTMLDivElement | null>(null);
+  const followStreamRef = useRef(true);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  const generationWasActiveRef = useRef<{ conversationId: string | null; active: boolean }>({
+    conversationId: null,
+    active: false,
+  });
+  const regenerationScrollRef = useRef<{
+    conversationId: string | null;
+    anchor: HTMLElement | null;
+    offset: number;
+  } | null>(null);
 
   useEffect(() => {
-    saveToStorageDeferred(storageKeys.conversations, conversations);
-  }, [conversations]);
-
-  useQuery({
-    queryKey: ["workspace-status", user.email],
-    queryFn: async () => ({
-      label: "Ready",
-      checkedAt: new Date().toISOString(),
-    }),
-  });
+    if (activeConversationId && !conversations.some(({ id }) => id === activeConversationId)) {
+      setActiveConversationId(null);
+      dispatch(uiActions.setDebugOpen(false));
+    }
+  }, [activeConversationId, conversations, dispatch]);
 
   const activeConversation = conversations.find(
     (conversation) => conversation.id === activeConversationId,
@@ -360,7 +176,12 @@ function Workspace({
   const activeConversationIsThinking = activeConversationId
     ? thinkingConversationIds.has(activeConversationId)
     : false;
-  const lastMessage = activeConversation?.messages.at(-1);
+  const activeRegeneratingResponseId = activeConversationId
+    ? regeneratingResponseIds[activeConversationId]
+    : undefined;
+  const lastUserMessage = activeConversation?.messages
+    .filter((message) => message.role === "user")
+    .at(-1);
   const selectedModel = getModel(selectedModelId);
   const sortedConversations = useMemo(
     () =>
@@ -387,10 +208,6 @@ function Workspace({
   }, [sortedConversations, historyQuery]);
 
   useEffect(() => {
-    saveToStorageDeferred(storageKeys.conversations, conversations);
-  }, [conversations]);
-
-  useEffect(() => {
     dispatch(uiActions.setDebugOpen(settings.keepDebugOpen));
   }, [dispatch, settings.keepDebugOpen]);
 
@@ -398,14 +215,170 @@ function Workspace({
     document.documentElement.dataset.theme = themeMode;
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute("content", themeMode === "dark" ? "#25282d" : "#ffffff");
-
-    document.title = "Conversational BI | Gracenote";
+      ?.setAttribute("content", themeMode === "dark" ? "#050b14" : "#ffffff");
+    try {
+      localStorage.setItem(storageKeys.theme, themeMode);
+    } catch {
+      // Theme still works for this session when browser storage is unavailable.
+    }
   }, [themeMode]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeConversation?.messages.length, activeConversationIsThinking]);
+    document.title = "Conversational BI | Gracenote";
+  }, []);
+
+  useLayoutEffect(() => {
+    const container = messagesRef.current;
+    const finishingGeneration =
+      generationWasActiveRef.current.conversationId === activeConversationId &&
+      generationWasActiveRef.current.active &&
+      !activeConversationIsThinking;
+    generationWasActiveRef.current = {
+      conversationId: activeConversationId,
+      active: activeConversationIsThinking,
+    };
+    const previousRegeneration = regenerationScrollRef.current;
+    if (activeRegeneratingResponseId && container) {
+      const rememberPosition = () => {
+        const bounds = container.getBoundingClientRect();
+        let anchor =
+          Array.from(container.children).find(
+            (element): element is HTMLElement =>
+              element instanceof HTMLElement &&
+              element.matches(".assistant-row, .user-row") &&
+              element.getBoundingClientRect().bottom > bounds.top &&
+              element.getBoundingClientRect().top < bounds.bottom,
+          ) ?? null;
+        const actions = anchor?.querySelector<HTMLElement>(".response-actions");
+        if (
+          anchor &&
+          anchor.getBoundingClientRect().top < bounds.top &&
+          actions &&
+          actions.getBoundingClientRect().top >= bounds.top &&
+          actions.getBoundingClientRect().bottom <= bounds.bottom
+        ) {
+          anchor = actions;
+        }
+        regenerationScrollRef.current = {
+          conversationId: activeConversationId,
+          anchor,
+          offset: anchor ? anchor.getBoundingClientRect().top - bounds.top : 0,
+        };
+      };
+      rememberPosition();
+      container.addEventListener("scroll", rememberPosition, { passive: true });
+      return () => container.removeEventListener("scroll", rememberPosition);
+    }
+
+    regenerationScrollRef.current = null;
+    if (previousRegeneration?.conversationId === activeConversationId) {
+      const anchor = previousRegeneration.anchor;
+      if (container && anchor?.isConnected && container.contains(anchor)) {
+        const bounds = container.getBoundingClientRect();
+        const scale = bounds.height / container.offsetHeight || 1;
+        container.scrollTop +=
+          (anchor.getBoundingClientRect().top - bounds.top - previousRegeneration.offset) / scale;
+      }
+      return;
+    }
+
+    if (finishingGeneration && !followStreamRef.current) {
+      if (container) {
+        setShowJumpToLatest(
+          container.scrollHeight - container.scrollTop - container.clientHeight > 80,
+        );
+      }
+      return;
+    }
+    bottomRef.current?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
+  }, [
+    activeConversationId,
+    activeConversation?.messages.length,
+    activeRegeneratingResponseId,
+    activeConversationIsThinking,
+  ]);
+
+  useEffect(() => {
+    const container = messagesRef.current;
+    if (!container) return;
+    followStreamRef.current = true;
+    setShowJumpToLatest(false);
+    let previousTop = container.scrollTop;
+    const trackPosition = () => {
+      const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
+      // An intentional upward scroll pauses following, even close to the bottom.
+      if (container.scrollTop < previousTop - 1) followStreamRef.current = false;
+      else if (distance < 8) followStreamRef.current = true;
+      previousTop = container.scrollTop;
+      setShowJumpToLatest(!followStreamRef.current && distance > 80);
+    };
+    const pauseOnWheel = (event: WheelEvent) => {
+      if (event.deltaY < 0) followStreamRef.current = false;
+    };
+    const pauseOnTouch = () => {
+      // Let native touch scrolling take control before the next animation frame.
+      followStreamRef.current = false;
+    };
+    container.addEventListener("scroll", trackPosition, { passive: true });
+    container.addEventListener("wheel", pauseOnWheel, { passive: true });
+    container.addEventListener("touchstart", pauseOnTouch, { passive: true });
+    return () => {
+      container.removeEventListener("scroll", trackPosition);
+      container.removeEventListener("wheel", pauseOnWheel);
+      container.removeEventListener("touchstart", pauseOnTouch);
+    };
+  }, [activeConversationId]);
+
+  useLayoutEffect(() => {
+    const container = messagesRef.current;
+    const preview = container?.querySelector(".streaming-response");
+    if (!container || !preview || activeRegeneratingResponseId) return;
+    let frame = 0;
+    let previousTime = 0;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const follow = (time: number) => {
+      frame = 0;
+      if (!followStreamRef.current) return;
+      const distance = container.scrollHeight - container.clientHeight - container.scrollTop;
+      if (distance < 1) return;
+      const elapsed = previousTime ? Math.min(64, time - previousTime) : 16;
+      previousTime = time;
+      container.scrollTop += reducedMotion.matches
+        ? distance
+        : Math.max(1, distance * (1 - Math.exp(-elapsed / 65)));
+      if (!reducedMotion.matches) frame = requestAnimationFrame(follow);
+    };
+    // Observe only the active answer; token updates no longer render the workspace.
+    const observer = new ResizeObserver(() => {
+      if (!followStreamRef.current) {
+        setShowJumpToLatest(
+          container.scrollHeight - container.scrollTop - container.clientHeight > 80,
+        );
+        return;
+      }
+      if (followStreamRef.current && !frame) {
+        previousTime = 0;
+        frame = requestAnimationFrame(follow);
+      }
+    });
+    observer.observe(preview);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, [activeConversationId, activeConversationIsThinking, activeRegeneratingResponseId]);
+
+  const jumpToLatest = () => {
+    followStreamRef.current = true;
+    setShowJumpToLatest(false);
+    const container = messagesRef.current;
+    container?.scrollTo({
+      top: container.scrollHeight,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
+  };
 
   useEffect(() => {
     if (!toast) {
@@ -424,6 +397,13 @@ function Workspace({
 
       if (modelsOpen && !target.closest(".model-picker")) {
         setModelsOpen(false);
+      }
+      if (
+        sidebarOpen &&
+        window.matchMedia("(max-width: 900px)").matches &&
+        !target.closest(".sidebar, .mobile-menu")
+      ) {
+        dispatch(uiActions.setSidebarOpen(false));
       }
     };
 
@@ -449,24 +429,21 @@ function Workspace({
     setToast({ message, tone });
   };
 
-  const closeTour = async () => {
+  const closeTour = () => {
     setTourOpen(false);
+    setWalkthroughDismissed(true);
     try {
-      const token = await acquireToken();
-      await updateUserSettings(
-        {
-          ...settings,
-          theme: themeMode,
-          tourSeen: true,
-        },
-        token,
-      );
-    } catch (err) {
-      console.error("Failed to save tour status:", err);
+      localStorage.setItem(storageKeys.tourSeen, "true");
+    } catch {
+      showToast("Could not save guide preferences in this browser", "warning");
     }
   };
 
   const startConversation = () => {
+    if (window.matchMedia("(max-width: 900px)").matches) {
+      dispatch(uiActions.setSidebarOpen(false));
+    }
+    setMagicHintDismissed(false);
     setActiveConversationId(null);
     setPrompt("");
     setModelsOpen(false);
@@ -494,6 +471,11 @@ function Workspace({
   };
 
   const openConversation = (conversation: Conversation) => {
+    if (window.matchMedia("(max-width: 900px)").matches) {
+      dispatch(uiActions.setSidebarOpen(false));
+    }
+    setMagicHintDismissed(true);
+    setWalkthroughDismissed(true);
     setActiveConversationId(conversation.id);
     setSelectedModelId(normalizeModelId(conversation.modelId));
     setSelectedCountryCode(normalizeCountryCode(conversation.countryCode));
@@ -501,6 +483,9 @@ function Workspace({
   };
 
   const deleteConversation = (conversationId: string) => {
+    conversations
+      .find(({ id }) => id === conversationId)
+      ?.messages.forEach(({ id }) => streamProgress.clear(id));
     setConversations((current) => {
       const nextConversations = current.filter(
         (conversation) => conversation.id !== conversationId,
@@ -515,22 +500,54 @@ function Workspace({
       }
       return nextConversations;
     });
-    showToast("Conversation removed");
   };
 
   const submitPrompt = async (question = prompt) => {
+    if (activeConversationIsThinking) return;
     const trimmedQuestion = question.trim();
     if (!trimmedQuestion) {
+      return;
+    }
+    setMagicHintDismissed(true);
+
+    const command = /^\/(help|new|settings|metrics|glossary)(?:\s|$)/i
+      .exec(trimmedQuestion)?.[1]
+      .toLowerCase();
+    if (command === "help") {
+      setPrompt("");
+      setModelsOpen(false);
+      setTourOpen(true);
+      return;
+    }
+    if (command === "new") {
+      startConversation();
+      return;
+    }
+    if (command === "settings") {
+      setPrompt("");
+      setModelsOpen(false);
+      setSettingsOpen(true);
+      return;
+    }
+    if (command === "metrics" || command === "glossary") {
+      showToast(
+        (command === "metrics" ? "Metrics" : "Glossary") + " search needs a data connection",
+        "warning",
+      );
       return;
     }
 
     const conversationId = activeConversation?.id ?? createSessionId();
     if (thinkingConversationIds.has(conversationId)) return;
+    followStreamRef.current = true;
+    setShowJumpToLatest(false);
+    setWalkthroughDismissed(true);
 
     const currentModelId = normalizeModelId(activeConversation?.modelId ?? selectedModelId);
     const currentCountryCode = normalizeCountryCode(
       activeConversation?.countryCode ?? selectedCountryCode,
     );
+    const responseTablePageSize = settings.tablePageSize;
     const createdAt = new Date().toISOString();
     const userMessage: Message = {
       id: createId("msg"),
@@ -576,29 +593,22 @@ function Workspace({
     let requestAudit: McpRequestAudit | null = null;
 
     try {
-      const token = await acquireToken();
       const mcpRequest = buildMcpRequestPayload({
         conversationId,
+        mcpSessionId: activeConversation?.mcpSessionId,
         modelId: currentModelId,
         prompt: trimmedQuestion,
-        debug: debugOpen,
       });
       requestAudit = mcpRequest.audit;
       persistMcpRequestAudit(requestAudit);
-      let answer;
-      try {
-        answer = await requestMcpInsight(mcpRequest.payload, requestAudit, token);
-      } catch (err) {
-        if (err instanceof Error && err.message.includes("Invalid or expired access token")) {
-          const freshToken = await acquireToken(true);
-          if (freshToken) {
-            answer = await requestMcpInsight(mcpRequest.payload, requestAudit, freshToken);
-          } else {
-            throw err;
-          }
-        } else {
-          throw err;
-        }
+      const insight = await requestMcpInsight(
+        mcpRequest.payload,
+        requestAudit,
+        streamingCallbacks(conversationId),
+      );
+      const answer = insight.answer;
+      if (insight.mcpSession?.requiresNewSession) {
+        showToast("MCP session ended. Your next prompt will start a new session.", "warning");
       }
       const tokenUsage = calculateTokenUsageAndCost(
         currentModelId,
@@ -609,6 +619,7 @@ function Workspace({
         id: createId("msg"),
         role: "assistant",
         createdAt: new Date().toISOString(),
+        tablePageSize: responseTablePageSize,
         mcpRequest: requestAudit,
         tokenUsage,
         ...answer,
@@ -618,7 +629,7 @@ function Workspace({
         current.map((conversation) =>
           conversation.id === conversationId
             ? {
-                ...conversation,
+                ...applyMcpSessionMetadata(conversation, insight.mcpSession),
                 messages: [...conversation.messages, responseMessage],
                 updatedAt: responseMessage.createdAt,
               }
@@ -637,6 +648,7 @@ function Workspace({
         id: createId("msg"),
         role: "assistant",
         createdAt: new Date().toISOString(),
+        tablePageSize: responseTablePageSize,
         text: displayText,
         metrics: [
           {
@@ -666,6 +678,8 @@ function Workspace({
         tokenUsage,
       };
 
+      streamProgress.interrupt(conversationId, responseMessage.id);
+
       setConversations((current) =>
         current.map((conversation) =>
           conversation.id === conversationId
@@ -678,6 +692,7 @@ function Workspace({
         ),
       );
     } finally {
+      clearGenerationStatus(conversationId);
       setThinkingConversationIds((current) => {
         const next = new Set(current);
         next.delete(conversationId);
@@ -686,19 +701,24 @@ function Workspace({
     }
   };
 
-  const handleEditUserMessage = async (messageId: string, newText: string) => {
+  const handleEditUserMessage = async (messageId: string, newText: string, responseId?: string) => {
     const trimmedQuestion = newText.trim();
     if (!trimmedQuestion || !activeConversation) {
       return;
     }
 
     const currentModelId = normalizeModelId(activeConversation.modelId ?? selectedModelId);
+    const responseTablePageSize = settings.tablePageSize;
     const createdAt = new Date().toISOString();
     const conversationId = activeConversation.id;
     if (thinkingConversationIds.has(conversationId)) return;
 
     const msgIndex = activeConversation.messages.findIndex((m) => m.id === messageId);
     if (msgIndex === -1) return;
+
+    if (responseId) streamProgress.clear(responseId);
+    else
+      activeConversation.messages.slice(msgIndex + 1).forEach(({ id }) => streamProgress.clear(id));
 
     const previousMessages = activeConversation.messages.slice(0, msgIndex);
     const updatedUserMessage: Message = {
@@ -709,46 +729,44 @@ function Workspace({
     const nextMessages = [...previousMessages, updatedUserMessage];
 
     setThinkingConversationIds((current) => new Set(current).add(conversationId));
+    if (responseId) {
+      setRegeneratingResponseIds((current) => ({ ...current, [conversationId]: responseId }));
+    }
 
-    setConversations((current) =>
-      current.map((conversation) => {
-        if (conversation.id !== conversationId) return conversation;
-        const userMsgs = nextMessages.filter((m) => m.role === "user").map((m) => m.text);
-        return {
-          ...conversation,
-          title: titleFromUserMessages(userMsgs),
-          messages: nextMessages,
-          updatedAt: createdAt,
-        };
-      }),
-    );
+    if (!responseId) {
+      setConversations((current) =>
+        current.map((conversation) => {
+          if (conversation.id !== conversationId) return conversation;
+          const userMsgs = nextMessages.filter((m) => m.role === "user").map((m) => m.text);
+          return {
+            ...conversation,
+            title: titleFromUserMessages(userMsgs),
+            messages: nextMessages,
+            updatedAt: createdAt,
+          };
+        }),
+      );
+    }
 
     let requestAudit: McpRequestAudit | null = null;
 
     try {
-      const token = await acquireToken();
       const mcpRequest = buildMcpRequestPayload({
         conversationId,
+        mcpSessionId: activeConversation.mcpSessionId,
         modelId: currentModelId,
         prompt: trimmedQuestion,
-        debug: debugOpen,
       });
       requestAudit = mcpRequest.audit;
       persistMcpRequestAudit(requestAudit);
-      let answer;
-      try {
-        answer = await requestMcpInsight(mcpRequest.payload, requestAudit, token);
-      } catch (err) {
-        if (err instanceof Error && err.message.includes("Invalid or expired access token")) {
-          const freshToken = await acquireToken(true);
-          if (freshToken) {
-            answer = await requestMcpInsight(mcpRequest.payload, requestAudit, freshToken);
-          } else {
-            throw err;
-          }
-        } else {
-          throw err;
-        }
+      const insight = await requestMcpInsight(
+        mcpRequest.payload,
+        requestAudit,
+        streamingCallbacks(conversationId),
+      );
+      const answer = insight.answer;
+      if (insight.mcpSession?.requiresNewSession) {
+        showToast("MCP session ended. Your next prompt will start a new session.", "warning");
       }
       const tokenUsage = calculateTokenUsageAndCost(
         currentModelId,
@@ -759,6 +777,7 @@ function Workspace({
         id: createId("msg"),
         role: "assistant",
         createdAt: new Date().toISOString(),
+        tablePageSize: responseTablePageSize,
         mcpRequest: requestAudit,
         tokenUsage,
         ...answer,
@@ -768,14 +787,20 @@ function Workspace({
         current.map((conversation) =>
           conversation.id === conversationId
             ? {
-                ...conversation,
-                messages: [...nextMessages, responseMessage],
+                ...applyMcpSessionMetadata(conversation, insight.mcpSession),
+                messages: responseId
+                  ? replaceAssistantResponse(conversation.messages, responseId, responseMessage)
+                  : [...conversation.messages, responseMessage],
                 updatedAt: responseMessage.createdAt,
               }
             : conversation,
         ),
       );
     } catch (error) {
+      if (responseId) {
+        streamProgress.interrupt(conversationId, responseId, true);
+        return;
+      }
       const rawMessage =
         error instanceof Error
           ? error.message
@@ -787,6 +812,7 @@ function Workspace({
         id: createId("msg"),
         role: "assistant",
         createdAt: new Date().toISOString(),
+        tablePageSize: responseTablePageSize,
         text: displayText,
         metrics: [
           {
@@ -816,19 +842,26 @@ function Workspace({
         tokenUsage,
       };
 
+      streamProgress.interrupt(conversationId, responseMessage.id);
+
       setConversations((current) =>
         current.map((conversation) =>
           conversation.id === conversationId
             ? {
                 ...conversation,
-                messages: [...nextMessages, responseMessage],
+                messages: [...conversation.messages, responseMessage],
                 updatedAt: responseMessage.createdAt,
               }
             : conversation,
         ),
       );
-      showToast("Unable to analyze request", "warning");
     } finally {
+      clearGenerationStatus(conversationId);
+      setRegeneratingResponseIds((current) => {
+        const next = { ...current };
+        delete next[conversationId];
+        return next;
+      });
       setThinkingConversationIds((current) => {
         const next = new Set(current);
         next.delete(conversationId);
@@ -860,14 +893,12 @@ function Workspace({
       delete next[messageId];
       return next;
     });
-    showToast("Regenerating response");
-    void handleEditUserMessage(precedingUserMessage.id, precedingUserMessage.text);
+    void handleEditUserMessage(precedingUserMessage.id, precedingUserMessage.text, messageId);
   };
 
   const saveSettings = (nextSettings: SettingsState) => {
     setSettings(nextSettings);
     dispatch(uiActions.setDebugOpen(nextSettings.keepDebugOpen));
-    showToast("Settings saved");
   };
 
   const submitIssue = async (issue: IssueReport) => {
@@ -943,16 +974,21 @@ function Workspace({
         onRenameConversation={handleRenameConversation}
         onTogglePinConversation={handleTogglePinConversation}
         setSidebarOpen={(open) => dispatch(uiActions.setSidebarOpen(open))}
+        settingsOpen={settingsOpen}
         setSettingsOpen={setSettingsOpen}
-        onSignOut={onSignOut}
       />
 
       <section className="workspace">
         <Navbar
           modelId={selectedModelId}
           openGuide={openSelectedModelGuide}
+          showWalkthroughBanner={!walkthroughDismissed && !tourOpen && !activeConversation}
+          openWalkthrough={() => setTourOpen(true)}
+          themeMode={themeMode}
+          toggleTheme={() => dispatch(uiActions.toggleThemeMode())}
           conversationTitle={activeConversation?.title}
           sidebarOpen={sidebarOpen}
+          toggleSidebar={() => dispatch(uiActions.setSidebarOpen(!sidebarOpen))}
           onSelectPrompt={submitPrompt}
         />
 
@@ -968,14 +1004,22 @@ function Workspace({
               prompt={prompt}
               setPrompt={setPrompt}
               submitPrompt={submitPrompt}
+              showMagicHint={!magicHintDismissed}
+              dismissMagicHint={() => setMagicHintDismissed(true)}
             />
           ) : (
             <>
-              <div className="messages">
+              <div
+                className="messages"
+                ref={messagesRef}
+                tabIndex={0}
+                aria-label="Conversation messages"
+              >
                 {activeConversation.messages.map((message) => (
                   <MessageBubble
                     key={message.id}
                     message={message}
+                    tablePageSize={message.tablePageSize ?? settings.tablePageSize}
                     debugOpen={debugOpen}
                     feedback={feedback[message.id]}
                     copyMessage={copyMessage}
@@ -984,31 +1028,44 @@ function Workspace({
                     onEditUserMessage={handleEditUserMessage}
                     onRegenerateResponse={regenerateResponse}
                     busy={activeConversationIsThinking}
+                    regenerating={message.id === activeRegeneratingResponseId}
+                    streamProgress={streamProgress}
+                    conversationId={activeConversation.id}
                   />
                 ))}
-                {activeConversationIsThinking && (
-                  <div className="assistant-row">
-                    <div className="ai-mark">
-                      <Sparkles />
-                    </div>
-                    <div className="thinking" role="status" aria-live="polite">
-                      <span className="thinking-wave" aria-hidden="true">
-                        <i />
-                        <i />
-                        <i />
-                        <i />
-                      </span>
-                      <span className="thinking-label">Analyzing your data</span>
-                    </div>
+                {activeConversationIsThinking && !activeRegeneratingResponseId && (
+                  <div
+                    className="assistant-row pending-row"
+                    key={`loading-${activeConversationId}`}
+                  >
+                    <AssistantMark />
+                    <article className="response streaming-response">
+                      <PendingResponse
+                        progress={streamProgress}
+                        conversationId={activeConversation.id}
+                        tablePageSize={settings.tablePageSize}
+                      />
+                    </article>
                   </div>
                 )}
                 <div ref={bottomRef} />
+              </div>
+
+              <div className="chat-latest-control">
+                {showJumpToLatest && (
+                  <button type="button" className="jump-to-latest" onClick={jumpToLatest}>
+                    <ArrowDown size={15} aria-hidden="true" />
+                    Jump to latest
+                  </button>
+                )}
               </div>
 
               <Composer
                 prompt={prompt}
                 setPrompt={setPrompt}
                 submitPrompt={submitPrompt}
+                showMagicHint={!magicHintDismissed}
+                dismissMagicHint={() => setMagicHintDismissed(true)}
                 busy={activeConversationIsThinking}
                 modelId={normalizeModelId(activeConversation.modelId)}
                 setModelId={setActiveConversationModel}
@@ -1043,24 +1100,30 @@ function Workspace({
           modelName={
             getModel(normalizeModelId(activeConversation?.modelId ?? selectedModelId)).name
           }
-          lastMessage={lastMessage}
-          lastMessageFeedback={lastMessage ? feedback[lastMessage.id] : undefined}
-          copyMessage={copyMessage}
-          markFeedback={markFeedback}
+          lastUserMessage={lastUserMessage}
         />
       )}
       {settingsOpen && (
         <SettingsModal
           close={() => setSettingsOpen(false)}
           settings={settings}
+          settingsSaveError={settingsSaveError}
           saveSettings={saveSettings}
           toggleDebug={() => saveSettings({ ...settings, keepDebugOpen: !debugOpen })}
           themeMode={themeMode}
           toggleTheme={() => dispatch(uiActions.toggleThemeMode())}
-          onSignOut={onSignOut}
         />
       )}
-      {toast && <div className={`toast ${toast.tone}`}>{toast.message}</div>}
+      <AnimatePresence>
+        {toast && (
+          <ToastNotification
+            key={toast.message}
+            message={toast.message}
+            tone={toast.tone}
+            dismiss={() => setToast(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

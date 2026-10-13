@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Mic, Send } from "lucide-react";
 import { getCountryLocale } from "../../../shared/constants/locales";
 import type { CountryCode, ModelId } from "../types/semantic";
-import { handleEnter } from "../../../shared/utils/keyboard";
 import { getModel } from "../utils/semantic";
 import { startVoiceInput } from "../utils/speech";
 import { ModelPicker } from "./ModelPicker";
+import { ChatPromptInput } from "./ChatPromptInput";
 
 export function Composer({
   prompt,
@@ -18,6 +18,8 @@ export function Composer({
   setModelsOpen,
   modelLocked,
   countryCode,
+  showMagicHint,
+  dismissMagicHint,
 }: {
   prompt: string;
   setPrompt: (prompt: string) => void;
@@ -29,21 +31,28 @@ export function Composer({
   setModelsOpen: (open: boolean) => void;
   modelLocked: boolean;
   countryCode: CountryCode;
+  showMagicHint: boolean;
+  dismissMagicHint: () => void;
 }) {
   const [isRecording, setIsRecording] = useState(false);
+  const busyRef = useRef(busy);
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
   const model = getModel(modelId);
   const locale = getCountryLocale(countryCode);
 
   return (
     <div className="composer-wrap">
-      <div className="composer">
-        <textarea
-          rows={1}
-          value={prompt}
-          onChange={(event) => setPrompt(event.target.value)}
-          onKeyDown={(event) => handleEnter(event, () => submitPrompt())}
-          aria-label={`Ask ${model.name}`}
-          placeholder=""
+      <div className="composer" aria-busy={busy} onPointerDown={dismissMagicHint}>
+        <ChatPromptInput
+          prompt={prompt}
+          setPrompt={setPrompt}
+          submitPrompt={submitPrompt}
+          label={"Ask " + model.name}
+          showMagicHint={showMagicHint}
+          dismissMagicHint={dismissMagicHint}
+          disabled={busy}
         />
         <div className="composer-bottom">
           <ModelPicker
@@ -52,7 +61,7 @@ export function Composer({
             open={modelsOpen}
             setOpen={setModelsOpen}
             compact
-            disabled={modelLocked}
+            disabled={busy || modelLocked}
           />
           <div className="composer-actions">
             <button
@@ -60,7 +69,9 @@ export function Composer({
               onClick={() =>
                 startVoiceInput(
                   prompt,
-                  setPrompt,
+                  (nextPrompt) => {
+                    if (!busyRef.current) setPrompt(nextPrompt);
+                  },
                   locale.speechLocale,
                   () => setIsRecording(true),
                   () => setIsRecording(false),
@@ -68,6 +79,7 @@ export function Composer({
               }
               type="button"
               aria-label="Use voice input"
+              disabled={busy}
             >
               <Mic />
             </button>

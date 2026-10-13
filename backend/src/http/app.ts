@@ -4,7 +4,7 @@ import helmet from "helmet";
 import { pinoHttp } from "pino-http";
 import { config } from "../config/env.js";
 import { logger } from "../observability/logger.js";
-import { authenticate } from "./middleware/authenticate.js";
+import { workspaceIdentity } from "./middleware/workspaceIdentity.js";
 import { cancellation } from "./middleware/cancellation.js";
 import { correlation } from "./middleware/correlation.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
@@ -18,18 +18,6 @@ const allowedOrigins =
   config.CORS_ALLOWED_ORIGINS?.split(",")
     .map((value) => value.trim())
     .filter(Boolean) ?? [];
-
-function isAllowedOrigin(origin?: string) {
-  if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) return true;
-  if (config.NODE_ENV !== "development") return false;
-
-  try {
-    const url = new URL(origin);
-    return url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname);
-  } catch {
-    return false;
-  }
-}
 
 app.disable("x-powered-by");
 app.use(correlation);
@@ -68,7 +56,7 @@ app.use(
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (isAllowedOrigin(origin)) {
+      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         callback(new Error("CORS policy violation: Request origin not permitted"));
@@ -76,15 +64,15 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["authorization", "content-type", "x-correlation-id"],
+    allowedHeaders: ["content-type", "x-browser-user-id", "x-correlation-id"],
   }),
 );
 
 app.use(express.json({ limit: "256kb", strict: true }));
 app.use(cancellation);
-app.use("/api", rateLimit);
 app.use("/api/v1/health", healthRouter);
-app.use("/api/v1", authenticate, platformRouter);
-app.use("/api/v1", authenticate, chatRouter);
+app.use("/api", rateLimit);
+app.use("/api/v1", workspaceIdentity, platformRouter);
+app.use("/api/v1", workspaceIdentity, chatRouter);
 app.use(notFound);
 app.use(errorHandler);

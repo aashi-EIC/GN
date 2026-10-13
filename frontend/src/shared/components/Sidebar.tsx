@@ -11,16 +11,18 @@ import {
   Pin,
   Search,
   Settings,
-  Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Conversation, UserProfile } from "../types/app";
 import { formatRelativeDate } from "../utils/formatDate";
 import { getModel } from "../../features/chat/utils/semantic";
 import { IconButton } from "./ui/IconButton";
 import { initials } from "../utils/identity";
 import { AskBrandMark } from "./Brand";
+import { ConversationDeleteButton } from "./ConversationDeleteButton";
+import type { ConversationDeleteStatus } from "./ConversationDeleteButton";
+import "./conversationDeletion.css";
 
 const clampText = (value: string, maxLength: number) => {
   const compact = value.replace(/\s+/g, " ").trim();
@@ -114,6 +116,7 @@ export function Sidebar({
   onRenameConversation,
   onTogglePinConversation,
   setSidebarOpen,
+  settingsOpen,
   setSettingsOpen,
 }: {
   open: boolean;
@@ -124,12 +127,12 @@ export function Sidebar({
   setHistoryQuery: (query: string) => void;
   startConversation: () => void;
   openConversation: (conversation: Conversation) => void;
-  deleteConversation: (conversationId: string) => void;
+  deleteConversation: (conversationId: string) => void | Promise<void>;
   onRenameConversation?: (id: string, newTitle: string) => void;
   onTogglePinConversation?: (id: string) => void;
   setSidebarOpen: (open: boolean) => void;
+  settingsOpen: boolean;
   setSettingsOpen: (open: boolean) => void;
-  onSignOut?: () => void;
 }) {
   const [groupBy, setGroupBy] = useState<"date" | "topic">("date");
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
@@ -137,6 +140,69 @@ export function Sidebar({
   const [editingTitle, setEditingTitle] = useState("");
   const [collapsedTopics, setCollapsedTopics] = useState<Record<string, boolean>>({});
   const [collapsedDates, setCollapsedDates] = useState<Record<string, boolean>>({});
+  const [deletions, setDeletions] = useState<
+    Record<
+      string,
+      {
+        conversation: Conversation;
+        status: ConversationDeleteStatus;
+        exiting?: boolean;
+      }
+    >
+  >({});
+  const deletionTimers = useRef(new Map<string, number>());
+  const deletionLocks = useRef(new Set<string>());
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    const timers = deletionTimers.current;
+    return () => {
+      mounted.current = false;
+      timers.forEach((timer) => window.clearTimeout(timer));
+      timers.clear();
+    };
+  }, []);
+
+  const handleDelete = async (conversation: Conversation) => {
+    const id = conversation.id;
+    if (deletionLocks.current.has(id)) return;
+    deletionLocks.current.add(id);
+    setDeletions((current) => ({ ...current, [id]: { conversation, status: "deleting" } }));
+
+    try {
+      await deleteConversation(id);
+      if (!mounted.current) return;
+      setDeletions((current) => ({ ...current, [id]: { conversation, status: "deleted" } }));
+      deletionTimers.current.set(
+        id,
+        window.setTimeout(() => {
+          setDeletions((current) => ({
+            ...current,
+            [id]: { conversation, status: "deleted", exiting: true },
+          }));
+          deletionTimers.current.set(
+            id,
+            window.setTimeout(() => {
+              setDeletions((current) => {
+                const next = { ...current };
+                delete next[id];
+                return next;
+              });
+              setMenuOpenId((current) => (current === id ? null : current));
+              deletionLocks.current.delete(id);
+              deletionTimers.current.delete(id);
+            }, 180),
+          );
+        }, 700),
+      );
+    } catch {
+      deletionLocks.current.delete(id);
+      if (mounted.current) {
+        setDeletions((current) => ({ ...current, [id]: { conversation, status: "error" } }));
+      }
+    }
+  };
 
   const toggleTopicCollapse = (topicKey: string) => {
     setCollapsedTopics((prev) => ({
@@ -180,13 +246,25 @@ export function Sidebar({
     setEditingTitle("");
   };
 
-  const pinnedConversations = conversations.filter((c) => c.pinned);
-  const unpinnedConversations = conversations.filter((c) => !c.pinned);
+  const displayedConversations = [
+    ...conversations,
+    ...Object.values(deletions)
+      .filter(
+        (entry) => !conversations.some((conversation) => conversation.id === entry.conversation.id),
+      )
+      .map((entry) => entry.conversation),
+  ].sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
+  const pinnedConversations = displayedConversations.filter((c) => c.pinned);
+  const unpinnedConversations = displayedConversations.filter((c) => !c.pinned);
 
   const renderHistoryItem = (conversation: Conversation) => {
     const isEditing = editingId === conversation.id;
     const isMenuActive = menuOpenId === conversation.id;
     const isActive = activeConversationId === conversation.id;
+    const deletion = deletions[conversation.id];
+    const isDeleting = deletion?.status === "deleting";
+    const isDeleted = deletion?.status === "deleted";
+    const actionsDisabled = isDeleting || isDeleted;
 
     if (isEditing) {
       return (
@@ -225,18 +303,23 @@ export function Sidebar({
 
     return (
       <div
-        className={`history-item ${isActive ? "active" : ""} ${conversation.pinned ? "is-pinned" : ""} ${isMenuActive ? "menu-open" : ""}`}
+        className={`history-item ${isActive ? "active" : ""} ${conversation.pinned ? "is-pinned" : ""} ${isMenuActive ? "menu-open" : ""} ${isDeleted ? "delete-complete" : ""} ${deletion?.exiting ? "delete-exiting" : ""}`}
         key={conversation.id}
+        aria-busy={isDeleting}
       >
-        <button onClick={() => openConversation(conversation)}>
+        <button disabled={actionsDisabled} onClick={() => openConversation(conversation)}>
           <span>
             {conversation.pinned && <Pin className="history-pin-indicator" />}
             {clampText(conversation.title || latestUserPrompt(conversation), 50)}
           </span>
           <small>
-            {groupBy === "date"
-              ? `${getModel(conversation.modelId).short} / ${formatRelativeDate(conversation.updatedAt)}`
-              : formatRelativeDate(conversation.updatedAt)}
+            {isDeleted
+              ? "Deleted"
+              : isDeleting
+                ? "Deleting..."
+                : groupBy === "date"
+                  ? `${getModel(conversation.modelId).short} / ${formatRelativeDate(conversation.updatedAt)}`
+                  : formatRelativeDate(conversation.updatedAt)}
           </small>
         </button>
 
@@ -245,6 +328,7 @@ export function Sidebar({
             type="button"
             className={`history-menu-trigger ${isMenuActive ? "active" : ""}`}
             aria-label="Chat Options"
+            disabled={actionsDisabled}
             onClick={(e) => {
               e.stopPropagation();
               setMenuOpenId(isMenuActive ? null : conversation.id);
@@ -257,6 +341,8 @@ export function Sidebar({
             <div className="history-popover-menu" role="menu">
               <button
                 type="button"
+                role="menuitem"
+                disabled={actionsDisabled}
                 onClick={(e) => {
                   e.stopPropagation();
                   setMenuOpenId(null);
@@ -269,6 +355,8 @@ export function Sidebar({
 
               <button
                 type="button"
+                role="menuitem"
+                disabled={actionsDisabled}
                 onClick={(e) => {
                   e.stopPropagation();
                   setMenuOpenId(null);
@@ -279,19 +367,15 @@ export function Sidebar({
                 <span>Edit Title</span>
               </button>
 
-              <button
-                type="button"
-                className="danger"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  setMenuOpenId(null);
-                  deleteConversation(conversation.id);
-                }}
-              >
-                <Trash2 />
-                <span>Delete Chat</span>
-              </button>
+              <ConversationDeleteButton
+                status={deletion?.status ?? "idle"}
+                onDelete={() => void handleDelete(conversation)}
+              />
+              {deletion?.status === "error" && (
+                <p className="history-delete-error" role="alert">
+                  Could not delete this chat. Try again.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -378,9 +462,7 @@ export function Sidebar({
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") toggleDateCollapse(dateGroup.label);
                       }}
-                      title={
-                        isCollapsed ? `Expand ${dateGroup.label}` : `Collapse ${dateGroup.label}`
-                      }
+                      aria-expanded={!isCollapsed}
                     >
                       <div className="history-heading-left">
                         {isCollapsed ? (
@@ -451,7 +533,9 @@ export function Sidebar({
                   </section>
                 );
               })}
-          {conversations.length === 0 && <p className="empty-history">No Saved Conversations</p>}
+          {displayedConversations.length === 0 && (
+            <p className="empty-history">No Saved Conversations</p>
+          )}
         </nav>
 
         <div className="sidebar-footer account-footer">
@@ -468,7 +552,8 @@ export function Sidebar({
           <IconButton
             label="Settings"
             className="sidebar-settings-btn footer-icon"
-            onClick={() => setSettingsOpen(true)}
+            active={settingsOpen}
+            onClick={() => setSettingsOpen(!settingsOpen)}
           >
             <Settings />
           </IconButton>
@@ -498,8 +583,9 @@ export function Sidebar({
         <div className="collapsed-footer">
           <IconButton
             label="Settings"
-            className="footer-icon"
-            onClick={() => setSettingsOpen(true)}
+            className="sidebar-settings-btn footer-icon"
+            active={settingsOpen}
+            onClick={() => setSettingsOpen(!settingsOpen)}
           >
             <Settings />
           </IconButton>

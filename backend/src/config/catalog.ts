@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AuthorizationError, ConfigurationError, NotFoundError } from "../errors.js";
+import { ConfigurationError, NotFoundError } from "../errors.js";
 import type { AuthenticatedUser } from "../types.js";
 import { config } from "./env.js";
 
@@ -69,29 +69,21 @@ const featureFlags = featureFlagsSchema.parse(
   parseJson(config.FEATURE_FLAGS_JSON, "FEATURE_FLAGS_JSON") ?? {},
 );
 
-export function listAccessibleModels(user: AuthenticatedUser) {
-  return models.filter(
-    (model) =>
-      model.enabled &&
-      (model.allowedRoles.length === 0 ||
-        model.allowedRoles.some((role) => user.roles.includes(role))),
-  );
+export function listAccessibleModels(_user: AuthenticatedUser) {
+  return models.filter((model) => model.enabled);
 }
 
-export function getAccessibleModel(user: AuthenticatedUser, modelId: string) {
+export function getAccessibleModel(_user: AuthenticatedUser, modelId: string) {
   if (models.length === 0) return undefined;
 
   const model = models.find((entry) => entry.id === modelId);
   if (!model || !model.enabled) throw new NotFoundError("Semantic model not found");
-  if (model.allowedRoles.length && !model.allowedRoles.some((role) => user.roles.includes(role))) {
-    throw new AuthorizationError("You do not have access to this semantic model");
-  }
   return model;
 }
 
-export function getFeatureFlags(user: AuthenticatedUser) {
+export function getFeatureFlags(_user: AuthenticatedUser) {
   return {
     ...featureFlags,
-    debugMode: featureFlags.debugMode && user.roles.some((role) => /admin|debug/i.test(role)),
+    debugMode: featureFlags.debugMode,
   };
 }

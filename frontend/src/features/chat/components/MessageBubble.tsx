@@ -1,29 +1,45 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import {
-  Activity,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import {
   AlertTriangle,
-  ChartNoAxesCombined,
   Check,
-  CheckCircle2,
-  Code2,
   Copy,
   Info,
+  Sparkles,
   MoreHorizontal,
   Pencil,
   RefreshCw,
-  Sparkles,
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
-import type { FeedbackValue, Message, VisualizationBlock } from "../../../shared/types/app";
+import type {
+  FeedbackValue,
+  Message,
+  TablePageSize,
+  VisualizationBlock,
+} from "../../../shared/types/app";
 import { IconButton } from "../../../shared/components/ui/IconButton";
-import { StructuredTable, VisualizationRenderer } from "./charts/VisualizationRenderer";
-import { removeChartScriptSections } from "../utils/responseDisplay";
+import { AssistantMark } from "../../../shared/components/AssistantMark";
+import { StructuredTable } from "./charts/VisualizationRenderer";
+import { normalizeDataLists } from "../utils/responseTables";
+import { removeChartScriptSections, streamingDisplayText } from "../utils/responseDisplay";
+import { DebugDrawer } from "../../debug/components/DebugDrawer";
+import { renderInlineVisualMarkers } from "./InlineVisualMarkers";
+import type { StreamProgressStore } from "../services/streamProgress";
 import "./messageBubbleMarkdown.css";
+import "./responseRegeneration.css";
 
 function MessageBubbleComponent({
   message,
+  tablePageSize,
   debugOpen,
   feedback,
   copyMessage,
@@ -32,8 +48,12 @@ function MessageBubbleComponent({
   onEditUserMessage,
   onRegenerateResponse,
   busy = false,
+  regenerating = false,
+  streamProgress,
+  conversationId,
 }: {
   message: Message;
+  tablePageSize: TablePageSize;
   debugOpen: boolean;
   feedback?: FeedbackValue;
   copyMessage: (message: Message) => void;
@@ -42,12 +62,17 @@ function MessageBubbleComponent({
   onEditUserMessage?: (messageId: string, newText: string) => void;
   onRegenerateResponse?: (messageId: string) => void;
   busy?: boolean;
+  regenerating?: boolean;
+  streamProgress: StreamProgressStore;
+  conversationId: string;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
   const [copied, setCopied] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [debugDrawerOpen, setDebugDrawerOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (!moreOpen) return undefined;
@@ -77,6 +102,7 @@ function MessageBubbleComponent({
             <textarea
               className="user-edit-textarea"
               value={editText}
+              disabled={busy}
               onChange={(e) => setEditText(e.target.value)}
               autoFocus
               rows={Math.max(2, editText.split("\n").length)}
@@ -95,7 +121,7 @@ function MessageBubbleComponent({
               <button
                 type="button"
                 className="user-edit-submit"
-                disabled={!editText.trim() || editText.trim() === message.text}
+                disabled={busy || !editText.trim() || editText.trim() === message.text}
                 onClick={() => {
                   if (editText.trim() && onEditUserMessage) {
                     onEditUserMessage(message.id, editText.trim());
@@ -120,7 +146,7 @@ function MessageBubbleComponent({
               {copied ? <Check /> : <Copy />}
             </IconButton>
             {onEditUserMessage && (
-              <IconButton label="Edit message" onClick={() => setIsEditing(true)}>
+              <IconButton label="Edit message" disabled={busy} onClick={() => setIsEditing(true)}>
                 <Pencil />
               </IconButton>
             )}
@@ -130,179 +156,152 @@ function MessageBubbleComponent({
     );
   }
 
-  const isError =
-    Boolean(message.debug?.some((d) => d.stage === "request_error")) ||
-    Boolean(message.metrics?.some((m) => m.tone === "watch"));
+  const isError = Boolean(message.debug?.some((event) => event.stage === "request_error"));
+  const suggestionMarker = "💡 **Suggested Action**:";
+  const [errorSummary, errorSuggestion = ""] = message.text.split(suggestionMarker);
+  const errorStatus =
+    message.metrics?.find((metric) => metric.tone === "watch")?.value || "Request failed";
+  const debugTrigger =
+    debugOpen && message.debug ? (
+      <button
+        type="button"
+        className="debug-details-trigger"
+        aria-haspopup="dialog"
+        onClick={() => setDebugDrawerOpen(true)}
+      >
+        <span className={`debug-status-dot ${isError ? "warning" : ""}`} aria-hidden="true" />
+        Debug details
+      </button>
+    ) : null;
 
   return (
-    <div className="assistant-row">
-      <div className="ai-mark">
-        <Sparkles />
-      </div>
+    <div
+      className={`assistant-row ${regenerating ? "regenerating-row" : ""}`}
+      data-message-id={message.id}
+    >
+      <AssistantMark />
       <motion.article
-        initial={{ opacity: 0, y: 6 }}
+        initial={reduceMotion ? false : { opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
-        className={`response ${isError ? "response-error-state" : ""}`}
+        className={`response ${isError ? "response-error-state" : ""} ${regenerating ? "is-regenerating" : ""}`}
+        aria-busy={regenerating}
       >
-        <SafeResponseText text={message.text} />
-
-        {isError && onRegenerateResponse && (
-          <div className="error-retry-row">
-            <button
-              type="button"
-              className="btn-retry-action"
-              onClick={() => onRegenerateResponse(message.id)}
-              disabled={busy}
-            >
-              <RefreshCw className={busy ? "spin" : ""} size={15} />
-              <span>{busy ? "Retrying analysis..." : "Retry Question"}</span>
-            </button>
+        {regenerating && (
+          <div className="regeneration-preview">
+            <PendingResponse
+              progress={streamProgress}
+              conversationId={conversationId}
+              tablePageSize={tablePageSize}
+            />
           </div>
         )}
-
-        {message.metrics && message.metrics.length > 0 && (
-          <div className="metric-grid kpi-card-grid">
-            {message.metrics.map((metric) => (
-              <div className={`metric kpi-card ${metric.tone || ""}`} key={metric.label}>
-                <div className="kpi-card-header">
-                  <span className="kpi-label">{metric.label}</span>
-                  {metric.tone === "positive" || metric.tone === "good" ? (
-                    <CheckCircle2 size={14} className="kpi-icon positive" />
-                  ) : metric.tone === "watch" ? (
-                    <AlertTriangle size={14} className="kpi-icon watch" />
-                  ) : (
-                    <Activity size={14} className="kpi-icon neutral" />
-                  )}
-                </div>
-                <b className="kpi-value">{metric.value}</b>
-                {metric.subtext && <span className="kpi-subtext">{metric.subtext}</span>}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {message.visualizations && message.visualizations.length > 0 && (
-          <VisualizationRenderer blocks={message.visualizations} />
-        )}
-
-        <div className="response-actions">
-          <IconButton
-            label={feedback === "helpful" ? "Remove good response rating" : "Good response"}
-            active={feedback === "helpful"}
-            onClick={() => markFeedback(message.id, "helpful")}
-          >
-            <ThumbsUp />
-          </IconButton>
-          <IconButton
-            label={feedback === "not-helpful" ? "Remove bad response rating" : "Bad response"}
-            active={feedback === "not-helpful"}
-            onClick={() => markFeedback(message.id, "not-helpful")}
-          >
-            <ThumbsDown />
-          </IconButton>
-          {onRegenerateResponse && (
-            <IconButton
-              label="Regenerate response"
-              onClick={() => onRegenerateResponse(message.id)}
-              disabled={busy}
-            >
-              <RefreshCw />
-            </IconButton>
+        <div
+          className="response-content"
+          aria-hidden={regenerating || undefined}
+          inert={regenerating || undefined}
+        >
+          {!regenerating && (
+            <InterruptedResponse
+              progress={streamProgress}
+              messageId={message.id}
+              tablePageSize={tablePageSize}
+            />
           )}
-          <IconButton label={copied ? "Copied" : "Copy response"} onClick={handleCopy}>
-            {copied ? <Check /> : <Copy />}
-          </IconButton>
-          <div className="response-more" ref={moreMenuRef}>
-            <IconButton
-              label="More options"
-              active={moreOpen}
-              onClick={() => setMoreOpen((open) => !open)}
-            >
-              <MoreHorizontal />
-            </IconButton>
-            {moreOpen && (
-              <div className="response-more-menu" role="menu">
+          {isError ? (
+            <div className="error-compact-card" role="alert">
+              <div className="error-compact-icon" aria-hidden="true">
+                <AlertTriangle />
+              </div>
+              <div className="error-compact-copy">
+                <span className="error-compact-status">{errorStatus}</span>
+                <p>{errorSummary.trim()}</p>
+                {errorSuggestion.trim() && <small>{errorSuggestion.trim()}</small>}
+              </div>
+              {onRegenerateResponse && (
                 <button
                   type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setMoreOpen(false);
-                    onReportError();
-                  }}
+                  className="btn-retry-action"
+                  onClick={() => onRegenerateResponse(message.id)}
+                  disabled={busy}
                 >
-                  <AlertTriangle />
-                  Report response
+                  <RefreshCw className={regenerating ? "regeneration-spinner" : ""} size={14} />
+                  <span>{regenerating ? "Retrying..." : "Try again"}</span>
                 </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {debugOpen && message.debug && (
-          <div className="debug-panel">
-            <div className="debug-panel-heading">
-              <Code2 />
-              <span>Admin debug mode</span>
-              <b>node-bff</b>
+              )}
             </div>
-            <DebugPayload title="Request sent to BFF" value={message.mcpRequest} defaultOpen />
-            <DebugPayload
-              title="Raw MCP response"
-              value={message.debug.find((event) => event.stage === "mcp_response")?.payload}
-              defaultOpen
+          ) : (
+            <>
+              <SafeResponseText text={message.text} tablePageSize={tablePageSize} />
+
+              <div className="response-actions">
+                <IconButton
+                  label={feedback === "helpful" ? "Remove good response rating" : "Good response"}
+                  active={feedback === "helpful"}
+                  onClick={() => markFeedback(message.id, "helpful")}
+                >
+                  <ThumbsUp />
+                </IconButton>
+                <IconButton
+                  label={feedback === "not-helpful" ? "Remove bad response rating" : "Bad response"}
+                  active={feedback === "not-helpful"}
+                  onClick={() => markFeedback(message.id, "not-helpful")}
+                >
+                  <ThumbsDown />
+                </IconButton>
+                {onRegenerateResponse && (
+                  <IconButton
+                    label={regenerating ? "Regenerating response" : "Regenerate response"}
+                    className={regenerating ? "regenerating" : ""}
+                    onClick={() => onRegenerateResponse(message.id)}
+                    disabled={busy}
+                  >
+                    <RefreshCw className={regenerating ? "regeneration-spinner" : ""} />
+                  </IconButton>
+                )}
+                <IconButton label={copied ? "Copied" : "Copy response"} onClick={handleCopy}>
+                  {copied ? <Check /> : <Copy />}
+                </IconButton>
+                <div className={`response-more ${moreOpen ? "open" : ""}`} ref={moreMenuRef}>
+                  <IconButton
+                    label="More options"
+                    active={moreOpen}
+                    onClick={() => setMoreOpen((open) => !open)}
+                  >
+                    <MoreHorizontal />
+                  </IconButton>
+                  {moreOpen && (
+                    <div className="response-more-menu" role="menu">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setMoreOpen(false);
+                          onReportError();
+                        }}
+                      >
+                        <AlertTriangle />
+                        Report response
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {debugTrigger}
+              </div>
+            </>
+          )}
+
+          {isError && debugTrigger}
+          {debugOpen && message.debug && (
+            <DebugDrawer
+              message={message}
+              open={debugDrawerOpen}
+              onClose={() => setDebugDrawerOpen(false)}
             />
-            <DebugPayload
-              title="Processed BFF response"
-              value={message.debug.find((event) => event.stage === "bff_response")?.payload}
-              defaultOpen
-            />
-            <DebugPayload title="Processing events" value={message.debug} />
-          </div>
-        )}
+          )}
+        </div>
       </motion.article>
     </div>
-  );
-}
-
-function DebugPayload({
-  title,
-  value,
-  defaultOpen = false,
-}: {
-  title: string;
-  value: unknown;
-  defaultOpen?: boolean;
-}) {
-  const available = value !== undefined;
-  const content = available ? JSON.stringify(value, null, 2) : "";
-
-  return (
-    <details className="debug-payload" open={defaultOpen}>
-      <summary>
-        <span>{title}</span>
-        {available && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              void navigator.clipboard.writeText(content);
-            }}
-          >
-            <Copy />
-            Copy JSON
-          </button>
-        )}
-      </summary>
-      {available ? (
-        <pre>{content}</pre>
-      ) : (
-        <p className="debug-payload-empty">
-          Not captured for this message. Keep debug enabled and send a new prompt.
-        </p>
-      )}
-    </details>
   );
 }
 
@@ -321,11 +320,93 @@ function stripInsightPrefix(value: string) {
   return value.replace(/^\s*>\s*/, "").trim();
 }
 
-function SafeResponseText({ text }: { text: string }) {
+export function PendingResponse({
+  progress,
+  conversationId,
+  tablePageSize,
+}: {
+  progress: StreamProgressStore;
+  conversationId: string;
+  tablePageSize: TablePageSize;
+}) {
+  const subscribe = useCallback(
+    (listener: () => void) => progress.subscribe(conversationId, listener),
+    [progress, conversationId],
+  );
+  const getSnapshot = useCallback(
+    () => progress.getSnapshot(conversationId),
+    [progress, conversationId],
+  );
+  const { text } = useSyncExternalStore(subscribe, getSnapshot);
+  const preview = useMemo(() => streamingDisplayText(text), [text]);
+  return (
+    <div className={`pending-response ${preview ? "has-preview" : ""}`} aria-busy="true">
+      {preview && <SafeResponseText text={preview} tablePageSize={tablePageSize} streaming />}
+      <div
+        className={`thinking ${preview ? "streaming-status" : ""}`}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <span className={preview ? "streaming-dots" : "thinking-wave"} aria-hidden="true">
+          <i />
+          <i />
+          <i />
+          {!preview && <i />}
+        </span>
+        <span className="thinking-label">
+          {preview ? "Writing response…" : "Analyzing your data"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function InterruptedResponse({
+  progress,
+  messageId,
+  tablePageSize,
+}: {
+  progress: StreamProgressStore;
+  messageId: string;
+  tablePageSize: TablePageSize;
+}) {
+  const subscribe = useCallback(
+    (listener: () => void) => progress.subscribe(messageId, listener),
+    [progress, messageId],
+  );
+  const getSnapshot = useCallback(() => progress.getSnapshot(messageId), [progress, messageId]);
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot);
+  const preview = useMemo(() => streamingDisplayText(snapshot.text), [snapshot.text]);
+  if (!snapshot.interrupted) return null;
+  return (
+    <div className="interrupted-response">
+      <div className="stream-interrupted-notice" role="status">
+        <AlertTriangle size={16} aria-hidden="true" />
+        <span>{snapshot.status}</span>
+      </div>
+      {!snapshot.restored && preview && (
+        <SafeResponseText text={preview} tablePageSize={tablePageSize} partial />
+      )}
+    </div>
+  );
+}
+
+function SafeResponseText({
+  text,
+  tablePageSize,
+  streaming = false,
+  partial = false,
+}: {
+  text: string;
+  tablePageSize: TablePageSize;
+  streaming?: boolean;
+  partial?: boolean;
+}) {
   const renderedElements = useMemo(() => {
     if (!text) return null;
 
-    const visibleText = removeChartScriptSections(text);
+    const visibleText = normalizeDataLists(removeChartScriptSections(text));
 
     // Split text by code blocks ```code```
     const blocks = visibleText.split(/(```[\s\S]*?```)/g);
@@ -336,6 +417,13 @@ function SafeResponseText({ text }: { text: string }) {
         const language = lines[0]?.match(/^[a-zA-Z0-9_-]+$/) ? lines[0] : "";
         const codeContent = language ? lines.slice(1).join("\n") : lines.join("\n");
 
+        // MCP may include an empty JSON result before its explanatory text. An
+        // empty payload is not useful to end users and otherwise renders as a
+        // large code panel containing only [] or {}.
+        if (isEmptyStructuredPayload(codeContent, language)) {
+          return null;
+        }
+
         if (/^(?:chartType|chart_type|chart)\s*:/i.test(codeContent.trim())) {
           return null;
         }
@@ -343,7 +431,16 @@ function SafeResponseText({ text }: { text: string }) {
         const tableBlock = tableFromCodeBlock(codeContent);
 
         if (tableBlock) {
-          return <StructuredTable key={`table-code-${blockIdx}`} block={tableBlock} />;
+          return (
+            <ResponseTable
+              key={`table-code-${blockIdx}`}
+              source={codeContent}
+              receiving={streaming}
+              partial={partial}
+              block={tableBlock}
+              defaultPageSize={tablePageSize}
+            />
+          );
         }
 
         return (
@@ -353,6 +450,7 @@ function SafeResponseText({ text }: { text: string }) {
               <button
                 type="button"
                 className="btn-copy-code"
+                disabled={streaming || partial}
                 onClick={() => navigator.clipboard.writeText(codeContent)}
               >
                 <Copy size={12} />
@@ -449,7 +547,7 @@ function SafeResponseText({ text }: { text: string }) {
         if (
           isMarkdownTableRow(trimmed) &&
           lineIdx + 1 < lines.length &&
-          isMarkdownTableSeparator(lines[lineIdx + 1])
+          isMarkdownTableSeparator(lines[lineIdx + 1], parseMarkdownTableRow(trimmed).length)
         ) {
           flushList(`${blockIdx}-${lineIdx}`);
           flushKpiList(`${blockIdx}-${lineIdx}`);
@@ -478,7 +576,14 @@ function SafeResponseText({ text }: { text: string }) {
 
           elements.push(
             <div key={`table-${blockIdx}-${lineIdx}`}>
-              <StructuredTable block={tableBlock} minimal={true} />
+              <ResponseTable
+                source={lines.slice(lineIdx, nextLine).join("\n")}
+                receiving={streaming}
+                partial={partial}
+                block={tableBlock}
+                minimal={true}
+                defaultPageSize={tablePageSize}
+              />
             </div>,
           );
           return;
@@ -603,39 +708,121 @@ function SafeResponseText({ text }: { text: string }) {
       flushBlockquote(`${blockIdx}-end`);
       return <div key={`block-${blockIdx}`}>{elements}</div>;
     });
-  }, [text]);
+  }, [tablePageSize, text, streaming, partial]);
 
-  return <div className="markdown-response-body">{renderedElements}</div>;
+  return (
+    <div className={`markdown-response-body ${streaming ? "streaming-markdown" : ""}`}>
+      {renderedElements}
+    </div>
+  );
 }
+
+// Completed tables do not recalculate sorting/filtering when later prose streams in.
+const ResponseTable = memo(
+  function ResponseTable({
+    block,
+    minimal,
+    defaultPageSize,
+    receiving,
+    partial,
+  }: {
+    source: string;
+    block: Extract<VisualizationBlock, { type: "table" }>;
+    minimal?: boolean;
+    defaultPageSize: TablePageSize;
+    receiving: boolean;
+    partial?: boolean;
+  }) {
+    return (
+      <StructuredTable
+        block={block}
+        minimal={minimal}
+        defaultPageSize={defaultPageSize}
+        receiving={receiving}
+        partial={partial}
+      />
+    );
+  },
+  (previous, next) =>
+    previous.source === next.source &&
+    previous.minimal === next.minimal &&
+    previous.receiving === next.receiving &&
+    previous.partial === next.partial &&
+    previous.defaultPageSize === next.defaultPageSize,
+);
 
 function InsightHeader() {
   return (
     <div className="executive-insight-block insight-pill">
-      <div className="executive-insight-header" style={{ marginBottom: 0 }}>
-        <Sparkles size={14} className="executive-insight-sparkle" />
+      <div className="executive-insight-header">
+        <Sparkles size={14} className="executive-insight-sparkle" aria-hidden="true" />
         <span>Findings &amp; Insights</span>
       </div>
     </div>
   );
 }
 
-function isMarkdownTableRow(line: string) {
-  const trimmed = line.trim();
-  return trimmed.startsWith("|") && trimmed.endsWith("|") && trimmed.split("|").length >= 4;
+function isEmptyStructuredPayload(content: string, language: string) {
+  const trimmed = content.trim();
+  if (!trimmed) return true;
+
+  const normalizedLanguage = language.trim().toLowerCase();
+  const isJson =
+    normalizedLanguage === "json" ||
+    normalizedLanguage === "jsonc" ||
+    (!normalizedLanguage && (trimmed.startsWith("[") || trimmed.startsWith("{")));
+  if (!isJson) return false;
+
+  try {
+    const parsed: unknown = JSON.parse(trimmed);
+    if (parsed === null) return true;
+    if (Array.isArray(parsed)) return parsed.length === 0;
+    return typeof parsed === "object" && Object.keys(parsed).length === 0;
+  } catch {
+    return false;
+  }
 }
 
-function isMarkdownTableSeparator(line: string) {
-  if (!isMarkdownTableRow(line)) return false;
-  return parseMarkdownTableRow(line).every((cell) => /^:?-{3,}:?$/.test(cell));
+function isMarkdownTableRow(line: string) {
+  return parseMarkdownTableRow(line).length >= 2;
+}
+
+function isMarkdownTableSeparator(line: string, columnCount: number) {
+  const cells = parseMarkdownTableRow(line);
+  return cells.length === columnCount && cells.every((cell) => /^:?-{3,}:?$/.test(cell));
 }
 
 function parseMarkdownTableRow(line: string) {
-  return line
-    .trim()
-    .replace(/^\|/, "")
-    .replace(/\|$/, "")
-    .split("|")
-    .map((cell) => cell.trim());
+  const source = line.trim();
+  const cells: string[] = [];
+  let cell = "";
+  let lastDelimiter = -1;
+
+  for (let index = 0; index < source.length; index += 1) {
+    if (source[index] !== "|") {
+      cell += source[index];
+      continue;
+    }
+
+    let backslashes = 0;
+    for (let previous = index - 1; previous >= 0 && source[previous] === "\\"; previous -= 1) {
+      backslashes += 1;
+    }
+    if (backslashes % 2 === 1) {
+      // An escaped pipe belongs to the cell, including inside inline code.
+      cell = cell.slice(0, -1) + "|";
+    } else {
+      cells.push(cell.trim());
+      cell = "";
+      lastDelimiter = index;
+    }
+  }
+  cells.push(cell.trim());
+
+  // Outer delimiters are optional; keep genuine empty interior cells.
+  if (source.startsWith("|")) cells.shift();
+  if (lastDelimiter === source.length - 1) cells.pop();
+  return cells;
 }
 
 function renderNoteContent(text: string): React.ReactNode {
@@ -698,17 +885,17 @@ function tableFromCodeBlock(
 }
 
 function renderFormattedInlineText(text: string): React.ReactNode {
-  // Regex to match **bold**, `code`, *italic*, and supported visual markers.
-  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*|📊)/g);
+  // Preserve Markdown emphasis/code boundaries, then normalize visual markers
+  // only in the remaining prose so code samples are left untouched.
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g);
 
   return parts.map((part, idx) => {
-    if (part === "📊") {
-      return (
-        <ChartNoAxesCombined key={idx} className="markdown-inline-chart-icon" aria-hidden="true" />
-      );
-    }
     if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={idx}>{part.slice(2, -2)}</strong>;
+      return (
+        <strong key={idx}>
+          {renderInlineVisualMarkers(part.slice(2, -2), `response-bold-${idx}`)}
+        </strong>
+      );
     }
     if (part.startsWith("`") && part.endsWith("`")) {
       return (
@@ -718,9 +905,11 @@ function renderFormattedInlineText(text: string): React.ReactNode {
       );
     }
     if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
-      return <em key={idx}>{part.slice(1, -1)}</em>;
+      return (
+        <em key={idx}>{renderInlineVisualMarkers(part.slice(1, -1), `response-italic-${idx}`)}</em>
+      );
     }
-    return part;
+    return renderInlineVisualMarkers(part, `response-${idx}`);
   });
 }
 

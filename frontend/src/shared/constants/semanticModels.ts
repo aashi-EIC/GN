@@ -11,7 +11,9 @@ export const semanticModels: SemanticModel[] = [
     guide:
       "Quantifies content availability (TBA, Sign-off, Generic) converted into completeness metrics across channels and airing horizons.",
     objective:
-      "Schedule Completeness (TSG) provides a standardized, transparent view of how complete and usable linear-channel schedules are across 24-hour cycles from the current day through a 14-day horizon.",
+      "Schedule Completeness (TSG) is intended to provide a standardized, transparent view of how complete and usable linear-channel schedules are by quantifying content that is:",
+    objectiveSummary:
+      "These conditions are converted into completeness metrics across channels and future airing horizons, enabling users to assess schedule readiness, identify gaps, and monitor improvement over time. The metric represents the percentage of complete content hours - not an error rate - and is calculated using 24-hour cycles across the current day through a 14-day horizon.",
     objectiveNote:
       "Calculated using 24-hour cycles (current day through 14-day horizon). The metric represents the percentage of complete content hours — not an error rate.",
     objectivePoints: [
@@ -29,7 +31,7 @@ export const semanticModels: SemanticModel[] = [
       },
     ],
     businessPurpose:
-      "Serves as a single source of truth for schedule-quality insights. Helps understand whether schedules are sufficiently populated for upcoming broadcasts, where completeness is weak, and how schedule quality changes as the airing date approaches.",
+      "It serves as a single source of truth for schedule-quality insights. It supports:",
     businessPoints: [
       "Client and entitlement-level information",
       "Channel-level investigation",
@@ -37,21 +39,22 @@ export const semanticModels: SemanticModel[] = [
       "Identification of scheduling issues and air-time discrepancies",
       "Transparent discussions in client meetings and QBRs",
     ],
+    businessSummary:
+      "In short, the objective is to help understand whether schedules are sufficiently populated for upcoming broadcasts, where completeness is weak, and how schedule quality changes as the airing date approaches.",
     quickTip: "100% means the schedule is complete without TBA content.",
     highlights: [
       { label: "Coverage Horizon", value: "14 Days" },
       { label: "Evaluation Cycle", value: "24-Hour" },
-      { label: "Target Quality", value: "100% Complete" },
       { label: "Core Categories", value: "TBA / Sign-off / Generic" },
     ],
-    color: "#005D8F",
+    color: "#9B1B5A",
     prompts: [
-      "What is the monthly TBA Completeness for telenet in 2026 ?",
-      "for same time period can you check channel count for same client",
-      "can you compare same result between amazon, telenet and apple clients",
-      "can you compare tba completeness between sky media, telenet and joyn clients in 2026 monthly",
-      "show 20 channels along with prgsvcid which have maximum decline in TBA completness from jan 2026 to may 2026 monthly",
-      "biggest impact on which clients",
+      "What was Telenet's monthly TBA completeness in 2026?",
+      "For the same period, how many channels did Telenet have?",
+      "Compare the results for Amazon, Telenet, and Apple.",
+      "Compare monthly TBA completeness for Sky Media, Telenet, and Joyn in 2026.",
+      "Show the 20 channels and PrgSvcIDs with the largest decline in TBA completeness from January to May 2026.",
+      "Which clients had the biggest impact on schedule completeness?",
     ],
   },
   {
@@ -62,11 +65,13 @@ export const semanticModels: SemanticModel[] = [
     description:
       "Measures VOD mapping performance, volume, and median turnaround time for assets created since 2019 across entitled catalogs.",
     guide:
-      "Provides visibility into ~18 million VOD assets (Mapped, To Be Mapped, Unmappable) with drill-through capabilities.",
+      "Provides visibility into approximately 35 million VOD assets (Mapped, To Be Mapped, Unmappable) with drill-through capabilities.",
     objective:
-      "Mapping Stats (VOD) provides a standardized view of VOD mapping performance across all entitled catalogs. Its core purpose is to measure mapping volume and turnaround time (C2M) for assets created since 2019.",
+      "Mapping Stats (VOD) is intended to provide a standardized view of VOD mapping performance across all entitled catalogs. Its core purpose is to measure mapping volume and turnaround time for assets created since 2019, with analysis by mapping status, availability window, create-date range, C2M/turnaround time, and individual assets. It also supports weekly, monthly, and yearly trend analysis.",
+    objectiveSummary:
+      "It provides visibility into approximately 35 million VOD assets, categorized as Mapped, To Be Mapped, or Unmappable, with drill-through to individual assets for backlog and exception investigation.",
     objectiveNote:
-      "Provides visibility into ~18 million VOD assets with drill-through to individual assets for backlog and exception investigation.",
+      "Provides visibility into approximately 35 million VOD assets with drill-through to individual assets for backlog and exception investigation.",
     objectivePoints: [
       {
         label: "Mapped",
@@ -81,17 +86,18 @@ export const semanticModels: SemanticModel[] = [
         text: "Exception assets requiring investigation and manual resolution.",
       },
     ],
-    businessPurpose:
-      "Serves as a single source of truth for VOD mapping insights. Provides transparent, client-specific evidence of how efficiently VOD assets are mapped and made available.",
+    businessPurpose: "It serves as a single source of truth for VOD mapping insights. It supports:",
     businessPoints: [
       "Monitor the operational health and efficiency of VOD mapping",
       "Track mapped volumes, mapping percentages, and median turnaround time",
       "Identify backlog spikes, delayed assets, and high levels of unmappable content",
-      "Investigate underlying assets and mapping schemes causing performance issues",
-      "Use historical trends to assess consistency and proactively address problems before client concerns",
+      "Investigate the underlying assets and mapping schemes causing performance issues",
+      "Use historical trends to assess consistency and proactively address problems before they become client concerns",
     ],
+    businessSummary:
+      "In short, Mapping Stats (VOD) provides transparent, client-specific evidence of how efficiently VOD assets are mapped and made available, supporting operational oversight, client conversations, backlog management, and continuous process improvement.",
     highlights: [
-      { label: "Asset Volume", value: "~18 Million" },
+      { label: "Asset Volume", value: "~35 Million" },
       { label: "Historical Catalog", value: "2019 - Present" },
       { label: "Key Performance Metric", value: "C2M Turnaround Time" },
       { label: "Mapping Categories", value: "Mapped / TBM / Unmappable" },
@@ -99,12 +105,12 @@ export const semanticModels: SemanticModel[] = [
     quickTip: "Filter by create-date range to analyze turnaround time bottlenecks.",
     color: "#94073F",
     prompts: [
-      "How long are VOD provider imports taking today?",
-      "Which VOD sources have processing bottlenecks?",
-      "Show match rates and delay trends by VOD provider",
-      "Flag VOD providers outside the expected processing time",
-      "Compare today's VOD mapping performance with last week",
-      "Which VOD providers have the lowest match rates?",
+      "What is the VOD mapping percentage by provider this month?",
+      "Show weekly trends for mapped, to-be-mapped, and unmappable assets",
+      "Which providers have the highest median C2M turnaround time?",
+      "Identify backlog spikes and delayed assets by mapping scheme",
+      "Compare this month's VOD mapping performance with last month",
+      "Show unmappable assets that require investigation",
     ],
   },
 ];

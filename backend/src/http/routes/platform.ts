@@ -45,7 +45,7 @@ const settingsBody = z
 
 export const platformRouter = Router();
 
-function permissionsFor(user: AuthenticatedUser) {
+function permissionsFor(_user: AuthenticatedUser) {
   return [
     "chat:create",
     "session:create",
@@ -54,7 +54,7 @@ function permissionsFor(user: AuthenticatedUser) {
     "session:delete",
     "feedback:create",
     "issue:create",
-    ...(user.roles.some((role) => /admin|debug/i.test(role)) ? ["debug:read"] : []),
+    "debug:read",
   ];
 }
 
@@ -64,7 +64,6 @@ function userView(user: AuthenticatedUser) {
     tenant_id: user.tenantId,
     email: user.preferredUsername ?? null,
     roles: user.roles,
-    scopes: user.scopes,
     permissions: permissionsFor(user),
     allowed_semantic_model_ids: listAccessibleModels(user).map((model) => model.id),
   };

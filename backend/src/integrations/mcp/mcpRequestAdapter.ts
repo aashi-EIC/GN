@@ -22,16 +22,23 @@ function setPath(target: Record<string, unknown>, path: string, value: unknown) 
   current[parts.at(-1)!] = value;
 }
 
-/**
- * This is the only place that maps the stable BFF contract to the unknown client MCP payload.
- * Field names are deliberately supplied by environment variables until the client contract arrives.
- */
+/** Maps BFF request fields to the configured MCP payload. */
 export function adaptMcpRequest(context: McpRequestContext): Record<string, unknown> {
   const body: Record<string, unknown> = {};
+
+  for (const [field, value] of Object.entries(getStaticFields())) {
+    setPath(body, field, value);
+  }
+
   setPath(body, getRequired("MCP_REQUEST_PROMPT_FIELD"), context.prompt);
-  setPath(body, getRequired("MCP_REQUEST_SESSION_FIELD"), context.sessionId);
+
+  if (config.MCP_REQUEST_SESSION_FIELD && context.mcpSessionId) {
+    setPath(body, config.MCP_REQUEST_SESSION_FIELD, context.mcpSessionId);
+  }
+
   if (config.MCP_REQUEST_MODEL_FIELD) {
-    setPath(body, config.MCP_REQUEST_MODEL_FIELD, context.semanticModelId);
+    const modelId = getModelIdMap()[context.semanticModelId] ?? context.semanticModelId;
+    setPath(body, config.MCP_REQUEST_MODEL_FIELD, modelId);
   }
   if (config.MCP_REQUEST_CORRELATION_FIELD)
     setPath(body, config.MCP_REQUEST_CORRELATION_FIELD, context.correlationId);
@@ -39,11 +46,13 @@ export function adaptMcpRequest(context: McpRequestContext): Record<string, unkn
     if (!config.MCP_REQUEST_USER_VALUE_SOURCE)
       throw new ConfigurationError("MCP_REQUEST_USER_VALUE_SOURCE is not configured");
     const userValue =
-      config.MCP_REQUEST_USER_VALUE_SOURCE === "oid"
-        ? context.user.objectId
-        : config.MCP_REQUEST_USER_VALUE_SOURCE === "sub"
-          ? context.user.subject
-          : context.user.preferredUsername;
+      config.MCP_REQUEST_USER_VALUE_SOURCE === "browser_user_id"
+        ? context.browserUserId
+        : config.MCP_REQUEST_USER_VALUE_SOURCE === "oid"
+          ? context.user.objectId
+          : config.MCP_REQUEST_USER_VALUE_SOURCE === "sub"
+            ? context.user.subject
+            : context.user.preferredUsername;
     if (!userValue)
       throw new ConfigurationError(
         `The configured user claim ${config.MCP_REQUEST_USER_VALUE_SOURCE} is absent`,
@@ -51,4 +60,49 @@ export function adaptMcpRequest(context: McpRequestContext): Record<string, unkn
     setPath(body, config.MCP_REQUEST_USER_FIELD, userValue);
   }
   return body;
+}
+
+let cachedStaticFields: Record<string, unknown> | undefined;
+let cachedModelIdMap: Record<string, string> | undefined;
+
+function getStaticFields() {
+  if (!cachedStaticFields) {
+    cachedStaticFields = parseObject(
+      config.MCP_REQUEST_STATIC_FIELDS_JSON,
+      "MCP_REQUEST_STATIC_FIELDS_JSON",
+    );
+  }
+  return cachedStaticFields;
+}
+
+function getModelIdMap() {
+  if (!cachedModelIdMap) {
+    const parsed = parseObject(config.MCP_MODEL_ID_MAP_JSON, "MCP_MODEL_ID_MAP_JSON");
+    cachedModelIdMap = Object.fromEntries(
+      Object.entries(parsed).map(([key, value]) => {
+        if (typeof value !== "string" || !value.trim()) {
+          throw new ConfigurationError("MCP_MODEL_ID_MAP_JSON values must be non-empty strings");
+        }
+        return [key, value.trim()];
+      }),
+    );
+  }
+  return cachedModelIdMap;
+}
+
+function parseObject(value: string | undefined, label: string): Record<string, unknown> {
+  if (!value) return {};
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new ConfigurationError(`${label} must contain valid JSON`);
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new ConfigurationError(`${label} must contain a JSON object`);
+  }
+
+  return parsed as Record<string, unknown>;
 }

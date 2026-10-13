@@ -8,13 +8,18 @@ type UiState = {
   themeMode: "light" | "dark";
 };
 
+function readThemeMode(): UiState["themeMode"] {
+  try {
+    return localStorage.getItem(storageKeys.theme) === "dark" ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
+
 const initialState: UiState = {
   sidebarOpen: true,
   debugOpen: false,
-  themeMode:
-    typeof window !== "undefined" && localStorage.getItem(storageKeys.theme) === "dark"
-      ? "dark"
-      : "light",
+  themeMode: readThemeMode(),
 };
 
 const uiSlice = createSlice({
@@ -26,9 +31,6 @@ const uiSlice = createSlice({
     },
     setDebugOpen(state, action: PayloadAction<boolean>) {
       state.debugOpen = action.payload;
-    },
-    setThemeMode(state, action: PayloadAction<UiState["themeMode"]>) {
-      state.themeMode = action.payload;
     },
     toggleThemeMode(state) {
       state.themeMode = state.themeMode === "dark" ? "light" : "dark";

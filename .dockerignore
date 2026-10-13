@@ -7,8 +7,6 @@
 .npm-cache
 .vite
 .vscode
-backend/*
-!backend/package.json
 coverage
 dist
 node_modules
@@ -21,3 +19,13 @@ tmp
 *.zip
 frontend/dist
 frontend/node_modules
+backend/dist
+backend/node_modules
+docs
+.design-previews
+**/tests
+**/__tests__
+**/*.test.*
+**/*.spec.*
+*.tar.gz
+*.b64.txt

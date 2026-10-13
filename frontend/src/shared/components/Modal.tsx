@@ -7,10 +7,12 @@ export function Modal({
   children,
   close,
   label = "Dialog",
+  className = "",
 }: {
   children: ReactNode;
   close: () => void;
   label?: string;
+  className?: string;
 }) {
   const dialogRef = useRef<HTMLElement | null>(null);
 
@@ -39,7 +41,7 @@ export function Modal({
     >
       <motion.section
         ref={dialogRef}
-        className="modal"
+        className={`modal ${className}`.trim()}
         role="dialog"
         aria-modal="true"
         aria-label={label}

@@ -2,30 +2,30 @@ import { useMemo, useState } from "react";
 import { ArrowUp, Mic } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import type { ModelId, SemanticModel } from "../types/semantic";
-import { handleEnter } from "../../../shared/utils/keyboard";
 import { startVoiceInput } from "../utils/speech";
 import { ModelPicker } from "./ModelPicker";
+import { ChatPromptInput } from "./ChatPromptInput";
 
 import { firstName } from "../../../shared/utils/identity";
 import type { UserProfile } from "../../../shared/types/app";
 
 const WELCOME_MESSAGES = [
-  "Hola {Name}! Ready to talk to your metrics in plain english?",
-  "Bring a smart question, {Name} , and let the data do the flex!",
-  "Ending spreadsheet civil wars one question at a time - welcome back, {Name}!",
-  "Ask away, {Name}-get real facts before your coffee gets cold!",
-  "Numbers never lie-they were just waiting for someone to ask, {Name}!",
-  "Welcome {Name}! Your dashboards can now talk. What do you want to ask today?",
-  "Connecting you directly with data, {Name}. What’s on your mind?",
-  "Welcome, {Name}! Let’s uncover some great insights today. Your query?",
-  "Ready to spot some outliers, {Name}? Ask your toughest questions",
-  "Ask away, {Name} - no question is too niche when data is on the line",
-  "My favorite seeker of truth is here, {Name}! What trends or metrics are we analyzing today?",
-  "Good to see you, {Name}! Fair warning: I take data very seriously. Let's dig in",
-  "Coffee? Check. Metrics? Calibrated. Let's see what the data is telling us today, {Name}",
-  "The data's ready, {Name}. The real question is-are you? Let's find out",
-  "Welcome back, {Name}! Virtual magnifying glasses ready. What metrics are we looking at today?",
-  "Hey {Name}, let's uncover the insights hidden in data",
+  "Hola {Name}! Ready to talk metrics in plain English?",
+  "Bring a smart question, {Name}, let the data flex!",
+  "Ending spreadsheet civil wars, {Name} - welcome back!",
+  "Ask away, {Name} - facts before your coffee cools!",
+  "Numbers don't lie, {Name} - they're just waiting on you!",
+  "Your dashboards can now talk, {Name} - what's first?",
+  "Direct line to your data, {Name} - what’s on your mind?",
+  "Welcome, {Name}! What insights are we uncovering today?",
+  "Spotting outliers, {Name}? Hit me with the tough stuff!",
+  "Hi {Name} - no question is niche when data is on the line",
+  "Welcome, truth-seeker {Name}! What are we analyzing?",
+  "Fair warning, {Name} - I take data seriously. Let's dig in!",
+  "Coffee poured, metrics calibrated. What's next, {Name}?",
+  "The data's ready, {Name} - are you?",
+  "Magnifying glass out, {Name} - which metrics today?",
+  "Hi {Name}, let's uncover those hidden insights!",
 ];
 
 export function WelcomePanel({
@@ -38,6 +38,8 @@ export function WelcomePanel({
   prompt,
   setPrompt,
   submitPrompt,
+  showMagicHint,
+  dismissMagicHint,
 }: {
   user?: UserProfile | null;
   model: SemanticModel;
@@ -48,6 +50,8 @@ export function WelcomePanel({
   prompt: string;
   setPrompt: (prompt: string) => void;
   submitPrompt: (prompt?: string) => void;
+  showMagicHint: boolean;
+  dismissMagicHint: () => void;
 }) {
   const [isRecording, setIsRecording] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -75,14 +79,14 @@ export function WelcomePanel({
         <span className="welcome-name-gradient">{userName}</span>
         {messageParts[1]}
       </h1>
-      <div className="welcome-composer">
-        <textarea
-          rows={1}
-          value={prompt}
-          onChange={(event) => setPrompt(event.target.value)}
-          onKeyDown={(event) => handleEnter(event, () => submitPrompt())}
-          aria-label={`Ask ${model.name}`}
-          placeholder=""
+      <div className="welcome-composer" onPointerDown={dismissMagicHint}>
+        <ChatPromptInput
+          prompt={prompt}
+          setPrompt={setPrompt}
+          submitPrompt={submitPrompt}
+          label={"Ask " + model.name}
+          showMagicHint={showMagicHint}
+          dismissMagicHint={dismissMagicHint}
         />
         <div className="composer-bottom">
           <ModelPicker

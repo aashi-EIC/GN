@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Copy,
@@ -12,9 +13,16 @@ import {
   Table as TableIcon,
   X,
 } from "lucide-react";
-import type { VisualizationBlock } from "../../../../shared/types/app";
+import type { TablePageSize, VisualizationBlock } from "../../../../shared/types/app";
+import { renderInlineVisualMarkers } from "../InlineVisualMarkers";
 
-export function VisualizationRenderer({ blocks }: { blocks: VisualizationBlock[] }) {
+export function VisualizationRenderer({
+  blocks,
+  defaultPageSize,
+}: {
+  blocks: VisualizationBlock[];
+  defaultPageSize: TablePageSize;
+}) {
   const tables = blocks.filter(
     (block): block is Extract<VisualizationBlock, { type: "table" }> => block.type === "table",
   );
@@ -25,7 +33,11 @@ export function VisualizationRenderer({ blocks }: { blocks: VisualizationBlock[]
   return (
     <div className="visualization-stack">
       {tables.map((block, index) => (
-        <StructuredTable key={`${block.type}-${index}`} block={block} />
+        <StructuredTable
+          key={`${block.type}-${index}`}
+          block={block}
+          defaultPageSize={defaultPageSize}
+        />
       ))}
       {textBlocks.map((block, index) => (
         <p key={`${block.type}-${index}`}>{block.content}</p>
@@ -43,7 +55,6 @@ function toNumber(value: unknown) {
 
 const NOISE_COLUMNS = new Set([
   "tenant_id",
-  "id",
   "uuid",
   "_id",
   "created_at",
@@ -100,16 +111,69 @@ function normalizeTableValue(value: unknown): unknown {
 export function StructuredTable({
   block,
   minimal = false,
+  defaultPageSize = 5,
+  receiving = false,
+  partial = false,
 }: {
   block: Extract<VisualizationBlock, { type: "table" }>;
   minimal?: boolean;
+  defaultPageSize?: TablePageSize;
+  receiving?: boolean;
+  partial?: boolean;
 }) {
+  const incomplete = receiving || partial;
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>(null);
-  const [pageSize, setPageSize] = useState<number>(5);
+  const [pageSize, setPageSize] = useState<number>(defaultPageSize);
+  const [pageSizeDraft, setPageSizeDraft] = useState(() => String(defaultPageSize));
+  const [pageSizeMenuOpen, setPageSizeMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [copied, setCopied] = useState(false);
+  const pageSizeMenuId = useId();
+  const pageSizeControlRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setPageSize(defaultPageSize);
+    setPageSizeDraft(String(defaultPageSize));
+    setCurrentPage(1);
+  }, [defaultPageSize]);
+
+  useEffect(() => {
+    if (!pageSizeMenuOpen) return;
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!pageSizeControlRef.current?.contains(event.target as Node)) {
+        setPageSizeMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
+  }, [pageSizeMenuOpen]);
+
+  const applyPageSize = (nextPageSize: number) => {
+    setPageSize(nextPageSize);
+    setPageSizeDraft(nextPageSize <= 0 ? "All" : String(nextPageSize));
+    setCurrentPage(1);
+    setPageSizeMenuOpen(false);
+  };
+
+  const commitPageSize = () => {
+    const normalizedDraft = pageSizeDraft.trim();
+    const parsed = Number(normalizedDraft);
+    const nextPageSize =
+      normalizedDraft.toLowerCase() === "all"
+        ? 0
+        : Number.isFinite(parsed) && normalizedDraft
+          ? Math.min(100, Math.max(1, Math.trunc(parsed)))
+          : pageSize;
+    applyPageSize(nextPageSize);
+  };
+
+  const pageSizeOptions = Array.from(new Set([pageSize, 5, 10, 15, 20, 25, 50, 75, 100]))
+    .filter((option) => option > 0)
+    .sort((a, b) => a - b);
 
   const columns = useMemo(() => {
     const allCols = block.columns.map((column) =>
@@ -135,7 +199,8 @@ export function StructuredTable({
       block.rows.map((row) => {
         if (Array.isArray(row)) {
           const record: Record<string, unknown> = {};
-          columns.forEach((col, idx) => {
+          block.columns.forEach((column, idx) => {
+            const col = typeof column === "string" ? { key: column } : column;
             record[col.key] = normalizeTableValue(row[idx]);
           });
           return record;
@@ -159,7 +224,7 @@ export function StructuredTable({
   }, [rawRows, columns, searchQuery]);
 
   const sortedRows = useMemo(() => {
-    if (!sortKey || !sortDirection) return filteredRows;
+    if (incomplete || !sortKey || !sortDirection) return filteredRows;
     return [...filteredRows].sort((a, b) => {
       const valA = a[sortKey];
       const valB = b[sortKey];
@@ -174,7 +239,7 @@ export function StructuredTable({
       }
       return sortDirection === "asc" ? cmp : -cmp;
     });
-  }, [filteredRows, sortKey, sortDirection]);
+  }, [filteredRows, sortKey, sortDirection, incomplete]);
 
   const totalRows = sortedRows.length;
   const isAll = pageSize >= totalRows || pageSize <= 0;
@@ -187,6 +252,7 @@ export function StructuredTable({
   }, [sortedRows, safePage, pageSize, isAll]);
 
   const handleSort = (key: string) => {
+    if (incomplete) return;
     if (sortKey !== key) {
       setSortKey(key);
       setSortDirection("asc");
@@ -199,6 +265,7 @@ export function StructuredTable({
   };
 
   const exportCsv = () => {
+    if (incomplete) return;
     const headerRow = columns.map((c) => `"${c.label.replace(/"/g, '""')}"`).join(",");
     const dataRows = sortedRows.map((row) =>
       columns
@@ -222,6 +289,7 @@ export function StructuredTable({
   };
 
   const copyTsv = async () => {
+    if (incomplete) return;
     const headerRow = columns.map((c) => c.label).join("\t");
     const dataRows = sortedRows.map((row) =>
       columns.map((c) => String(row[c.key] ?? "")).join("\t"),
@@ -234,6 +302,8 @@ export function StructuredTable({
 
   return (
     <section
+      data-incomplete={incomplete || undefined}
+      aria-busy={receiving || undefined}
       className={
         minimal
           ? "table-section minimal-table-container"
@@ -245,12 +315,23 @@ export function StructuredTable({
           <div className="table-header-left">
             <TableIcon size={16} className="table-icon-header" />
             <b className="table-title">{block.title || "Query Results"}</b>
-            <span className="table-row-count-badge">
+            <span className="table-row-count-badge" hidden={incomplete}>
               {totalRows} {totalRows === 1 ? "row" : "rows"}
             </span>
           </div>
         )}
-        {minimal && <div className="table-header-left" />}
+        {minimal && !incomplete && <div className="table-header-left" />}
+        {incomplete && (
+          <div className="table-stream-status">
+            <span className="table-stream-status-dot" aria-hidden="true" />
+            <span>
+              {rawRows.length} {rawRows.length === 1 ? "row" : "rows"} received
+              <span className="table-stream-status-label">
+                {partial ? " · Partial answer" : " · Receiving…"}
+              </span>
+            </span>
+          </div>
+        )}
 
         <div className="table-actions-right">
           <div className="table-search-box">
@@ -258,6 +339,8 @@ export function StructuredTable({
             <input
               type="text"
               placeholder="Search table..."
+              aria-label="Search table"
+              disabled={incomplete}
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -281,7 +364,9 @@ export function StructuredTable({
             type="button"
             className="btn-table-action"
             onClick={copyTsv}
-            title="Copy to clipboard (ready for Excel/Sheets)"
+            disabled={incomplete}
+            aria-label={incomplete ? "Copy unavailable until the table is complete" : "Copy table"}
+            title={incomplete ? undefined : "Copy to clipboard (ready for Excel/Sheets)"}
           >
             {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
             <span>{copied ? "Copied" : "Copy"}</span>
@@ -292,7 +377,9 @@ export function StructuredTable({
             type="button"
             className="btn-table-action"
             onClick={exportCsv}
-            title="Export as CSV file"
+            disabled={incomplete}
+            aria-label={incomplete ? "CSV unavailable until the table is complete" : "Export CSV"}
+            title={incomplete ? undefined : "Export as CSV file"}
           >
             <Download size={14} />
             <span>CSV</span>
@@ -310,16 +397,20 @@ export function StructuredTable({
                 return (
                   <th
                     key={column.key}
-                    onClick={() => handleSort(column.key)}
-                    className={`sortable-th ${isSorted ? "is-sorted" : ""}`}
-                    title={`Sort by ${column.label}`}
+                    onClick={incomplete ? undefined : () => handleSort(column.key)}
+                    className={`${incomplete ? "" : "sortable-th"} ${isSorted ? "is-sorted" : ""}`}
+                    title={incomplete ? undefined : `Sort by ${column.label}`}
                     aria-sort={
-                      isSorted ? (sortDirection === "asc" ? "ascending" : "descending") : "none"
+                      !incomplete && isSorted
+                        ? sortDirection === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : "none"
                     }
                   >
                     <div className="th-content">
                       <span>{column.label}</span>
-                      <span className="sort-icon-wrap">
+                      <span className="sort-icon-wrap" hidden={incomplete}>
                         {isSorted && sortDirection === "asc" ? (
                           <ArrowUp size={13} className="sort-icon active" />
                         ) : isSorted && sortDirection === "desc" ? (
@@ -344,7 +435,7 @@ export function StructuredTable({
                     const isNum = !Number.isNaN(numVal) && typeof rawVal !== "boolean";
                     return (
                       <td key={column.key} className={isNum ? "cell-number" : "cell-text"}>
-                        {formatCell(rawVal, column.key)}
+                        {formatCell(rawVal, `${column.key} ${column.label}`)}
                       </td>
                     );
                   })}
@@ -353,7 +444,9 @@ export function StructuredTable({
             ) : (
               <tr>
                 <td colSpan={columns.length} className="empty-table-cell">
-                  No matching records found for "{searchQuery}"
+                  {receiving && !rawRows.length
+                    ? "Receiving table rows…"
+                    : `No matching records found for "${searchQuery}"`}
                 </td>
               </tr>
             )}
@@ -362,7 +455,7 @@ export function StructuredTable({
       </div>
 
       {/* Footer Pagination Bar */}
-      {totalRows > 5 && (
+      {!incomplete && (rawRows.length > 5 || (!isAll && rawRows.length > pageSize)) && (
         <div className="table-footer-pagination">
           <div className="pagination-info">
             Showing {(safePage - 1) * pageSize + 1}–
@@ -371,23 +464,76 @@ export function StructuredTable({
           </div>
 
           <div className="pagination-controls">
-            <label className="page-size-label">
+            <div className="page-size-label">
               <span>Rows</span>
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="page-size-select"
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={totalRows}>All</option>
-              </select>
-            </label>
+              <div className="page-size-combobox" ref={pageSizeControlRef}>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={pageSizeDraft}
+                  onChange={(event) => setPageSizeDraft(event.target.value)}
+                  onBlur={commitPageSize}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      commitPageSize();
+                      event.currentTarget.blur();
+                    }
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setPageSizeDraft(pageSize <= 0 ? "All" : String(pageSize));
+                      setPageSizeMenuOpen(false);
+                    }
+                  }}
+                  className="page-size-input"
+                  role="combobox"
+                  aria-label="Rows per page"
+                  aria-expanded={pageSizeMenuOpen}
+                  aria-controls={pageSizeMenuId}
+                  aria-autocomplete="list"
+                  title="Enter 1-100 rows or select a preset"
+                />
+                <button
+                  type="button"
+                  className="page-size-dropdown-toggle"
+                  aria-label="Choose rows per page"
+                  aria-expanded={pageSizeMenuOpen}
+                  aria-controls={pageSizeMenuId}
+                  onPointerDown={(event) => event.preventDefault()}
+                  onClick={() => setPageSizeMenuOpen((isOpen) => !isOpen)}
+                >
+                  <ChevronDown size={14} aria-hidden="true" />
+                </button>
+
+                {pageSizeMenuOpen && (
+                  <div id={pageSizeMenuId} className="page-size-options" role="listbox">
+                    {pageSizeOptions.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        role="option"
+                        aria-selected={pageSize === option}
+                        onPointerDown={(event) => event.preventDefault()}
+                        onClick={() => applyPageSize(option)}
+                      >
+                        <span>{option}</span>
+                        {pageSize === option && <Check size={12} aria-hidden="true" />}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={pageSize <= 0}
+                      onPointerDown={(event) => event.preventDefault()}
+                      onClick={() => applyPageSize(0)}
+                    >
+                      <span>All</span>
+                      {pageSize <= 0 && <Check size={12} aria-hidden="true" />}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
 
             {!isAll && totalPages > 1 && (
               <div className="page-nav-buttons">
@@ -417,6 +563,14 @@ export function StructuredTable({
           </div>
         </div>
       )}
+      {incomplete && !isAll && totalRows > pageSize && (
+        <div className="table-stream-footnote">
+          Showing the first {pageSize} received rows.{" "}
+          {partial
+            ? "Retry the request to receive a complete answer."
+            : "All rows and table actions are available when the response completes."}
+        </div>
+      )}
     </section>
   );
 }
@@ -426,6 +580,12 @@ function formatCell(value: unknown, columnKey: string) {
   if (typeof value === "boolean") return value ? "Yes" : "No";
 
   const str = String(value).trim();
+  if (/(?:^|[_\s])id(?:$|[_\s])|prg.?svc.?id|channel.?id/i.test(columnKey)) return str;
+  if (/decline|decrease|drop|loss|change|delta|growth|increase|improvement/i.test(columnKey)) {
+    return typeof value === "number" && isPercentageColumn(columnKey)
+      ? `${value}%`
+      : renderInlineVisualMarkers(str, `table-${columnKey}`);
+  }
   const badgeClass = STATUS_BADGE_CLASSES.get(str.toLowerCase());
   if (badgeClass) return <span className={`table-badge ${badgeClass}`}>{str}</span>;
 
@@ -433,7 +593,7 @@ function formatCell(value: unknown, columnKey: string) {
     return isPercentageColumn(columnKey) ? formatPercentage(value) : formatNumber(value);
   }
 
-  return str;
+  return renderInlineVisualMarkers(str, `table-${columnKey}`);
 }
 
 const STATUS_BADGE_CLASSES = new Map<string, string>([
@@ -452,7 +612,7 @@ const STATUS_BADGE_CLASSES = new Map<string, string>([
   ["failed", "badge-danger"],
 ]);
 
-const PERCENTAGE_COLUMN_TERMS = ["pct", "rate", "percent", "completeness"];
+const PERCENTAGE_COLUMN_TERMS = ["pct", "rate", "percent", "completeness", "%"];
 
 function isPercentageColumn(columnKey: string) {
   const normalizedKey = columnKey.toLowerCase();

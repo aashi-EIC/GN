@@ -13,16 +13,6 @@ export class ConfigurationError extends AppError {
     super(503, "CONFIGURATION_ERROR", message, details);
   }
 }
-export class AuthenticationError extends AppError {
-  constructor(message = "Authentication required") {
-    super(401, "AUTHENTICATION_REQUIRED", message);
-  }
-}
-export class AuthorizationError extends AppError {
-  constructor(message = "Insufficient permissions") {
-    super(403, "FORBIDDEN", message);
-  }
-}
 export class NotFoundError extends AppError {
   constructor(message = "Resource not found") {
     super(404, "NOT_FOUND", message);

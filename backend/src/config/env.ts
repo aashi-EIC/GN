@@ -22,19 +22,11 @@ const schema = z.object({
 
   CORS_ALLOWED_ORIGINS: optionalText,
 
-  ENTRA_TENANT_ID: optionalText,
-  ENTRA_API_AUDIENCE: optionalText,
-  ENTRA_ACCEPT_V1_TOKENS: bool.default(false),
-  ENTRA_REQUIRED_SCOPE: optionalText,
-  ENTRA_ALLOWED_ROLES: optionalText,
-  DISABLE_AUTH: bool.default(false),
-
   SEMANTIC_MODELS_JSON: optionalText,
   FEATURE_FLAGS_JSON: optionalText,
   MAX_PROMPT_LENGTH: integer(20_000),
   MAX_HISTORY_ITEMS: integer(10),
 
-  REDIS_URL: optionalText,
   RATE_LIMIT_WINDOW_MS: integer(60_000),
   RATE_LIMIT_MAX: integer(30),
 
@@ -43,7 +35,11 @@ const schema = z.object({
     (value) => (value === "" ? undefined : value),
     z.string().min(1).default("/chat"),
   ),
-  MCP_TIMEOUT_MS: integer(60_000),
+  MCP_TIMEOUT_MS: integer(300_000),
+  CHAT_STREAMING_ENABLED: bool.default(false),
+  MCP_STREAM_ENDPOINT_PATH: z.string().min(1).default("/chat/stream"),
+  // Anonymous pilot metadata, not a verified user identity.
+  MCP_STREAM_EMAIL: z.string().email().default("test@example.com"),
   MCP_MAX_RESPONSE_BYTES: integer(5_242_880),
   MCP_SAFE_RETRY_ENABLED: bool.default(false),
   MCP_MAX_RETRIES: z.preprocess(
@@ -51,30 +47,28 @@ const schema = z.object({
     z.number().int().min(0).max(3),
   ),
 
-  MCP_AUTH_MODE: z.enum(["none", "api-key", "obo"]).default("none"),
+  MCP_AUTH_MODE: z.enum(["none", "api-key"]).default("none"),
   MCP_API_KEY_HEADER: optionalText,
   MCP_API_KEY_VALUE: optionalText,
-
-  OBO_TENANT_ID: optionalText,
-  OBO_CLIENT_ID: optionalText,
-  OBO_CLIENT_SECRET: optionalText,
-  OBO_DOWNSTREAM_SCOPE: optionalText,
 
   MCP_REQUEST_PROMPT_FIELD: z.preprocess(
     (value) => (value === "" ? undefined : value),
     z.string().min(1).default("message"),
   ),
-  MCP_REQUEST_SESSION_FIELD: z.preprocess(
-    (value) => (value === "" ? undefined : value),
-    z.string().min(1).default("session_id"),
-  ),
+  MCP_REQUEST_SESSION_FIELD: optionalText,
   MCP_REQUEST_MODEL_FIELD: optionalText,
+  MCP_REQUEST_STATIC_FIELDS_JSON: optionalText,
+  MCP_MODEL_ID_MAP_JSON: optionalText,
   MCP_REQUEST_CORRELATION_FIELD: optionalText,
   MCP_REQUEST_USER_FIELD: optionalText,
   MCP_REQUEST_USER_VALUE_SOURCE: z.preprocess(
     (value) => (value === "" ? undefined : value),
-    z.enum(["oid", "sub", "preferred_username"]).optional(),
+    z.enum(["browser_user_id", "oid", "sub", "preferred_username"]).optional(),
   ),
+  MCP_RESPONSE_TEXT_PATH: optionalText,
+  MCP_RESPONSE_DATA_PATH: optionalText,
+  MCP_RESPONSE_DEBUG_PATH: optionalText,
+  MCP_RESPONSE_VISUALIZATION_PATH: optionalText,
 });
 
 const parsed = schema.safeParse(process.env);
@@ -98,42 +92,11 @@ export function getRequired<K extends keyof typeof config>(key: K): string {
   return value;
 }
 
-export function getOboTenantId(): string {
-  const tenantId = config.OBO_TENANT_ID ?? config.ENTRA_TENANT_ID;
-  if (!tenantId)
-    throw new ConfigurationError(
-      "Missing required configuration: OBO_TENANT_ID or ENTRA_TENANT_ID",
-    );
-  return tenantId;
-}
-
-export function getDownstreamScopes(): string[] {
-  const raw = getRequired("OBO_DOWNSTREAM_SCOPE");
-  const scopes = raw
-    .split(/[,\s]+/)
-    .map((scope) => scope.trim())
-    .filter(Boolean);
-  if (!scopes.length)
-    throw new ConfigurationError("OBO_DOWNSTREAM_SCOPE must contain at least one scope");
-  return scopes;
-}
-
 export function assertRuntimeConfiguration() {
-  requireConfig(
-    "ENTRA_TENANT_ID",
-    "ENTRA_API_AUDIENCE",
-    "MCP_BASE_URL",
-    "MCP_ENDPOINT_PATH",
-    "MCP_REQUEST_PROMPT_FIELD",
-    "MCP_REQUEST_SESSION_FIELD",
-  );
+  requireConfig("MCP_BASE_URL", "MCP_ENDPOINT_PATH", "MCP_REQUEST_PROMPT_FIELD");
 
   if (config.MCP_AUTH_MODE === "api-key") {
     requireConfig("MCP_API_KEY_HEADER", "MCP_API_KEY_VALUE");
-  } else if (config.MCP_AUTH_MODE === "obo") {
-    requireConfig("OBO_CLIENT_ID", "OBO_CLIENT_SECRET", "OBO_DOWNSTREAM_SCOPE");
-    getOboTenantId();
-    getDownstreamScopes();
   }
   if (config.MCP_REQUEST_USER_FIELD && !config.MCP_REQUEST_USER_VALUE_SOURCE) {
     throw new ConfigurationError(

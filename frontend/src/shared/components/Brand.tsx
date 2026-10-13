@@ -8,14 +8,3 @@ export function AskBrandMark() {
     </span>
   );
 }
-
-export function MicrosoftMark() {
-  return (
-    <span className="ms-mark" aria-hidden="true">
-      <i />
-      <i />
-      <i />
-      <i />
-    </span>
-  );
-}

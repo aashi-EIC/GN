@@ -1,6 +1,5 @@
-import { ConfidentialClientApplication } from "@azure/msal-node";
-import { config, getDownstreamScopes, getOboTenantId, getRequired } from "../../config/env.js";
-import { ConfigurationError, UpstreamError } from "../../errors.js";
+import { config, getRequired } from "../../config/env.js";
+import { ConfigurationError } from "../../errors.js";
 import type { AuthenticatedUser } from "../../types.js";
 
 export type OutboundAuthenticationProvider = {
@@ -26,39 +25,7 @@ class NoAuthenticationProvider implements OutboundAuthenticationProvider {
   }
 }
 
-class OboAuthenticationProvider implements OutboundAuthenticationProvider {
-  private application?: ConfidentialClientApplication;
-
-  async getHeaders(user: AuthenticatedUser) {
-    const tenantId = getOboTenantId();
-    const clientId = getRequired("OBO_CLIENT_ID");
-    const clientSecret = getRequired("OBO_CLIENT_SECRET");
-    const scopes = getDownstreamScopes();
-
-    this.application ??= new ConfidentialClientApplication({
-      auth: {
-        clientId,
-        clientSecret,
-        authority: `https://login.microsoftonline.com/${tenantId}`,
-      },
-    });
-
-    const result = await this.application.acquireTokenOnBehalfOf({
-      oboAssertion: user.rawAccessToken,
-      scopes,
-      skipCache: false,
-    });
-
-    if (!result?.accessToken) {
-      throw new UpstreamError("OBO token acquisition failed");
-    }
-
-    return { authorization: `Bearer ${result.accessToken}` };
-  }
-}
-
 export function createAuthenticationProvider(): OutboundAuthenticationProvider {
-  if (config.MCP_AUTH_MODE === "obo") return new OboAuthenticationProvider();
   if (config.MCP_AUTH_MODE === "api-key") return new ApiKeyAuthenticationProvider();
   return new NoAuthenticationProvider();
 }

@@ -15,7 +15,12 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   const log = appError.status >= 500 ? logger.error.bind(logger) : logger.warn.bind(logger);
 
   log(
-    { err: error, correlationId, code: appError.code, status: appError.status },
+    {
+      err: appError.code === "INVALID_JSON" ? appError : error,
+      correlationId,
+      code: appError.code,
+      status: appError.status,
+    },
     appError.message,
   );
 
@@ -33,6 +38,16 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
 
 function toAppError(error: unknown) {
   if (error instanceof AppError) return error;
+
+  if (
+    error instanceof SyntaxError &&
+    "type" in error &&
+    error.type === "entity.parse.failed" &&
+    "status" in error &&
+    error.status === 400
+  ) {
+    return new AppError(400, "INVALID_JSON", "Malformed JSON in request body");
+  }
 
   if (error instanceof ZodError) {
     return new AppError(400, "VALIDATION_ERROR", "Request validation failed", error.flatten());

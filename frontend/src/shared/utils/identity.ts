@@ -1,15 +1,3 @@
-import type { AccountInfo } from "@azure/msal-browser";
-import type { UserProfile } from "../types/app";
-
-export function accountToProfile(account?: AccountInfo): UserProfile {
-  const email = account?.username || "signed.in@conversationalbi.com";
-  return {
-    email,
-    name: account?.name || nameFromEmail(email),
-    authProvider: "Microsoft Entra ID",
-  };
-}
-
 export function firstName(name: string) {
   return name.split(" ")[0] || "there";
 }

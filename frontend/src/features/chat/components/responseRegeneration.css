@@ -1,0 +1,354 @@
+.response.is-regenerating {
+  position: relative;
+  min-height: 36px;
+}
+
+.response.is-regenerating > .response-content {
+  /* Keep later turns in place while the previous answer is hidden. */
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.response.is-regenerating > .regeneration-preview:not(:has(.has-preview)) {
+  position: sticky;
+  top: 16px;
+  height: 32px;
+  min-height: 32px;
+  margin-bottom: -32px;
+  z-index: 1;
+}
+
+.messages .assistant-row {
+  scroll-margin-block: 16px;
+}
+
+.messages .assistant-row.regenerating-row:has(.thinking) {
+  align-items: flex-start;
+}
+
+.messages .assistant-row.regenerating-row:has(.thinking) > .ai-mark {
+  position: sticky;
+  top: 16px;
+}
+
+/* The final turn has no later messages whose position needs preserving. */
+.messages > .assistant-row.regenerating-row:not(:has(~ .assistant-row, ~ .user-row)) {
+  align-items: center;
+}
+
+.messages > .assistant-row.regenerating-row:not(:has(~ .assistant-row, ~ .user-row)) > .ai-mark {
+  position: static;
+}
+
+.messages > .assistant-row.regenerating-row:not(:has(~ .assistant-row, ~ .user-row)) > .response {
+  min-height: 28px;
+  padding-bottom: 0;
+}
+
+.messages
+  > .assistant-row.regenerating-row:not(:has(~ .assistant-row, ~ .user-row))
+  .response-content {
+  display: none;
+}
+
+.messages
+  > .assistant-row.regenerating-row:not(:has(~ .assistant-row, ~ .user-row))
+  .regeneration-preview {
+  position: static;
+  margin-bottom: 0;
+}
+
+.response-actions .icon-btn.regenerating:disabled {
+  color: var(--gn-pink);
+  background: var(--gn-soft-pink);
+  opacity: 1;
+}
+
+.regeneration-spinner {
+  animation: response-regeneration-spin 1s linear infinite;
+}
+
+.messages .assistant-row:has(.pending-response.has-preview) {
+  align-items: flex-start;
+}
+
+.pending-response {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pending-response > .markdown-response-body + .thinking {
+  margin-top: 12px;
+}
+
+/* Run once on first visible content, not again for every token. */
+.pending-response > .markdown-response-body {
+  animation: stream-preview-in 180ms ease-out;
+}
+
+.response.is-regenerating > .regeneration-preview:has(.has-preview) {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.messages
+  > .assistant-row.regenerating-row:not(:has(~ .assistant-row, ~ .user-row))
+  .regeneration-preview {
+  position: static;
+  overflow: visible;
+}
+
+/* Reuse the original wave and text shimmer from globals.css; no per-character animation. */
+
+.pending-response .streaming-status {
+  color: var(--ui-muted);
+  gap: 8px;
+  min-height: 24px;
+  font-size: 12px;
+  font-weight: 400;
+  animation: stream-preview-in 180ms ease-out;
+}
+
+.pending-response .streaming-status .thinking-label {
+  background: none;
+  color: var(--ui-muted);
+  -webkit-text-fill-color: currentColor;
+  animation: none;
+}
+
+.pending-response .streaming-dots {
+  display: inline-flex;
+  flex: 0 0 18px;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 16px;
+}
+
+.pending-response .streaming-dots i {
+  display: block;
+  flex: 0 0 4px;
+  width: 4px;
+  height: 4px;
+  margin: 0 !important;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #2e88ff, #a338e8 52%, var(--gn-pink));
+  animation: stream-writing-pulse 1.5s ease-in-out infinite;
+}
+
+.pending-response .streaming-dots i:nth-child(2) {
+  animation-delay: -1.25s;
+}
+
+.pending-response .streaming-dots i:nth-child(3) {
+  animation-delay: -1s;
+}
+
+/* Keep widths stable as complete rows arrive. This applies only to the live preview. */
+.pending-response table {
+  table-layout: fixed;
+}
+
+/* Small result tables fit mobile; four or more columns retain horizontal scrolling. */
+.response
+  :is(.minimal-table-container, .interactive-table-container)
+  table:not(:has(th:nth-child(4))) {
+  min-width: 0;
+}
+
+.pending-response :is(th, td) {
+  overflow-wrap: anywhere;
+}
+
+.pending-response .executive-insight-block {
+  animation: stream-section-in 160ms ease-out;
+}
+.messages .assistant-row:has(.pending-response) > .ai-mark.assistant-mark {
+  animation: stream-mark 2s ease-in-out infinite;
+}
+
+/* Once text arrives, only the small writing dots remain animated. */
+.messages .assistant-row:has(.pending-response.has-preview) > .ai-mark.assistant-mark {
+  animation: none;
+}
+
+.table-section[data-incomplete] :is(.table-header-toolbar, .minimal-table-toolbar) {
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.table-section[data-incomplete] .sort-icon-wrap,
+.table-section[data-incomplete] .table-row-count-badge[hidden] {
+  display: none;
+}
+
+.table-stream-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ui-text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.table-stream-status-label,
+.table-stream-footnote {
+  color: var(--ui-muted);
+}
+
+.table-stream-status-dot {
+  flex: 0 0 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--gn-pink);
+}
+
+.table-stream-footnote {
+  padding: 8px 12px;
+  border-top: 1px solid var(--ui-border);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.response :is(.btn-table-action, .btn-copy-code):disabled,
+.response .table-search-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.stream-interrupted-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--gn-pink);
+  border-radius: 0 6px 6px 0;
+  background: color-mix(in srgb, var(--gn-pink) 4%, var(--ui-panel));
+  color: var(--ui-text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.stream-interrupted-notice svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--gn-pink);
+}
+
+.chat-latest-control {
+  position: relative;
+  z-index: 21;
+  flex: 0 0 0;
+  height: 0;
+}
+
+.jump-to-latest {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  background: var(--ui-panel);
+  color: var(--ui-text);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--ui-text) 8%, transparent);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  transform: translateX(-50%);
+}
+
+.jump-to-latest svg {
+  color: var(--gn-pink);
+}
+
+.jump-to-latest:hover {
+  border-color: var(--gn-pink);
+}
+
+.jump-to-latest:focus-visible {
+  outline: 2px solid var(--gn-pink);
+  outline-offset: 3px;
+}
+
+@media (max-width: 900px) {
+  .jump-to-latest {
+    min-height: 44px;
+  }
+}
+
+@keyframes stream-preview-in {
+  from {
+    opacity: 0.65;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* The writing indicator uses opacity only, without shifting the response. */
+@keyframes stream-writing-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes stream-section-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes stream-mark {
+  0%,
+  100% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Keep the explicitly requested loader animations; other motion stays reduced. */
+  .pending-response .thinking-wave i {
+    animation-name: thinking-wave;
+    animation-duration: 1.05s;
+  }
+
+  .pending-response > .markdown-response-body,
+  .pending-response .streaming-status,
+  .pending-response .executive-insight-block,
+  .messages .assistant-row:has(.pending-response) > .ai-mark.assistant-mark {
+    animation: none;
+  }
+}
+
+@keyframes response-regeneration-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .regeneration-spinner {
+    animation: none;
+  }
+}

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { once } from "node:events";
 import { z } from "zod";
 import {
   cancelChatRequest,
@@ -8,7 +9,8 @@ import {
 import { processChat } from "../../application/services/chatService.js";
 import { getAccessibleModel, getFeatureFlags } from "../../config/catalog.js";
 import { config } from "../../config/env.js";
-import { NotFoundError } from "../../errors.js";
+import { AppError, NotFoundError } from "../../errors.js";
+import { logger } from "../../observability/logger.js";
 import {
   createOwnedSession,
   deleteOwnedSession,
@@ -20,7 +22,10 @@ import type { AuthenticatedRequest } from "../../types.js";
 
 const chatBody = z
   .object({
+    // Anonymous correlation only; never use this browser-controlled ID for authorization.
+    browser_user_id: z.string().uuid().optional(),
     session_id: z.string().uuid(),
+    mcp_session_id: z.string().trim().min(1).max(256).optional(),
     semantic_model_id: z.string().trim().min(1).max(256),
     prompt: z.string().trim().min(1).max(config.MAX_PROMPT_LENGTH),
     debug: z.boolean().optional(),
@@ -50,6 +55,83 @@ const listQuery = z.object({
 });
 
 export const chatRouter = Router();
+
+chatRouter.get("/chat/capabilities", (_request, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ streaming: config.CHAT_STREAMING_ENABLED });
+});
+
+chatRouter.post("/chat/stream", async (request, res) => {
+  if (!config.CHAT_STREAMING_ENABLED) throw new NotFoundError("Chat streaming is disabled");
+  const req = request as AuthenticatedRequest;
+  const body = chatBody.parse(req.body);
+  getAccessibleModel(req.user, body.semantic_model_id);
+  const controller = registerChatRequest(req.correlationId, req.user);
+  const signal = AbortSignal.any([
+    req.requestSignal,
+    controller.signal,
+    AbortSignal.timeout(config.MCP_TIMEOUT_MS + 5_000),
+  ]);
+  const emit = async (event: string, data: unknown) => {
+    signal.throwIfAborted();
+    if (!res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)) {
+      await once(res, "drain", { signal });
+    }
+  };
+  res.status(200).set({
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Cache-Control": "no-store, no-transform",
+    "X-Accel-Buffering": "no",
+  });
+  res.flushHeaders();
+  const heartbeat = setInterval(() => {
+    if (!res.destroyed && !res.writableEnded && !res.writableNeedDrain)
+      res.write(": heartbeat\n\n");
+  }, 15_000);
+  heartbeat.unref();
+  try {
+    await emit("status", { message: "Analyzing your data" });
+    const result = await processChat(
+      {
+        prompt: body.prompt,
+        browserUserId: body.browser_user_id ?? body.session_id,
+        sessionId: body.session_id,
+        ...(body.mcp_session_id ? { mcpSessionId: body.mcp_session_id } : {}),
+        semanticModelId: body.semantic_model_id,
+        correlationId: req.correlationId,
+        user: req.user,
+        signal,
+        includeDebug: config.NODE_ENV !== "production" || getFeatureFlags(req.user).debugMode,
+      },
+      (progress) => emit(progress.event, progress.data),
+    );
+    const response = {
+      answer: { text: result.answer.text },
+      message_id: result.message_id,
+      user_message_id: result.user_message_id,
+      request_id: req.correlationId,
+      ...(result.mcp_session_id ? { mcp_session_id: result.mcp_session_id } : {}),
+      ...(result.mcp_session ? { mcp_session: result.mcp_session } : {}),
+    };
+    const debug = "debug" in result ? result.debug : undefined;
+    await emit(
+      "complete",
+      debug ? { ...response, debug: { ...debug, bff_response: response } } : response,
+    );
+  } catch (error) {
+    const code = error instanceof AppError ? error.code : "STREAM_ERROR";
+    logger.warn({ correlationId: req.correlationId, code }, "Chat stream did not complete");
+    if (!signal.aborted && !res.destroyed) {
+      await emit("error", {
+        error: { code, message: "The streaming analysis did not complete. Please try again." },
+      }).catch(() => undefined);
+    }
+  } finally {
+    clearInterval(heartbeat);
+    releaseChatRequest(req.correlationId);
+    res.end();
+  }
+});
 
 chatRouter.post("/sessions", async (request, res) => {
   const req = request as AuthenticatedRequest;
@@ -113,12 +195,16 @@ chatRouter.post("/chat", async (request, res) => {
   const controller = registerChatRequest(req.correlationId, req.user);
   const signal = AbortSignal.any([req.requestSignal, controller.signal]);
   try {
-    const includeDebug =
-      body.debug === true &&
-      (config.NODE_ENV !== "production" || getFeatureFlags(req.user).debugMode);
+    // Capture redacted diagnostics whenever this deployment permits debug access.
+    // The frontend setting controls visibility only, so users can inspect an
+    // earlier response after turning the debug panel on.
+    const includeDebug = config.NODE_ENV !== "production" || getFeatureFlags(req.user).debugMode;
     const result = await processChat({
       prompt: body.prompt,
+      // Falling back to the session keeps rolling deployments compatible with older frontends.
+      browserUserId: body.browser_user_id ?? body.session_id,
       sessionId: body.session_id,
+      ...(body.mcp_session_id ? { mcpSessionId: body.mcp_session_id } : {}),
       semanticModelId: body.semantic_model_id,
       correlationId: req.correlationId,
       user: req.user,
@@ -130,6 +216,8 @@ chatRouter.post("/chat", async (request, res) => {
       answer: result.answer,
       message_id: result.message_id,
       user_message_id: result.user_message_id,
+      ...(result.mcp_session_id ? { mcp_session_id: result.mcp_session_id } : {}),
+      ...(result.mcp_session ? { mcp_session: result.mcp_session } : {}),
     };
     const response = { ...publicResult, request_id: req.correlationId };
     res.status(200).json(

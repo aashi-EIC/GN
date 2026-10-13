@@ -1,0 +1,38 @@
+services:
+  backend:
+    image: conversational-bi-backend-no-entra:local
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.backend
+    env_file:
+      - backend/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test:
+        ["CMD-SHELL", "wget --quiet --spider http://127.0.0.1:3000/api/v1/health/ready || exit 1"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
+
+  frontend:
+    image: conversational-bi-frontend-no-entra:local
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile.frontend
+    environment:
+      VITE_API_BASE_URL: http://localhost:3000/api/v1
+      VITE_API_TIMEOUT_MS: 315000
+      VITE_CHAT_STREAMING_ENABLED: ${VITE_CHAT_STREAMING_ENABLED:-false}
+    ports:
+      - "5173:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped

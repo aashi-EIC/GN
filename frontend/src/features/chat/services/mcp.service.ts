@@ -1,29 +1,35 @@
 import axios from "axios";
+import { env } from "../../../shared/config/env";
+import type { StreamCallbacks } from "./chatStream";
 import { storageKeys } from "../../../shared/config/storage";
 import { bffClient } from "../../../shared/services/axios";
 import type { McpRequestAudit, McpRequestPayload, Message } from "../../../shared/types/app";
 import type { ModelId } from "../types/semantic";
 import { createId } from "../../../shared/utils/session";
+import { getBrowserUserId } from "../../../shared/utils/browserIdentity";
 import { loadFromStorage, saveToStorage } from "../../../shared/utils/storage";
 
 export function buildMcpRequestPayload({
   conversationId,
+  mcpSessionId,
   modelId,
   prompt,
-  debug = false,
 }: {
   conversationId: string;
+  mcpSessionId?: string;
   modelId: ModelId;
   prompt: string;
-  debug?: boolean;
 }) {
   const sentAt = new Date().toISOString();
   const requestId = createId("mcp");
   const payload: McpRequestPayload = {
+    browser_user_id: getBrowserUserId(),
     session_id: conversationId,
+    ...(mcpSessionId ? { mcp_session_id: mcpSessionId } : {}),
     semantic_model_id: modelId,
     prompt,
-    ...(debug ? { debug: true } : {}),
+    // Capture is independent of whether the debug panel is currently visible.
+    debug: true,
   };
   const audit: McpRequestAudit = {
     ...payload,
@@ -37,23 +43,24 @@ export function buildMcpRequestPayload({
 export async function requestMcpInsight(
   payload: McpRequestPayload,
   audit: McpRequestAudit,
-  token?: string | null,
-): Promise<Omit<Message, "id" | "role" | "createdAt">> {
-  if (!token) {
-    throw new Error("Sign in with Microsoft before sending a prompt.");
-  }
+  streamCallbacks: StreamCallbacks = {},
+): Promise<{
+  answer: Omit<Message, "id" | "role" | "createdAt">;
+  mcpSession?: McpSessionMetadata;
+}> {
+  // An analysis may still be running after a network failure. Retry only on user action.
+  try {
+    // Default builds do not even load the streaming transport or make a capability request.
+    const streaming = env.chatStreamingEnabled ? await import("./chatStream") : undefined;
+    const response =
+      streaming && (await streaming.isChatStreamingAvailable())
+        ? { data: await streaming.requestStreamingChat(payload, streamCallbacks) }
+        : await bffClient.post<ChatResponse>("/chat", payload);
+    const answer = parseChatResponse(response.data);
+    const mcpSession = readMcpSessionMetadata(response.data);
 
-  const maxAttempts = 2;
-  let lastError: unknown;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      const response = await bffClient.post<ChatResponse>("/chat", payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const answer = parseChatResponse(response.data);
-
-      return withMcpRuntime(
+    return {
+      answer: withMcpRuntime(
         {
           text: answer.text,
           backendId: response.data.message_id,
@@ -61,38 +68,29 @@ export async function requestMcpInsight(
         audit,
         response.data.request_id,
         response.data.debug,
-      );
-    } catch (error) {
-      lastError = error;
-
-      if (axios.isAxiosError(error)) {
-        const status = error.response?.status;
-        const isTransient = !error.response || (status && (status >= 500 || status === 429));
-        if (isTransient && attempt < maxAttempts) {
-          await new Promise((resolve) => setTimeout(resolve, 800 * attempt));
-          continue;
-        }
-
-        const upstreamMessage = readApiError(error.response?.data);
-        if (upstreamMessage) throw new Error(upstreamMessage);
-        if (error.code === "ECONNABORTED") {
-          throw new Error("The analysis took too long. Please try again.");
-        }
-        if (!error.response) {
-          throw new Error("The middleware is unavailable. Check that the BFF is running.");
-        }
+      ),
+      ...(mcpSession ? { mcpSession } : {}),
+    };
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const upstreamMessage = readApiError(error.response?.data);
+      if (upstreamMessage) throw new Error(upstreamMessage);
+      if (error.code === "ECONNABORTED") {
+        throw new Error("The analysis took too long. Please try again.");
       }
-
-      throw error;
+      if (!error.response) {
+        throw new Error("The middleware is unavailable. Check that the BFF is running.");
+      }
     }
-  }
 
-  throw lastError;
+    throw error;
+  }
 }
 
 export function persistMcpRequestAudit(audit: McpRequestAudit) {
   const existing = loadFromStorage<McpRequestAudit[]>(storageKeys.mcpRequests, []);
-  saveToStorage(storageKeys.mcpRequests, [audit, ...existing].slice(0, 50));
+  const audits = Array.isArray(existing) ? existing : [];
+  saveToStorage(storageKeys.mcpRequests, [audit, ...audits].slice(0, 50));
 }
 
 function withMcpRuntime(
@@ -120,6 +118,18 @@ function withMcpRuntime(
           ? { payload: runtimeDebug.mcp_raw_response }
           : {}),
       },
+      ...(runtimeDebug?.generated_dax_queries !== undefined
+        ? [
+            {
+              stage: "generated_dax_query",
+              status: "success" as const,
+              detail: runtimeDebug.generated_dax_queries.length
+                ? `${runtimeDebug.generated_dax_queries.length} generated DAX ${runtimeDebug.generated_dax_queries.length === 1 ? "query" : "queries"}`
+                : "No DAX query was needed for this response",
+              payload: runtimeDebug.generated_dax_queries,
+            },
+          ]
+        : []),
       {
         stage: "bff_response",
         status: "success",
@@ -137,18 +147,59 @@ function withMcpRuntime(
   };
 }
 
-type ChatResponse = {
+export type ChatResponse = {
   answer?: {
     text?: unknown;
     blocks?: unknown;
   };
   message_id?: string;
   request_id?: string;
+  mcp_session_id?: unknown;
+  mcp_session?: unknown;
   debug?: {
     mcp_raw_response?: unknown;
     bff_response?: unknown;
+    generated_dax_queries?: string[];
   };
 };
+
+export type McpSessionMetadata = {
+  id?: string;
+  messageCount?: number;
+  status?: string;
+  requiresNewSession: boolean;
+};
+
+function readMcpSessionMetadata(response: ChatResponse): McpSessionMetadata | undefined {
+  const value = response.mcp_session;
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    const fallbackId = readBoundedString(response.mcp_session_id, 256);
+    return fallbackId ? { id: fallbackId, requiresNewSession: false } : undefined;
+  }
+  const record = value as Record<string, unknown>;
+  const id = readBoundedString(record.id, 256);
+  const status = readBoundedString(record.status, 100);
+  const messageCount =
+    typeof record.message_count === "number" &&
+    Number.isInteger(record.message_count) &&
+    record.message_count >= 0
+      ? record.message_count
+      : undefined;
+  const requiresNewSession = record.requires_new_session === true;
+  if (!id && messageCount === undefined && !status && !requiresNewSession) return undefined;
+  return {
+    ...(id ? { id } : {}),
+    ...(messageCount !== undefined ? { messageCount } : {}),
+    ...(status ? { status } : {}),
+    requiresNewSession,
+  };
+}
+
+function readBoundedString(value: unknown, maxLength: number): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed && trimmed.length <= maxLength ? trimmed : undefined;
+}
 
 function parseChatResponse(response: ChatResponse) {
   if (!response.answer || typeof response.answer.text !== "string") {
@@ -187,6 +238,22 @@ type FriendlyError = {
 
 const FRIENDLY_ERROR_RULES: Array<{ matchingTerms: string[]; response: FriendlyError }> = [
   {
+    matchingTerms: [
+      "response stream ended before completion",
+      "streaming analysis did not complete",
+      "invalid stream event",
+      "invalid stream completion",
+      "invalid text delta",
+      "streamed response exceeded the size limit",
+    ],
+    response: {
+      userMessage: "The response ended before it could be completed.",
+      suggestion:
+        "Try again to receive a complete response. Any partial preview has not been saved.",
+      statusLabel: "Response interrupted",
+    },
+  },
+  {
     matchingTerms: ["mcp host returned an unsuccessful response", "upstream", "502", "503", "504"],
     response: {
       userMessage:
@@ -194,19 +261,6 @@ const FRIENDLY_ERROR_RULES: Array<{ matchingTerms: string[]; response: FriendlyE
       suggestion:
         "Please try submitting your question again in a few moments, or select a different semantic model.",
       statusLabel: "Service Pause",
-    },
-  },
-  {
-    matchingTerms: [
-      "invalid or expired access token",
-      "expired",
-      "access token",
-      "sign in with microsoft",
-    ],
-    response: {
-      userMessage: "Your Microsoft Entra ID session has expired.",
-      suggestion: "Please sign out and sign in again to refresh your authorization.",
-      statusLabel: "Session Expired",
     },
   },
   {

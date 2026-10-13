@@ -29,8 +29,8 @@ export function GuideModal({
   const [activeTab, setActiveTab] = useState<GuideTab>("overview");
 
   return (
-    <Modal close={close} label={`${activeModel.name} User Guide`}>
-      <div className="guide-modal-container">
+    <Modal close={close} label={`${activeModel.name} User Guide`} className="guide-modal">
+      <div className={`guide-modal-container guide-model-${activeModel.id}`}>
         <div className="guide-modal-header">
           <div
             className="guide-modal-avatar"
@@ -103,7 +103,11 @@ export function GuideModal({
                   </div>
                 )}
 
-                {activeModel.objectiveNote && (
+                {activeModel.objectiveSummary && (
+                  <p className="guide-section-summary">{activeModel.objectiveSummary}</p>
+                )}
+
+                {activeModel.objectiveNote && !activeModel.objectiveSummary && (
                   <div className="guide-objective-note-banner">
                     <Info size={14} className="guide-objective-note-icon" />
                     <span>{activeModel.objectiveNote}</span>
@@ -116,7 +120,7 @@ export function GuideModal({
               <div className="guide-card">
                 <div className="guide-card-header">
                   <Briefcase size={15} className="guide-card-icon" />
-                  <span>Business Purpose & Value</span>
+                  <span>Business Purpose</span>
                 </div>
                 <p className="guide-card-text">{activeModel.businessPurpose}</p>
                 {activeModel.businessPoints && activeModel.businessPoints.length > 0 && (
@@ -128,6 +132,11 @@ export function GuideModal({
                       </li>
                     ))}
                   </ul>
+                )}
+                {activeModel.businessSummary && (
+                  <p className="guide-section-summary guide-business-summary">
+                    {activeModel.businessSummary}
+                  </p>
                 )}
               </div>
             )}

@@ -24,7 +24,7 @@ export function IconButton({
       onClick={onClick}
       aria-label={label}
       aria-pressed={active || undefined}
-      data-tooltip={label}
+      data-tooltip={disabled ? undefined : label}
       disabled={disabled}
       type="button"
     >

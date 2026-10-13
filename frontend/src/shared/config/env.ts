@@ -10,16 +10,11 @@ function readConfig(runtimeValue: string | undefined, buildValue: string | undef
 }
 
 export const env = {
-  entraTenantId:
-    readConfig(runtimeConfig.VITE_ENTRA_TENANT_ID, import.meta.env.VITE_ENTRA_TENANT_ID) ||
-    "organizations",
-  entraClientId: readConfig(
-    runtimeConfig.VITE_ENTRA_CLIENT_ID,
-    import.meta.env.VITE_ENTRA_CLIENT_ID,
-  ),
-  entraApiScope:
-    readConfig(runtimeConfig.VITE_ENTRA_API_SCOPE, import.meta.env.VITE_ENTRA_API_SCOPE) ||
-    "User.Read",
+  chatStreamingEnabled:
+    readConfig(
+      runtimeConfig.VITE_CHAT_STREAMING_ENABLED,
+      import.meta.env.VITE_CHAT_STREAMING_ENABLED,
+    ) === "true",
   apiBaseUrl:
     readConfig(runtimeConfig.VITE_API_BASE_URL, import.meta.env.VITE_API_BASE_URL) ||
     "http://localhost:3000/api/v1",

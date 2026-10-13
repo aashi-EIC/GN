@@ -1,14 +1,11 @@
 #!/bin/sh
 set -eu
 
-# Accept either the existing VITE_* names or concise Kubernetes key names.
-export VITE_ENTRA_CLIENT_ID="${VITE_ENTRA_CLIENT_ID:-${ENTRA_CLIENT_ID:-}}"
-export VITE_ENTRA_TENANT_ID="${VITE_ENTRA_TENANT_ID:-${ENTRA_TENANT_ID:-}}"
-export VITE_ENTRA_API_SCOPE="${VITE_ENTRA_API_SCOPE:-${ENTRA_API_SCOPE:-}}"
 export VITE_API_BASE_URL="${VITE_API_BASE_URL:-${API_BASE_URL:-}}"
-export VITE_API_TIMEOUT_MS="${VITE_API_TIMEOUT_MS:-${API_TIMEOUT_MS:-70000}}"
+export VITE_API_TIMEOUT_MS="${VITE_API_TIMEOUT_MS:-${API_TIMEOUT_MS:-315000}}"
+export VITE_CHAT_STREAMING_ENABLED="${VITE_CHAT_STREAMING_ENABLED:-false}"
 
 envsubst \
-  '${VITE_ENTRA_CLIENT_ID} ${VITE_ENTRA_TENANT_ID} ${VITE_ENTRA_API_SCOPE} ${VITE_API_BASE_URL} ${VITE_API_TIMEOUT_MS}' \
+  '${VITE_API_BASE_URL} ${VITE_API_TIMEOUT_MS} ${VITE_CHAT_STREAMING_ENABLED}' \
   < /etc/conversational-bi/runtime-config.js.template \
   > /usr/share/nginx/html/runtime-config.js

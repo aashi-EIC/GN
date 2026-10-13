@@ -8,8 +8,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          "auth-vendor": ["@azure/msal-browser", "@azure/msal-react"],
-          "data-vendor": ["@reduxjs/toolkit", "@tanstack/react-query", "axios", "react-redux"],
+          "data-vendor": ["@reduxjs/toolkit", "axios", "react-redux"],
           "react-vendor": ["react", "react-dom", "react-router-dom"],
           "ui-vendor": [
             "@radix-ui/react-slot",

@@ -1,0 +1,96 @@
+.workspace-notification {
+  position: fixed;
+  top: calc(76px + env(safe-area-inset-top, 0px));
+  right: calc(24px + env(safe-area-inset-right, 0px));
+  bottom: auto;
+  z-index: 140;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 48px));
+  padding: 10px 10px 10px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-panel);
+  color: var(--ui-text);
+  box-shadow: 0 4px 18px rgba(0, 20, 40, 0.08);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.workspace-notification-icon {
+  display: grid;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--gn-pink) 8%, var(--ui-panel));
+  color: var(--gn-pink);
+}
+
+.workspace-notification-icon svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2;
+}
+
+.workspace-notification.warning .workspace-notification-icon {
+  background: color-mix(in srgb, #b7791f 10%, var(--ui-panel));
+  color: #b7791f;
+}
+
+.workspace-notification-message {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.workspace-notification-dismiss {
+  display: grid;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ui-muted);
+  transition: background-color 140ms ease;
+}
+
+.workspace-notification-dismiss svg {
+  width: 14px;
+  height: 14px;
+}
+
+.workspace-notification-dismiss:hover {
+  background: color-mix(in srgb, var(--ui-text) 6%, var(--ui-panel));
+}
+
+.workspace-notification-dismiss:focus-visible {
+  outline: 2px solid var(--gn-pink);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .workspace-notification {
+    top: calc(68px + env(safe-area-inset-top, 0px));
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-width: none;
+  }
+
+  .workspace-notification-message {
+    flex: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-notification-dismiss {
+    transition: none;
+  }
+}

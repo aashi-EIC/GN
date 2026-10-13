@@ -1,0 +1,50 @@
+.sidebar.open .history-item .history-popover-menu button.history-delete-action.delete-confirmed {
+  background: color-mix(in srgb, var(--ui-muted) 6%, var(--ui-panel));
+  color: var(--ui-muted) !important;
+  opacity: 1;
+  cursor: default;
+}
+
+.history-item.delete-complete > button:first-child {
+  cursor: default;
+}
+
+.history-item.delete-exiting {
+  pointer-events: none;
+  animation: history-delete-fade 180ms ease-out forwards !important;
+}
+
+.history-delete-spinner {
+  animation: history-delete-spin 900ms linear infinite;
+}
+
+.history-delete-error {
+  margin: 5px 8px;
+  color: var(--ui-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+@keyframes history-delete-fade {
+  to {
+    opacity: 0;
+    transform: translateX(4px);
+  }
+}
+
+@keyframes history-delete-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .history-item.delete-exiting {
+    animation: none !important;
+    opacity: 0;
+  }
+
+  .history-delete-spinner {
+    animation: none;
+  }
+}

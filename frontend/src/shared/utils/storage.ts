@@ -8,7 +8,13 @@ export function loadFromStorage<T>(key: string, fallback: T): T {
 }
 
 export function saveToStorage<T>(key: string, value: T) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch {
+    // Local persistence is best-effort; unavailable storage must not interrupt chat.
+    return false;
+  }
 }
 
 const pendingSaves = new Map<string, number>();
