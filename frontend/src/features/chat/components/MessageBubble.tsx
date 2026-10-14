@@ -33,6 +33,7 @@ import { normalizeDataLists } from "../utils/responseTables";
 import { removeChartScriptSections, streamingDisplayText } from "../utils/responseDisplay";
 import { DebugDrawer } from "../../debug/components/DebugDrawer";
 import { renderInlineVisualMarkers } from "./InlineVisualMarkers";
+import { handleEnter } from "../../../shared/utils/keyboard";
 import type { StreamProgressStore } from "../services/streamProgress";
 import "./messageBubbleMarkdown.css";
 import "./responseRegeneration.css";
@@ -104,6 +105,22 @@ function MessageBubbleComponent({
               value={editText}
               disabled={busy}
               onChange={(e) => setEditText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setIsEditing(false);
+                  setEditText(message.text);
+                  return;
+                }
+                handleEnter(e, () => {
+                  if (!busy && editText.trim() && onEditUserMessage) {
+                    if (editText.trim() !== message.text) {
+                      onEditUserMessage(message.id, editText.trim());
+                    }
+                    setIsEditing(false);
+                  }
+                });
+              }}
               autoFocus
               rows={Math.max(2, editText.split("\n").length)}
             />
