@@ -671,7 +671,7 @@ function Workspace({
           {
             stage: "request_error",
             status: "warning",
-            detail: rawMessage,
+            detail: errorInfo.debugDetail ?? rawMessage,
           },
         ],
         mcpRequest: requestAudit ?? undefined,
@@ -797,10 +797,6 @@ function Workspace({
         ),
       );
     } catch (error) {
-      if (responseId) {
-        streamProgress.interrupt(conversationId, responseId, true);
-        return;
-      }
       const rawMessage =
         error instanceof Error
           ? error.message
@@ -808,8 +804,9 @@ function Workspace({
       const errorInfo = formatUserFriendlyError(rawMessage);
       const displayText = `${errorInfo.userMessage}\n\n💡 **Suggested Action**: ${errorInfo.suggestion}`;
       const tokenUsage = calculateTokenUsageAndCost(currentModelId, trimmedQuestion, displayText);
+      const targetMessageId = responseId ?? createId("msg");
       const responseMessage: Message = {
-        id: createId("msg"),
+        id: targetMessageId,
         role: "assistant",
         createdAt: new Date().toISOString(),
         tablePageSize: responseTablePageSize,
@@ -835,21 +832,27 @@ function Workspace({
           {
             stage: "request_error",
             status: "warning",
-            detail: rawMessage,
+            detail: errorInfo.debugDetail ?? rawMessage,
           },
         ],
         mcpRequest: requestAudit ?? undefined,
         tokenUsage,
       };
 
-      streamProgress.interrupt(conversationId, responseMessage.id);
+      if (responseId) {
+        streamProgress.clear(responseId);
+      } else {
+        streamProgress.interrupt(conversationId, responseMessage.id);
+      }
 
       setConversations((current) =>
         current.map((conversation) =>
           conversation.id === conversationId
             ? {
                 ...conversation,
-                messages: [...conversation.messages, responseMessage],
+                messages: responseId
+                  ? replaceAssistantResponse(conversation.messages, responseId, responseMessage)
+                  : [...conversation.messages, responseMessage],
                 updatedAt: responseMessage.createdAt,
               }
             : conversation,

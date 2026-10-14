@@ -111,7 +111,7 @@ function normalizeTableValue(value: unknown): unknown {
 export function StructuredTable({
   block,
   minimal = false,
-  defaultPageSize = 5,
+  defaultPageSize = 10,
   receiving = false,
   partial = false,
 }: {
@@ -180,11 +180,11 @@ export function StructuredTable({
       typeof column === "string"
         ? { key: column, label: normalizeTableText(humanizeColumnLabel(column)) }
         : {
-            key: column.key,
-            label: normalizeTableText(
-              column.label ? column.label : humanizeColumnLabel(column.key),
-            ),
-          },
+          key: column.key,
+          label: normalizeTableText(
+            column.label ? column.label : humanizeColumnLabel(column.key),
+          ),
+        },
     );
 
     if (allCols.length > 3) {

@@ -221,6 +221,7 @@ export function formatUserFriendlyError(rawMessage: string): {
   userMessage: string;
   suggestion: string;
   statusLabel: string;
+  debugDetail: string;
 } {
   const normalized = rawMessage.toLowerCase();
   return (
@@ -234,23 +235,30 @@ type FriendlyError = {
   userMessage: string;
   suggestion: string;
   statusLabel: string;
+  debugDetail: string;
 };
 
 const FRIENDLY_ERROR_RULES: Array<{ matchingTerms: string[]; response: FriendlyError }> = [
   {
     matchingTerms: [
-      "response stream ended before completion",
+      "unable to process this request",
+      "unable to complete this request",
+      "unable to generate an answer",
+      "streaming analysis failed",
       "streaming analysis did not complete",
-      "invalid stream event",
+      "response stream ended before completion",
       "invalid stream completion",
+      "invalid stream event",
       "invalid text delta",
       "streamed response exceeded the size limit",
     ],
     response: {
-      userMessage: "The response ended before it could be completed.",
+      userMessage: "The analytics engine could not generate a response for this question.",
       suggestion:
-        "Try again to receive a complete response. Any partial preview has not been saved.",
-      statusLabel: "Response interrupted",
+        "Try asking a question related to the metrics or dimensions in your selected semantic model, or select a different model.",
+      statusLabel: "Unable to answer",
+      debugDetail:
+        "Query unprocessed: The analytics engine was unable to generate an answer for this prompt with the selected data model.",
     },
   },
   {
@@ -261,6 +269,7 @@ const FRIENDLY_ERROR_RULES: Array<{ matchingTerms: string[]; response: FriendlyE
       suggestion:
         "Please try submitting your question again in a few moments, or select a different semantic model.",
       statusLabel: "Service Pause",
+      debugDetail: "Upstream engine unavailable or maintenance pause.",
     },
   },
   {
@@ -270,6 +279,7 @@ const FRIENDLY_ERROR_RULES: Array<{ matchingTerms: string[]; response: FriendlyE
       suggestion:
         "Try narrowing your question to a specific metric or selecting a shorter time period.",
       statusLabel: "Request Timeout",
+      debugDetail: "Request timeout: upstream took too long to complete the analysis.",
     },
   },
   {
@@ -279,12 +289,24 @@ const FRIENDLY_ERROR_RULES: Array<{ matchingTerms: string[]; response: FriendlyE
       suggestion:
         "Please check your network connection or verify that the server service is active.",
       statusLabel: "Connection Unavailable",
+      debugDetail: "Network error: unable to establish connection to BFF server.",
+    },
+  },
+  {
+    matchingTerms: ["unsafe", "content was rejected"],
+    response: {
+      userMessage: "This query could not be processed due to content safety policies.",
+      suggestion: "Please rephrase your question to focus on business and data analytics.",
+      statusLabel: "Request Filtered",
+      debugDetail: "Query filtered by content safety validation.",
     },
   },
 ];
 
 const DEFAULT_FRIENDLY_ERROR: FriendlyError = {
   userMessage: "We could not complete this analytical query at the moment.",
-  suggestion: "Try rephrasing your prompt or picking another semantic model from the top bar.",
-  statusLabel: "Notice",
+  suggestion:
+    "Try asking a metric-focused question for your selected semantic model or rephrasing your prompt.",
+  statusLabel: "Unable to answer",
+  debugDetail: "Query unprocessed: analytics query could not be completed.",
 };

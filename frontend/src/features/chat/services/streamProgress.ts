@@ -81,8 +81,8 @@ export function createStreamProgress() {
       snapshots.set(messageId, {
         text,
         status: restored
-          ? "Regeneration failed. Your previous answer has been restored."
-          : "Response interrupted. This partial answer is incomplete and has not been saved.",
+          ? "Unable to regenerate response. Please try asking a specific metric question."
+          : "Unable to complete request. This preview has not been saved.",
         interrupted: true,
         restored,
       });

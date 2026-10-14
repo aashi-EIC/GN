@@ -10,6 +10,20 @@ export type StreamCallbacks = {
   onTextDelta?: (text: string) => void;
 };
 
+function readStreamErrorMessage(record: Record<string, unknown>): string | undefined {
+  if (typeof record.message === "string" && record.message.trim()) {
+    return record.message.trim();
+  }
+  const errorObj = record.error;
+  if (errorObj && typeof errorObj === "object") {
+    const errorRec = errorObj as Record<string, unknown>;
+    if (typeof errorRec.message === "string" && errorRec.message.trim()) {
+      return errorRec.message.trim();
+    }
+  }
+  return undefined;
+}
+
 export async function isChatStreamingAvailable() {
   try {
     const response = await bffClient.get<{ streaming?: unknown }>("/chat/capabilities", {
@@ -82,8 +96,13 @@ export async function requestStreamingChat(
           throw new Error("The middleware returned an invalid stream event.");
         }
         const record = value as Record<string, unknown>;
-        if (event === "error")
-          throw new Error("The streaming analysis did not complete. Please try again.");
+        if (event === "error") {
+          const apiMessage = readStreamErrorMessage(record);
+          throw new Error(
+            apiMessage ??
+              "The analytics engine was unable to process this request. Please try asking a metric-focused question for your selected model.",
+          );
+        }
         if (event === "text_delta") {
           if (typeof record.text !== "string" || (answerLength += record.text.length) > 500_000) {
             throw new Error("The middleware returned an invalid text delta.");

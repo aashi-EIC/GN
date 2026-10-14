@@ -9,7 +9,7 @@ import {
 import { processChat } from "../../application/services/chatService.js";
 import { getAccessibleModel, getFeatureFlags } from "../../config/catalog.js";
 import { config } from "../../config/env.js";
-import { AppError, NotFoundError } from "../../errors.js";
+import { AppError, NotFoundError, UnsafeContentError } from "../../errors.js";
 import { logger } from "../../observability/logger.js";
 import {
   createOwnedSession,
@@ -120,10 +120,21 @@ chatRouter.post("/chat/stream", async (request, res) => {
     );
   } catch (error) {
     const code = error instanceof AppError ? error.code : "STREAM_ERROR";
-    logger.warn({ correlationId: req.correlationId, code }, "Chat stream did not complete");
+    const message =
+      error instanceof UnsafeContentError
+        ? error.message
+        : "The analytics engine was unable to process this request. Please try asking a metric question for your selected model or rephrase your prompt.";
+    logger.warn(
+      {
+        correlationId: req.correlationId,
+        code,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      "Chat stream did not complete",
+    );
     if (!signal.aborted && !res.destroyed) {
       await emit("error", {
-        error: { code, message: "The streaming analysis did not complete. Please try again." },
+        error: { code, message },
       }).catch(() => undefined);
     }
   } finally {

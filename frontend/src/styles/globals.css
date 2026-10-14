@@ -8254,10 +8254,77 @@ body {
   position: relative !important;
 }
 
+.welcome-brand-header {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  margin: 0 auto 18px !important;
+  text-align: center !important;
+}
+
+.welcome-brand-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 5px 16px 5px 12px !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--ui-panel) 88%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--ui-border) 78%, var(--gn-pink) 22%) !important;
+  box-shadow: 0 4px 18px rgba(0, 32, 65, 0.05) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+.welcome-brand-dot {
+  width: 7px !important;
+  height: 7px !important;
+  border-radius: 50% !important;
+  background: var(--gn-pink) !important;
+  box-shadow: 0 0 10px rgba(244, 9, 83, 0.55) !important;
+  flex-shrink: 0 !important;
+}
+
+.welcome-brand-title {
+  font-size: 13px !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.02em !important;
+  color: var(--ui-text) !important;
+}
+
+.welcome-brand-tagline {
+  margin: 0 !important;
+  font-size: 14.5px !important;
+  font-weight: 450 !important;
+  line-height: 1.4 !important;
+  color: var(--ui-muted) !important;
+  letter-spacing: -0.01em !important;
+}
+
 .welcome h1 {
   text-align: center !important;
-  margin: 0 auto 32px !important;
+  margin: 0 auto 28px !important;
   max-width: 1080px !important;
+}
+
+.welcome-team-footer {
+  margin-top: 22px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.025em !important;
+  color: var(--ui-muted) !important;
+  opacity: 0.82 !important;
+  transition: opacity 200ms ease, color 200ms ease !important;
+  user-select: none !important;
+}
+
+.welcome-team-footer:hover {
+  opacity: 1 !important;
+  color: var(--ui-text) !important;
 }
 
 .welcome-composer,

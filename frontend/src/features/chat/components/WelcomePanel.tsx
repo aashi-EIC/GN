@@ -74,6 +74,14 @@ export function WelcomePanel({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
     >
+      <div className="welcome-brand-header">
+        <div className="welcome-brand-pill">
+          <span className="welcome-brand-dot" aria-hidden="true" />
+          <span className="welcome-brand-title">Business Intelligence & Analytics</span>
+        </div>
+        <p className="welcome-brand-tagline">Conversational experience, fast insights</p>
+      </div>
+
       <h1>
         {messageParts[0]}
         <span className="welcome-name-gradient">{userName}</span>
@@ -124,6 +132,10 @@ export function WelcomePanel({
             </button>
           </div>
         </div>
+      </div>
+
+      <div className="welcome-team-footer">
+        <span>Business Intelligence & Analytics Team @ GN-CPX</span>
       </div>
     </motion.div>
   );
