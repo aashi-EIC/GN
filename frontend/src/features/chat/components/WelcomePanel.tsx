@@ -68,19 +68,13 @@ export function WelcomePanel({
   const userName = user?.name ? firstName(user.name) : "User";
 
   return (
-    <motion.div
-      className="welcome-inner"
-      initial={reduceMotion ? false : { opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-    >
-      <div className="welcome-brand-header">
-        <div className="welcome-brand-pill">
-          <span className="welcome-brand-dot" aria-hidden="true" />
-          <span className="welcome-brand-title">Business Intelligence & Analytics</span>
-        </div>
-        <p className="welcome-brand-tagline">Conversational experience, fast insights</p>
-      </div>
+    <>
+      <motion.div
+        className="welcome-inner"
+        initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+      >
 
       <h1>
         {messageParts[0]}
@@ -133,10 +127,15 @@ export function WelcomePanel({
           </div>
         </div>
       </div>
+      </motion.div>
 
       <div className="welcome-team-footer">
-        <span>Business Intelligence & Analytics Team @ GN-CPX</span>
+        <span className="wtf-item wtf-brand">Business Intelligence &amp; Analytics</span>
+        <span className="wtf-dot" aria-hidden="true">•</span>
+        <span className="wtf-item wtf-tagline">Conversational experience, fast insights</span>
+        <span className="wtf-dot" aria-hidden="true">•</span>
+        <span className="wtf-item wtf-team">Team @ GN-CPX</span>
       </div>
-    </motion.div>
+    </>
   );
 }
