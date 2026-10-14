@@ -5,6 +5,7 @@ import type { ModelId, SemanticModel } from "../types/semantic";
 import { startVoiceInput } from "../utils/speech";
 import { ModelPicker } from "./ModelPicker";
 import { ChatPromptInput } from "./ChatPromptInput";
+import { TeamFooter } from "../../../shared/components/TeamFooter";
 
 import { firstName } from "../../../shared/utils/identity";
 import type { UserProfile } from "../../../shared/types/app";
@@ -75,67 +76,60 @@ export function WelcomePanel({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
       >
-
-      <h1>
-        {messageParts[0]}
-        <span className="welcome-name-gradient">{userName}</span>
-        {messageParts[1]}
-      </h1>
-      <div className="welcome-composer" onPointerDown={dismissMagicHint}>
-        <ChatPromptInput
-          prompt={prompt}
-          setPrompt={setPrompt}
-          submitPrompt={submitPrompt}
-          label={"Ask " + model.name}
-          showMagicHint={showMagicHint}
-          dismissMagicHint={dismissMagicHint}
-        />
-        <div className="composer-bottom">
-          <ModelPicker
-            modelId={modelId}
-            setModelId={setModelId}
-            open={modelsOpen}
-            setOpen={setModelsOpen}
-            compact
+        <h1>
+          {messageParts[0]}
+          <span className="welcome-name-gradient">{userName}</span>
+          {messageParts[1]}
+        </h1>
+        <div className="welcome-composer" onPointerDown={dismissMagicHint}>
+          <ChatPromptInput
+            prompt={prompt}
+            setPrompt={setPrompt}
+            submitPrompt={submitPrompt}
+            label={"Ask " + model.name}
+            showMagicHint={showMagicHint}
+            dismissMagicHint={dismissMagicHint}
           />
-          <div className="composer-actions">
-            <button
-              className={`mic-btn ${isRecording ? "recording" : ""}`}
-              onClick={() =>
-                startVoiceInput(
-                  prompt,
-                  setPrompt,
-                  "en-US",
-                  () => setIsRecording(true),
-                  () => setIsRecording(false),
-                )
-              }
-              type="button"
-              aria-label="Use voice input"
-            >
-              <Mic />
-            </button>
-            <button
-              className="send-btn"
-              onClick={() => submitPrompt()}
-              disabled={!prompt.trim()}
-              type="button"
-              aria-label="Send prompt"
-            >
-              <ArrowUp />
-            </button>
+          <div className="composer-bottom">
+            <ModelPicker
+              modelId={modelId}
+              setModelId={setModelId}
+              open={modelsOpen}
+              setOpen={setModelsOpen}
+              compact
+            />
+            <div className="composer-actions">
+              <button
+                className={`mic-btn ${isRecording ? "recording" : ""}`}
+                onClick={() =>
+                  startVoiceInput(
+                    prompt,
+                    setPrompt,
+                    "en-US",
+                    () => setIsRecording(true),
+                    () => setIsRecording(false),
+                  )
+                }
+                type="button"
+                aria-label="Use voice input"
+              >
+                <Mic />
+              </button>
+              <button
+                className="send-btn"
+                onClick={() => submitPrompt()}
+                disabled={!prompt.trim()}
+                type="button"
+                aria-label="Send prompt"
+              >
+                <ArrowUp />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
       </motion.div>
 
-      <div className="welcome-team-footer">
-        <span className="wtf-item wtf-brand">Business Intelligence &amp; Analytics</span>
-        <span className="wtf-dot" aria-hidden="true">•</span>
-        <span className="wtf-item wtf-tagline">Conversational experience, fast insights</span>
-        <span className="wtf-dot" aria-hidden="true">•</span>
-        <span className="wtf-item wtf-team">Team @ GN-CPX</span>
-      </div>
+      <TeamFooter />
     </>
   );
 }

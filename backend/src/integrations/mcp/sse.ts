@@ -2,7 +2,6 @@ import { UpstreamError } from "../../errors.js";
 
 export type SseEvent = { event: string; data: string };
 
-/** Decode complete SSE frames, never individual HTTP chunks. No reconnect/replay. */
 export async function* readSse(
   body: ReadableStream<Uint8Array>,
   maxBytes: number,
@@ -37,8 +36,8 @@ export async function* readSse(
     while (true) {
       const chunk = await reader.read();
       if (chunk.done) {
-        decoder.decode(); // Reject an incomplete UTF-8 sequence.
-        break; // SSE requires a blank line: discard an unfinished frame at EOF.
+        decoder.decode();
+        break;
       }
       total += chunk.value.byteLength;
       if (total > maxBytes)

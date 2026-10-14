@@ -161,8 +161,11 @@ function MessageBubbleComponent({
   const [errorSummary, errorSuggestion = ""] = message.text.split(suggestionMarker);
   const errorStatus =
     message.metrics?.find((metric) => metric.tone === "watch")?.value || "Request failed";
+  const hasDebugData = Boolean(
+    (message.debug && message.debug.length > 0) || message.mcpRequest,
+  );
   const debugTrigger =
-    debugOpen && message.debug ? (
+    hasDebugData && debugOpen !== false ? (
       <button
         type="button"
         className="debug-details-trigger"
@@ -292,7 +295,7 @@ function MessageBubbleComponent({
           )}
 
           {isError && debugTrigger}
-          {debugOpen && message.debug && (
+          {hasDebugData && debugOpen !== false && (
             <DebugDrawer
               message={message}
               open={debugDrawerOpen}

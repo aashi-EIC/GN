@@ -18,7 +18,7 @@ function readThemeMode(): UiState["themeMode"] {
 
 const initialState: UiState = {
   sidebarOpen: true,
-  debugOpen: false,
+  debugOpen: true,
   themeMode: readThemeMode(),
 };
 

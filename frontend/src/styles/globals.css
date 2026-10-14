@@ -8417,13 +8417,25 @@ body {
   letter-spacing: 0.025em !important;
   color: var(--ui-muted) !important;
   opacity: 0.82 !important;
-  transition: opacity 200ms ease, color 200ms ease !important;
+  transition:
+    opacity 200ms ease,
+    color 200ms ease !important;
   user-select: none !important;
 }
 
 .welcome-team-footer:hover {
   opacity: 1 !important;
   color: var(--ui-text) !important;
+}
+
+.welcome-team-footer.chat-team-footer {
+  position: static !important;
+  margin-top: 8px !important;
+  margin-bottom: 0 !important;
+  display: flex !important;
+  width: 100% !important;
+  justify-content: center !important;
+  font-size: 11px !important;
 }
 
 .welcome-composer,

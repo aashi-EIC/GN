@@ -17,6 +17,6 @@ export const defaultSettings: SettingsState = {
   displayName: "",
   region: "Global",
   density: "comfortable",
-  keepDebugOpen: false,
+  keepDebugOpen: true,
   tablePageSize: 10,
 };

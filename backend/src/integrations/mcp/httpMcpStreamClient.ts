@@ -36,7 +36,7 @@ const requestBody = z.object({
 });
 
 export class HttpMcpStreamClient {
-  constructor(private readonly authentication: OutboundAuthenticationProvider) {}
+  constructor(private readonly authentication: OutboundAuthenticationProvider) { }
 
   async send(context: McpRequestContext, signal: AbortSignal, emit: StreamProgressHandler) {
     if (!config.CHAT_STREAMING_ENABLED) throw new ConfigurationError("Chat streaming is disabled");
@@ -45,8 +45,6 @@ export class HttpMcpStreamClient {
     if (url.origin !== base.origin) {
       throw new ConfigurationError("MCP_STREAM_ENDPOINT_PATH must remain on MCP_BASE_URL origin");
     }
-    // Preserve model-ID/static-field mappings, but use the verified stream request contract.
-    // Any optional token stays server-side; no body or upstream event is logged.
     const mapped = adaptMcpRequest(context);
     const parsed = requestBody.safeParse({
       ...mapped,
@@ -113,7 +111,6 @@ export class HttpMcpStreamClient {
             sessionId = session.data.session_id;
             await emit({ event: "session", data: session.data });
           }
-          // Upstream status messages may contain tool data. Use only our own display labels.
           await emit({
             event: "status",
             data: { message: writing ? "Writing your response" : "Analyzing your data" },
@@ -141,7 +138,6 @@ export class HttpMcpStreamClient {
           requestSignal.throwIfAborted();
           return { ...final.data, llm_output: text };
         }
-        // Other pipeline events (DAX/tool payloads) never become answer text.
       }
       throw new UpstreamError("MCP stream ended before completion");
     } catch (error) {
