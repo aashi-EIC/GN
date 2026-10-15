@@ -46,17 +46,6 @@ export class HttpMcpStreamClient {
       throw new ConfigurationError("MCP_STREAM_ENDPOINT_PATH must remain on MCP_BASE_URL origin");
     }
     const mapped = adaptMcpRequest(context);
-    const parsed = requestBody.safeParse({
-      ...mapped,
-      user_id: context.browserUserId,
-      email: mapped.email ?? config.MCP_STREAM_EMAIL,
-      bearer_token: mapped.bearer_token ?? "",
-      message: context.prompt,
-      semantic_model_id: mapped.semantic_model_id ?? context.semanticModelId,
-      ...(context.mcpSessionId ? { session_id: context.mcpSessionId } : {}),
-    });
-    if (!parsed.success)
-      throw new ConfigurationError("Invalid MCP streaming request configuration");
     const timeoutSignal = AbortSignal.timeout(config.MCP_TIMEOUT_MS);
     const requestSignal = AbortSignal.any([signal, timeoutSignal]);
     let text = "";
@@ -64,6 +53,22 @@ export class HttpMcpStreamClient {
     let writing = false;
     try {
       const headers = await this.authentication.getHeaders(context.user, requestSignal);
+      const downstreamToken = this.authentication.getToken
+        ? await this.authentication.getToken(context.user, requestSignal)
+        : undefined;
+
+      const parsed = requestBody.safeParse({
+        ...mapped,
+        user_id: context.browserUserId,
+        email: mapped.email ?? config.MCP_STREAM_EMAIL,
+        bearer_token: mapped.bearer_token ?? downstreamToken ?? "",
+        message: context.prompt,
+        semantic_model_id: mapped.semantic_model_id ?? context.semanticModelId,
+        ...(context.mcpSessionId ? { session_id: context.mcpSessionId } : {}),
+      });
+      if (!parsed.success)
+        throw new ConfigurationError("Invalid MCP streaming request configuration");
+
       const response = await fetch(url, {
         method: "POST",
         headers: {

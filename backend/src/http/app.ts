@@ -4,7 +4,7 @@ import helmet from "helmet";
 import { pinoHttp } from "pino-http";
 import { config } from "../config/env.js";
 import { logger } from "../observability/logger.js";
-import { workspaceIdentity } from "./middleware/workspaceIdentity.js";
+import { entraAuth } from "./middleware/entraAuth.js";
 import { cancellation } from "./middleware/cancellation.js";
 import { correlation } from "./middleware/correlation.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
@@ -64,7 +64,7 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["content-type", "x-browser-user-id", "x-correlation-id"],
+    allowedHeaders: ["content-type", "x-browser-user-id", "x-correlation-id", "authorization"],
   }),
 );
 
@@ -72,7 +72,7 @@ app.use(express.json({ limit: "256kb", strict: true }));
 app.use(cancellation);
 app.use("/api/v1/health", healthRouter);
 app.use("/api", rateLimit);
-app.use("/api/v1", workspaceIdentity, platformRouter);
-app.use("/api/v1", workspaceIdentity, chatRouter);
+app.use("/api/v1", entraAuth, platformRouter);
+app.use("/api/v1", entraAuth, chatRouter);
 app.use(notFound);
 app.use(errorHandler);

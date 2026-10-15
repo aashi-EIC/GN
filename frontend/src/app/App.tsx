@@ -1,8 +1,10 @@
 import { AnimatePresence } from "framer-motion";
-import { ArrowDown } from "lucide-react";
+import { ArrowDown, Loader2 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AppRouter } from "./router";
 import { uiActions, useAppDispatch, useAppSelector } from "./store";
+import { AuthProvider, useAuth } from "../features/auth/context/AuthContext";
+import { LoginPage } from "../features/auth/components/LoginPage";
 import { Composer } from "../features/chat/components/Composer";
 import { MessageBubble, PendingResponse } from "../features/chat/components/MessageBubble";
 import { WelcomePanel } from "../features/chat/components/WelcomePanel";
@@ -45,11 +47,6 @@ import { getModel, normalizeCountryCode, normalizeModelId } from "../features/ch
 import { calculateTokenUsageAndCost } from "../features/chat/utils/tokenCost";
 import { replaceAssistantResponse } from "../features/chat/utils/regeneration";
 
-const WORKSPACE_USER: UserProfile = {
-  name: "Workspace User",
-  email: "workspace@local",
-  authProvider: "No Authentication",
-};
 
 function applyMcpSessionMetadata(
   conversation: Conversation,
@@ -65,22 +62,46 @@ function applyMcpSessionMetadata(
 }
 
 function AppRoot() {
-  return <AppRouter shell={<IntelligenceApp />} />;
+  return (
+    <AuthProvider>
+      <AppRouter shell={<IntelligenceApp />} />
+    </AuthProvider>
+  );
 }
 
 function IntelligenceApp() {
+  const { isAuthenticated, isLoading, user: authUser, logout, isEntraEnabled } = useAuth();
   const [settings, setSettings] = useState<SettingsState>(readBrowserSettings);
   const [settingsSaveError, setSettingsSaveError] = useState<string | null>(null);
 
   const handleUpdateSettings = (nextSettings: SettingsState) => {
     setSettings(nextSettings);
-
     setSettingsSaveError(persistBrowserSettings(nextSettings));
   };
 
+  if (isLoading) {
+    return (
+      <div className="login-page-container">
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+          <Loader2 className="btn-spinner" size={36} color="#818cf8" />
+          <p style={{ fontSize: 13, color: "var(--ui-muted, #94a3b8)" }}>
+            Checking authentication...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isEntraEnabled && !isAuthenticated) {
+    return <LoginPage />;
+  }
+
   const effectiveUser = {
-    ...WORKSPACE_USER,
-    name: settings.displayName.trim() || WORKSPACE_USER.name,
+    ...authUser,
+    name:
+      authUser.authProvider === "Microsoft Entra ID"
+        ? authUser.name
+        : settings.displayName.trim() || authUser.name,
   };
 
   return (
@@ -89,6 +110,8 @@ function IntelligenceApp() {
       settings={settings}
       setSettings={handleUpdateSettings}
       settingsSaveError={settingsSaveError}
+      onSignOut={isEntraEnabled ? logout : undefined}
+      isEntraEnabled={isEntraEnabled}
     />
   );
 }
@@ -98,11 +121,15 @@ function Workspace({
   settings,
   setSettings,
   settingsSaveError,
+  onSignOut,
+  isEntraEnabled,
 }: {
   user: UserProfile;
   settings: SettingsState;
   setSettings: (settings: SettingsState) => void;
   settingsSaveError: string | null;
+  onSignOut?: () => void;
+  isEntraEnabled?: boolean;
 }) {
   const dispatch = useAppDispatch();
   const sidebarOpen = useAppSelector((state) => state.ui.sidebarOpen);
@@ -979,6 +1006,8 @@ function Workspace({
         setSidebarOpen={(open) => dispatch(uiActions.setSidebarOpen(open))}
         settingsOpen={settingsOpen}
         setSettingsOpen={setSettingsOpen}
+        onSignOut={onSignOut}
+        isEntraEnabled={isEntraEnabled}
       />
 
       <section className="workspace">
@@ -1115,6 +1144,7 @@ function Workspace({
           toggleDebug={() => saveSettings({ ...settings, keepDebugOpen: !debugOpen })}
           themeMode={themeMode}
           toggleTheme={() => dispatch(uiActions.toggleThemeMode())}
+          onSignOut={onSignOut}
         />
       )}
       <AnimatePresence>

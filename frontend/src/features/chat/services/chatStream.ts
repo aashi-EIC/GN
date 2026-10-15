@@ -1,5 +1,6 @@
 import { env } from "../../../shared/config/env";
 import { bffClient } from "../../../shared/services/axios";
+import { getAuthToken } from "../../../shared/services/tokenStore";
 import { getBrowserUserId } from "../../../shared/utils/browserIdentity";
 import type { McpRequestPayload } from "../../../shared/types/app";
 import type { ChatResponse } from "./mcp.service";
@@ -45,13 +46,16 @@ export async function requestStreamingChat(
   const timeout = window.setTimeout(() => controller.abort(), env.apiTimeoutMs);
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   try {
+    const token = await getAuthToken();
+    const headers: Record<string, string> = {
+      "content-type": "application/json",
+      accept: "text/event-stream",
+      "x-browser-user-id": getBrowserUserId(),
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+    };
     const response = await fetch(`${env.apiBaseUrl.replace(/\/$/, "")}/chat/stream`, {
       method: "POST",
-      headers: {
-        "content-type": "application/json",
-        accept: "text/event-stream",
-        "x-browser-user-id": getBrowserUserId(),
-      },
+      headers,
       body: JSON.stringify(payload),
       signal: controller.signal,
     });

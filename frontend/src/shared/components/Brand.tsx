@@ -5,7 +5,6 @@ export function AskBrandMark() {
         <img src="/gracenote-favicon.svg" alt="" />
       </span>
       <span className="ask-brand-text">Conversational BI</span>
-      <span className="hey-bi-badge">Hey-Bi</span>
     </span>
   );
 }

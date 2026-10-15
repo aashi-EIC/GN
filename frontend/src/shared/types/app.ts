@@ -7,7 +7,7 @@ export type FeedbackValue = "helpful" | "not-helpful";
 export type UserProfile = {
   email: string;
   name: string;
-  authProvider: "No Authentication";
+  authProvider: "No Authentication" | "Microsoft Entra ID" | "Local Workspace";
 };
 
 export type SettingsState = {
