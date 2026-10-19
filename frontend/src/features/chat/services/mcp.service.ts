@@ -235,11 +235,16 @@ export function formatUserFriendlyError(rawMessage: string): {
   debugDetail: string;
 } {
   const normalized = rawMessage.toLowerCase();
-  return (
-    FRIENDLY_ERROR_RULES.find((rule) =>
-      rule.matchingTerms.some((term) => normalized.includes(term)),
-    )?.response ?? DEFAULT_FRIENDLY_ERROR
-  );
+  const matched = FRIENDLY_ERROR_RULES.find((rule) =>
+    rule.matchingTerms.some((term) => normalized.includes(term)),
+  )?.response;
+
+  if (matched) return matched;
+
+  return {
+    ...DEFAULT_FRIENDLY_ERROR,
+    debugDetail: rawMessage.trim() || DEFAULT_FRIENDLY_ERROR.debugDetail,
+  };
 }
 
 type FriendlyError = {
@@ -250,6 +255,16 @@ type FriendlyError = {
 };
 
 const FRIENDLY_ERROR_RULES: Array<{ matchingTerms: string[]; response: FriendlyError }> = [
+  {
+    matchingTerms: ["missing required configuration", "mcp_base_url"],
+    response: {
+      userMessage: "The backend MCP analytics engine URL is not configured.",
+      suggestion:
+        "Set MCP_BASE_URL in backend/.env to connect to your deployed MCP host service.",
+      statusLabel: "Configuration Required",
+      debugDetail: "Missing required configuration: MCP_BASE_URL in backend/.env",
+    },
+  },
   {
     matchingTerms: [
       "streaming is disabled for this deployment",

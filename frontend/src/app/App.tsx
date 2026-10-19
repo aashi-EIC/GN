@@ -18,7 +18,6 @@ import { AssistantMark } from "../shared/components/AssistantMark";
 import { storageKeys } from "../shared/config/storage";
 import { useConversationHistory } from "../features/chat/hooks/useConversationHistory";
 import { createStreamProgress } from "../features/chat/services/streamProgress";
-import { savedHistoryDisplayItems } from "../features/chat/utils/responseDisplay";
 import {
   buildMcpRequestPayload,
   formatUserFriendlyError,
