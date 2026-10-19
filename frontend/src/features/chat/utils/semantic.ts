@@ -7,9 +7,11 @@ export function normalizeModelId(value?: string): ModelId {
     mapping_stats_svc: "mapping_stats_vod",
     mapping_stats_vod: "mapping_stats_vod",
     mapping: "mapping_stats_vod",
+    vod: "mapping_stats_vod",
     schedule_completeness: "schedule_completeness_tsg",
     schedule_completeness_tsg: "schedule_completeness_tsg",
     schedule: "schedule_completeness_tsg",
+    tsg: "schedule_completeness_tsg",
   };
 
   const mappedValue = value ? (legacyMap[value] ?? value) : undefined;

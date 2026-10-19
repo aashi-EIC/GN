@@ -3,7 +3,12 @@ import { env } from "../../../shared/config/env";
 import type { StreamCallbacks } from "./chatStream";
 import { storageKeys } from "../../../shared/config/storage";
 import { bffClient } from "../../../shared/services/axios";
-import type { McpRequestAudit, McpRequestPayload, Message } from "../../../shared/types/app";
+import type {
+  ChatTransportMode,
+  McpRequestAudit,
+  McpRequestPayload,
+  Message,
+} from "../../../shared/types/app";
 import type { ModelId } from "../types/semantic";
 import { createId } from "../../../shared/utils/session";
 import { getBrowserUserId } from "../../../shared/utils/browserIdentity";
@@ -44,16 +49,24 @@ export async function requestMcpInsight(
   payload: McpRequestPayload,
   audit: McpRequestAudit,
   streamCallbacks: StreamCallbacks = {},
+  mode: ChatTransportMode = "auto",
 ): Promise<{
   answer: Omit<Message, "id" | "role" | "createdAt">;
   mcpSession?: McpSessionMetadata;
 }> {
   // An analysis may still be running after a network failure. Retry only on user action.
   try {
-    // Default builds do not even load the streaming transport or make a capability request.
-    const streaming = env.chatStreamingEnabled ? await import("./chatStream") : undefined;
+    if (mode === "streaming" && !env.chatStreamingEnabled) {
+      throw new Error("Streaming is disabled for this deployment.");
+    }
+    const streaming =
+      mode !== "standard" && env.chatStreamingEnabled ? await import("./chatStream") : undefined;
+    const canStream = streaming ? await streaming.isChatStreamingAvailable() : false;
+    if (mode === "streaming" && !canStream) {
+      throw new Error("Streaming is unavailable for this deployment.");
+    }
     const response =
-      streaming && (await streaming.isChatStreamingAvailable())
+      streaming && canStream
         ? { data: await streaming.requestStreamingChat(payload, streamCallbacks) }
         : await bffClient.post<ChatResponse>("/chat", payload);
     const answer = parseChatResponse(response.data);
@@ -237,6 +250,18 @@ type FriendlyError = {
 };
 
 const FRIENDLY_ERROR_RULES: Array<{ matchingTerms: string[]; response: FriendlyError }> = [
+  {
+    matchingTerms: [
+      "streaming is disabled for this deployment",
+      "streaming is unavailable for this deployment",
+    ],
+    response: {
+      userMessage: "Streaming is unavailable for this deployment.",
+      suggestion:
+        "Open /chat for a non-streaming response, or check that both streaming flags are enabled.",
+      statusLabel: "Streaming unavailable",
+    },
+  },
   {
     matchingTerms: [
       "response stream ended before completion",

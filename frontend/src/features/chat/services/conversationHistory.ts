@@ -3,11 +3,12 @@ import { storageKeys } from "../../../shared/config/storage";
 import { isSessionId } from "../../../shared/utils/session";
 import { normalizeStoredConversation } from "../utils/responseDisplay";
 
-// Keep the old snapshot as a read-only baseline. New writes affect individual
-// fields/messages, so two tabs never overwrite each other's entire history.
+// Migrate snapshots on read; persist field/message changes independently to
+// avoid overwriting unrelated updates from another tab.
 const prefix = `${storageKeys.conversations}:v2:`;
 const metadataFields = [
   "title",
+  "titleSource",
   "modelId",
   "countryCode",
   "createdAt",
@@ -16,6 +17,7 @@ const metadataFields = [
   "mcpSessionId",
   "mcpMessageCount",
   "mcpSessionStatus",
+  "modelSelectionRequired",
 ] as const;
 type MessagePosition = { order: number; tieBreaker: string };
 type PositionedMessage = MessagePosition & { message: Message };
@@ -54,8 +56,7 @@ function isConversation(value: unknown): value is Conversation {
   );
 }
 
-// Older builds allowed non-UUID IDs. Map those deterministically so every tab
-// refers to the same legacy chat. This is an identifier, not a security token.
+// Deterministic IDs keep legacy records consistent across tabs. Not a security token.
 function stableLegacyId(id: string) {
   const hex = [0, 1, 2, 3]
     .map((salt) => {
@@ -133,11 +134,13 @@ export function createConversationHistory(tablePageSize: number) {
               const value = parse(raw);
               const optional = !["title", "modelId", "createdAt", "updatedAt"].includes(field);
               const valid =
-                field === "pinned"
-                  ? typeof value === "boolean"
-                  : field === "mcpMessageCount"
-                    ? typeof value === "number" && Number.isInteger(value) && value >= 0
-                    : typeof value === "string";
+                field === "titleSource"
+                  ? value === "local" || value === "server" || value === "manual"
+                  : field === "pinned" || field === "modelSelectionRequired"
+                    ? typeof value === "boolean"
+                    : field === "mcpMessageCount"
+                      ? typeof value === "number" && Number.isInteger(value) && value >= 0
+                      : typeof value === "string";
               if (valid || (optional && raw === "null")) {
                 Object.assign(next, { [field]: value === null ? undefined : value });
               }
@@ -192,8 +195,7 @@ export function createConversationHistory(tablePageSize: number) {
   }
 
   function publish(next: Conversation[]) {
-    // Retain unchanged objects so a remote sidebar edit does not remount or
-    // redraw every answer, table, and regeneration animation in the current tab.
+    // Preserve object identity so cross-tab metadata edits do not redraw answers.
     const previous = new Map(snapshot.map((conversation) => [conversation.id, conversation]));
     next = next.map((conversation) => {
       const existing = previous.get(conversation.id);
@@ -241,7 +243,9 @@ export function createConversationHistory(tablePageSize: number) {
     const before = new Map(current.map((conversation) => [conversation.id, conversation]));
     const after = new Map(next.map((conversation) => [conversation.id, conversation]));
     for (const conversation of current) {
-      if (!after.has(conversation.id)) write(`${conversationKey(conversation.id)}deleted`, true);
+      if (!after.has(conversation.id)) {
+        write(`${conversationKey(conversation.id)}deleted`, true);
+      }
     }
     for (const conversation of next) {
       const key = conversationKey(conversation.id);
@@ -257,21 +261,68 @@ export function createConversationHistory(tablePageSize: number) {
       }
       const oldMessages = new Map(existing.messages.map((message) => [message.id, message]));
       const existingPositions = positions.get(conversation.id);
-      let nextOrder = existing.messages.length;
-      existingPositions?.forEach(({ order }) => {
-        nextOrder = Math.max(nextOrder, order + 1);
+      const previousIndices = new Map(
+        existing.messages.map((message, index) => [message.id, index]),
+      );
+      let previousIndex = -1;
+      const reordered = conversation.messages.some((message) => {
+        const index = previousIndices.get(message.id);
+        if (index === undefined) return false;
+        const moved = index < previousIndex;
+        previousIndex = index;
+        return moved;
       });
+      const nextPositions = new Map<string, MessagePosition>();
+      const previousPosition = (message: Message) =>
+        existingPositions?.get(message.id) ?? {
+          order: previousIndices.get(message.id) ?? 0,
+          tieBreaker: message.createdAt,
+        };
+      // Stable positions allow answer insertion without reordering concurrent edits.
+      for (let index = 0; index < conversation.messages.length;) {
+        const message = conversation.messages[index];
+        if (reordered || oldMessages.has(message.id)) {
+          nextPositions.set(
+            message.id,
+            reordered ? { order: index, tieBreaker: message.createdAt } : previousPosition(message),
+          );
+          index += 1;
+          continue;
+        }
+        let end = index + 1;
+        while (
+          end < conversation.messages.length &&
+          !oldMessages.has(conversation.messages[end].id)
+        )
+          end += 1;
+        const leftMessage = conversation.messages[index - 1];
+        const left = leftMessage ? nextPositions.get(leftMessage.id)?.order : undefined;
+        const right =
+          end < conversation.messages.length
+            ? previousPosition(conversation.messages[end]).order
+            : undefined;
+        const start = left ?? (right !== undefined ? right - (end - index + 1) : -1);
+        const step = right === undefined ? 1 : (right - start) / (end - index + 1);
+        for (let offset = index; offset < end; offset += 1) {
+          const inserted = conversation.messages[offset];
+          nextPositions.set(inserted.id, {
+            order: start + step * (offset - index + 1),
+            tieBreaker: inserted.createdAt,
+          });
+        }
+        index = end;
+      }
       const nextIds = new Set(conversation.messages.map((message) => message.id));
       for (const message of existing.messages) {
         if (!nextIds.has(message.id))
           write(`${key}removed:${encodeURIComponent(message.id)}`, true);
       }
-      for (const [order, message] of conversation.messages.entries()) {
-        if (JSON.stringify(message) !== JSON.stringify(oldMessages.get(message.id))) {
-          const previous = oldMessages.get(message.id);
-          const position = previous
-            ? (existingPositions?.get(message.id) ?? { order, tieBreaker: previous.createdAt })
-            : { order: nextOrder++, tieBreaker: message.createdAt };
+      for (const message of conversation.messages) {
+        const position = nextPositions.get(message.id)!;
+        if (
+          JSON.stringify(message) !== JSON.stringify(oldMessages.get(message.id)) ||
+          position.order !== previousPosition(message).order
+        ) {
           write(`${key}message:${encodeURIComponent(message.id)}`, { message, ...position });
         }
       }

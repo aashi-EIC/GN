@@ -105,7 +105,7 @@
   display: none;
 }
 
-/* Structured result grid shown when the LLM returns a valid 2D array. */
+/* Structured result grid */
 .response .interactive-table-container {
   display: block;
   margin: 16px 0 12px;

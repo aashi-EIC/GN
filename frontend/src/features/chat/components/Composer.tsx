@@ -12,6 +12,7 @@ export function Composer({
   setPrompt,
   submitPrompt,
   busy,
+  modelSelectionRequired = false,
   modelId,
   setModelId,
   modelsOpen,
@@ -25,6 +26,7 @@ export function Composer({
   setPrompt: (prompt: string) => void;
   submitPrompt: (prompt?: string) => void;
   busy: boolean;
+  modelSelectionRequired?: boolean;
   modelId: ModelId;
   setModelId: (modelId: ModelId) => void;
   modelsOpen: boolean;
@@ -44,6 +46,11 @@ export function Composer({
 
   return (
     <div className="composer-wrap">
+      {modelSelectionRequired && (
+        <p className="history-model-notice">
+          Choose the model used for this saved conversation before continuing.
+        </p>
+      )}
       <div className="composer" aria-busy={busy} onPointerDown={dismissMagicHint}>
         <ChatPromptInput
           prompt={prompt}
@@ -61,6 +68,7 @@ export function Composer({
             open={modelsOpen}
             setOpen={setModelsOpen}
             compact
+            selectionRequired={modelSelectionRequired}
             disabled={busy || modelLocked}
           />
           <div className="composer-actions">
@@ -79,14 +87,14 @@ export function Composer({
               }
               type="button"
               aria-label="Use voice input"
-              disabled={busy}
+              disabled={busy || modelSelectionRequired}
             >
               <Mic />
             </button>
             <button
               className="send-btn"
               onClick={() => submitPrompt()}
-              disabled={busy || !prompt.trim()}
+              disabled={busy || modelSelectionRequired || !prompt.trim()}
               type="button"
               aria-label={locale.sendLabel}
             >

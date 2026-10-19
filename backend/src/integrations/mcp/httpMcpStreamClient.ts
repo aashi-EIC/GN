@@ -45,8 +45,8 @@ export class HttpMcpStreamClient {
     if (url.origin !== base.origin) {
       throw new ConfigurationError("MCP_STREAM_ENDPOINT_PATH must remain on MCP_BASE_URL origin");
     }
-    // Preserve model-ID/static-field mappings, but use the verified stream request contract.
-    // Any optional token stays server-side; no body or upstream event is logged.
+    // Apply configured mappings before validating the streaming request contract.
+    // Credentials remain server-side; request bodies and upstream events are not logged.
     const mapped = adaptMcpRequest(context);
     const parsed = requestBody.safeParse({
       ...mapped,
@@ -113,7 +113,7 @@ export class HttpMcpStreamClient {
             sessionId = session.data.session_id;
             await emit({ event: "session", data: session.data });
           }
-          // Upstream status messages may contain tool data. Use only our own display labels.
+          // Fixed labels prevent tool data in upstream status messages reaching the UI.
           await emit({
             event: "status",
             data: { message: writing ? "Writing your response" : "Analyzing your data" },

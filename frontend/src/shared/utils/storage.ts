@@ -16,27 +16,3 @@ export function saveToStorage<T>(key: string, value: T) {
     return false;
   }
 }
-
-const pendingSaves = new Map<string, number>();
-const pendingValues = new Map<string, unknown>();
-
-export function saveToStorageDeferred<T>(key: string, value: T, delayMs = 150) {
-  pendingValues.set(key, value);
-
-  const existingTimer = pendingSaves.get(key);
-  if (existingTimer) {
-    window.clearTimeout(existingTimer);
-  }
-
-  const timer = window.setTimeout(() => {
-    const latestValue = pendingValues.get(key) as T | undefined;
-    pendingSaves.delete(key);
-    pendingValues.delete(key);
-
-    if (latestValue !== undefined) {
-      saveToStorage(key, latestValue);
-    }
-  }, delayMs);
-
-  pendingSaves.set(key, timer);
-}

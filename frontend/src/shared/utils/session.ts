@@ -1,3 +1,5 @@
+import type { Conversation, Message } from "../types/app";
+
 export function createId(prefix: string) {
   if ("randomUUID" in crypto) {
     return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
@@ -141,4 +143,35 @@ export function titleFromUserMessages(userMessages: string[]): string {
 
   const text = sortedWords.slice(0, 3).join(" ").toLowerCase();
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/* Browser-only title generation. Never replace an explicit user rename. */
+export function localConversationTitle(conversation: Conversation, messages: Message[]) {
+  if (conversation.titleSource === "server" && conversation.title.trim()) {
+    return {
+      title: conversation.title,
+      titleSource: "server" as const,
+    };
+  }
+  const previousPrompts = conversation.messages
+    .filter((message) => message.role === "user")
+    .map((message) => message.text);
+  const legacyFallbacks = [
+    "Saved conversation",
+    "New conversation",
+    "new chat",
+    titleFromUserMessages(previousPrompts),
+  ];
+  if (previousPrompts[0]) legacyFallbacks.push(titleFromQuestion(previousPrompts[0]));
+  const manual =
+    conversation.titleSource === "manual" ||
+    (!conversation.titleSource && !legacyFallbacks.includes(conversation.title));
+  return {
+    title: manual
+      ? conversation.title
+      : titleFromUserMessages(
+          messages.filter((message) => message.role === "user").map((message) => message.text),
+        ),
+    titleSource: manual ? ("manual" as const) : ("local" as const),
+  };
 }

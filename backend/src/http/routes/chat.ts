@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import { once } from "node:events";
 import { z } from "zod";
 import {
@@ -8,8 +8,9 @@ import {
 } from "../../application/services/chatRequestRegistry.js";
 import { processChat } from "../../application/services/chatService.js";
 import { getAccessibleModel, getFeatureFlags } from "../../config/catalog.js";
-import { config } from "../../config/env.js";
-import { AppError, NotFoundError } from "../../errors.js";
+import { config, getRequired } from "../../config/env.js";
+import { AppError, NotFoundError, UpstreamError } from "../../errors.js";
+import { createAuthenticationProvider } from "../../integrations/mcp/authenticationProvider.js";
 import { logger } from "../../observability/logger.js";
 import {
   createOwnedSession,
@@ -19,10 +20,11 @@ import {
   renameOwnedSession,
 } from "../../persistence/repositories/sessionRepository.js";
 import type { AuthenticatedRequest } from "../../types.js";
+import { readJsonResponse } from "../../integrations/mcp/httpMcpHostClient.js";
 
 const chatBody = z
   .object({
-    // Anonymous correlation only; never use this browser-controlled ID for authorization.
+    // Anonymous correlation only, never use this browser-controlled ID for authorization.
     browser_user_id: z.string().uuid().optional(),
     session_id: z.string().uuid(),
     mcp_session_id: z.string().trim().min(1).max(256).optional(),
@@ -55,6 +57,69 @@ const listQuery = z.object({
 });
 
 export const chatRouter = Router();
+
+const titleParams = z.object({
+  sessionId: z.string().trim().min(1).max(256),
+});
+
+const sessionTitleResponse = z.object({
+  session_id: z.string(),
+  user_id: z.string(),
+  title: z.string().trim().max(1000).nullable(),
+});
+
+chatRouter.get("/chat/sessions/:sessionId/title", async (request: Request, res) => {
+  const req = request as AuthenticatedRequest;
+  const { sessionId } = titleParams.parse(req.params);
+  const userId = z.string().uuid().parse(req.get("x-browser-user-id"));
+
+  const signal = AbortSignal.any([req.requestSignal, AbortSignal.timeout(8_000)]);
+
+  const url = new URL(
+    `/users/${encodeURIComponent(userId)}/sessions/${encodeURIComponent(sessionId)}`,
+    getRequired("MCP_BASE_URL"),
+  );
+
+  const authHeaders = await createAuthenticationProvider().getHeaders(req.user, signal);
+
+  res.setHeader("Cache-Control", "no-store");
+
+  let upstream: Response;
+
+  try {
+    upstream = await fetch(url, {
+      headers: {
+        ...authHeaders,
+        accept: "application/json",
+        "x-correlation-id": req.correlationId,
+      },
+      signal,
+      redirect: "error",
+    });
+  } catch {
+    throw new UpstreamError("Session title lookup failed");
+  }
+
+  if (upstream.status === 404) {
+    await upstream.body?.cancel();
+    res.json({ title: null });
+    return;
+  }
+
+  if (!upstream.ok) {
+    await upstream.body?.cancel();
+    throw new UpstreamError("Session title lookup failed");
+  }
+
+  const parsed = sessionTitleResponse.safeParse(await readJsonResponse(upstream));
+
+  if (!parsed.success || parsed.data.session_id !== sessionId || parsed.data.user_id !== userId) {
+    throw new UpstreamError("Invalid session title response");
+  }
+
+  // Return only the title, not the session's messages or journeys.
+  res.json({ title: parsed.data.title || null });
+});
 
 chatRouter.get("/chat/capabilities", (_request, res) => {
   res.setHeader("Cache-Control", "no-store");
@@ -195,9 +260,7 @@ chatRouter.post("/chat", async (request, res) => {
   const controller = registerChatRequest(req.correlationId, req.user);
   const signal = AbortSignal.any([req.requestSignal, controller.signal]);
   try {
-    // Capture redacted diagnostics whenever this deployment permits debug access.
-    // The frontend setting controls visibility only, so users can inspect an
-    // earlier response after turning the debug panel on.
+    // Deployment flags control diagnostic access; the UI setting controls visibility only.
     const includeDebug = config.NODE_ENV !== "production" || getFeatureFlags(req.user).debugMode;
     const result = await processChat({
       prompt: body.prompt,

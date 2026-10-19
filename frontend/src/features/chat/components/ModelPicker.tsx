@@ -11,6 +11,7 @@ export function ModelPicker({
   setOpen,
   compact = false,
   disabled = false,
+  selectionRequired = false,
 }: {
   modelId: ModelId;
   setModelId: (modelId: ModelId) => void;
@@ -18,6 +19,7 @@ export function ModelPicker({
   setOpen: (open: boolean) => void;
   compact?: boolean;
   disabled?: boolean;
+  selectionRequired?: boolean;
 }) {
   const currentModel = getModel(modelId);
 
@@ -36,13 +38,17 @@ export function ModelPicker({
         aria-label={
           disabled
             ? `Semantic model locked: ${currentModel.name}`
-            : `Semantic model: ${currentModel.name}`
+            : selectionRequired
+              ? "Choose semantic model"
+              : `Semantic model: ${currentModel.name}`
         }
       >
         <span className="model-chip" style={{ backgroundColor: currentModel.color }}>
-          {currentModel.short}
+          {selectionRequired ? "?" : currentModel.short}
         </span>
-        {compact ? (
+        {selectionRequired ? (
+          <strong className="model-selected-name">Choose semantic model</strong>
+        ) : compact ? (
           <strong className="model-selected-name">{currentModel.name}</strong>
         ) : (
           <div>

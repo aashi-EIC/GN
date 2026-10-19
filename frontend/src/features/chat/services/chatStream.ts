@@ -17,7 +17,7 @@ export async function isChatStreamingAvailable() {
     });
     return response.data.streaming === true;
   } catch {
-    // Safe fallback BEFORE submitting an analytical request; older BFFs have no capability route.
+    // Capability fallback is safe only before submitting an analytics request.
     return false;
   }
 }
@@ -62,7 +62,7 @@ export async function requestStreamingChat(
       }
       bytes += chunk.value.byteLength;
       if (bytes > 10_485_760) throw new Error("The streamed response exceeded the size limit.");
-      // Our BFF emits LF-delimited, single-line JSON data. HTTP chunks may split anywhere.
+      // BFF frames contain LF-delimited JSON; HTTP chunks may split anywhere.
       pending += decoder.decode(chunk.value, { stream: true });
       let boundary: number;
       while ((boundary = pending.indexOf("\n\n")) !== -1) {

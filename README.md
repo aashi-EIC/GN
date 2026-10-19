@@ -4,7 +4,16 @@ Internal pilot build. Not the final production release.
 
 React/Vite frontend with a Node.js Express backend-for-frontend (BFF). The BFF validates requests, manages sessions, and connects the UI to the MCP analytics service.
 
-This build has no Entra login. Everyone reaching the BFF shares one workspace identity, even though conversations have separate sessions. Restrict both UI and API access through a company gateway, VPN, or private network.
+Everyone reaching the BFF shares one workspace identity, even though conversations have separate sessions. Browser UUIDs are correlation identifiers, not authentication. Restrict both UI and API access through a company gateway, VPN, or private network.
+
+## Delivery scope
+
+| Area                | Current behaviour                                                      |
+| ------------------- | ---------------------------------------------------------------------- |
+| Chat                | Normal and SSE transports; streaming requires both feature flags.      |
+| Rendering           | LLM text and response tables; chart output is suppressed.              |
+| History and titles  | Browser-local conversations, prompt-based titles, and manual renaming. |
+| Identity and models | Shared workspace identity, browser UUIDs, and configured model IDs.    |
 
 ## Repository
 
@@ -61,23 +70,27 @@ Populate `SEMANTIC_MODELS_JSON` with approved models before deployment. Leaving 
 
 ### Streaming (opt-in testing)
 
-Normal chat remains the default: `/api/v1/chat` calls MCP `/chat`. Streaming uses a separate `/api/v1/chat/stream` route and MCP `/chat/stream`; it does not replace or replay the normal request.
+Normal chat uses `/api/v1/chat` and MCP `/chat`. Streaming uses `/api/v1/chat/stream` and MCP `/chat/stream`; it does not replace or replay the normal request.
 
-To test streaming, set `CHAT_STREAMING_ENABLED=true` in the BFF and `VITE_CHAT_STREAMING_ENABLED=true` in the frontend. Restart both development servers. For containers, supply the frontend flag at runtime; Compose accepts it from the shell or root `.env`. Both flags default to false. An opted-in UI checks `/api/v1/chat/capabilities` before choosing a transport; a disabled or older BFF keeps new requests on normal chat. Once a streaming request is submitted, failure never triggers an automatic `/chat` retry.
+Open `/chat` for non-streaming responses or `/chat/stream` for streaming responses. The header labels the selected mode. URL selection is tab-local, including follow-ups, edits and regeneration; it is not saved as a shared browser preference. `/` keeps the deployment-default behaviour. Existing `/chat/{conversationId}` URLs use non-streaming mode.
+
+For side-by-side comparison, open both URLs in separate tabs and start a new conversation in each. Browser history still synchronizes across tabs, so reusing the same saved chat also reuses its MCP session context. Use separate conversations for independent requests.
+
+To test streaming, set `CHAT_STREAMING_ENABLED=true` in the BFF and `VITE_CHAT_STREAMING_ENABLED=true` in the frontend. Restart both development servers. For containers, supply the frontend flag at runtime; Compose accepts it from the shell or root `.env`. Both flags default to false. `/chat` always uses normal chat, even when both flags are enabled. `/chat/stream` requires both flags and a successful capability check; otherwise it shows a streaming-unavailable error without submitting an analytical request. On `/`, a failed capability check keeps new requests on normal chat. Once a streaming request is submitted, failure never triggers an automatic `/chat` retry.
 
 The adapter consumes upstream `status`, `token`, and `done` SSE events. Tokens are forwarded as `text_delta` events and displayed progressively using the existing LLM-only Markdown/table renderer. Partial table rows and unfinished code blocks wait until they can be rendered safely. Live previews stay in memory; only a validated completion saves the final answer. Tool results and other pipeline payloads are never rendered as answer text. Session metadata is saved when `session_ready` arrives, including if the stream subsequently fails. Regeneration hides the old answer and keeps later turns in place.
 
-Preview updates are batched every 50 ms and subscribed to by the active response, not the entire workspace. Large bursts are spread over a catch-up window of up to 150 ms; completion still displays the full answer immediately. The original analyzing bars and text shimmer remain until readable content arrives, then give way to small writing dots. Completed content stays still. Reduced-motion settings disable transition effects; the requested loading bars and text shimmer remain animated.
+Preview updates are batched every 50 ms and subscribed to by the active response, not the entire workspace. Large bursts are spread over a catch-up window of up to 150 ms; completion still displays the full answer immediately. Analyzing bars and text shimmer remain until readable content arrives, then give way to small writing dots. Completed content stays still. Reduced-motion settings disable transition effects; loading bars and text shimmer remain animated.
 
 Tables show complete rows and an actual received-row count, without guessing the final total. Search, sorting, pagination, copy and export become available after validated completion. Completed tables are reused while later text arrives. Scrolling up pauses auto-follow, including at completion; **Jump to latest** resumes it. Normal streaming follows new content with frame-based easing, without re-rendering the workspace for every token.
 
 If a stream fails after text arrives, the safe partial preview stays in memory with an explicit incomplete/not-saved notice and disabled table exports. It is never saved as the final answer and disappears on reload. A failed regeneration restores the original answer with an inline notice. No failed stream is automatically replayed through normal chat.
 
-Stream requests follow the Host format: `user_id`, `email`, `bearer_token`, `message`, `semantic_model_id`, and optional `session_id`. `user_id` remains the anonymous browser UUID. `MCP_STREAM_EMAIL` defaults to `test@example.com` as pilot metadata, not a verified identity. The adapter sends an empty bearer token by default. If the Host later requires a real token, arrange an approved server-side credential flow; never place it in frontend configuration or browser storage. Existing server-controlled static fields can supply optional Host fields. Model-ID mappings remain applicable.
+Stream requests follow the Host format: `user_id`, `email`, `bearer_token`, `message`, `semantic_model_id`, and optional `session_id`. `user_id` remains the anonymous browser UUID. `MCP_STREAM_EMAIL` defaults to `test@example.com` as pilot metadata, not a verified identity. The adapter sends an empty bearer token by default. Credentials belong in server-side configuration, never frontend configuration or browser storage. Server-controlled static fields can supply optional Host fields. Model-ID mappings remain applicable.
 
-The BFF sends heartbeat comments, disables caching, requests no proxy buffering, and aborts upstream work on client disconnect or timeout. Verify the actual Kubernetes ingress streams immediately and has sufficient idle/read timeouts; application headers alone cannot guarantee proxy behavior. Cancellation and sessions remain process-local, as in normal chat.
+The BFF sends heartbeat comments, disables caching, requests no proxy buffering, and aborts upstream work on browser disconnect or timeout. Verify the actual Kubernetes ingress streams immediately and has sufficient idle/read timeouts; application headers alone cannot guarantee proxy behavior. Cancellation and sessions remain process-local, as in normal chat.
 
-Before enabling for internal users, verify real analytics prompts, follow-ups, both semantic models, interrupted streams, regeneration, tables, mobile layout, and ingress behavior. A greeting probe confirmed the live SSE event shape, not Power BI analytics permissions. Rollback: disable either flag for new requests and keep `/chat` deployed. Reload older UI tabs after rollout.
+Before enabling for internal users, verify real analytics prompts, follow-ups, both semantic models, interrupted streams, regeneration, tables, mobile layout, and ingress behavior in the target environment. Rollback: disable either flag for new requests and keep `/chat` deployed. Reload existing UI tabs after rollout.
 
 ### Browser identity and sessions
 
@@ -93,18 +106,24 @@ Refresh does not change the browser UUID while local storage is available. Clear
 
 Display name and Settings preferences save automatically in the current browser. They survive backend restarts but do not carry over to another browser. Clearing site data removes them. Settings shows a warning if preferences cannot be saved.
 
-The loading indicator stays visible while analysis is pending and respects reduced-motion preferences. Failed requests are not retried automatically; use **Try again**.
+The loading indicator stays visible while analysis is pending. Reduced-motion behaviour is described in the streaming section. Failed requests are not retried automatically; use **Try again**.
 
 Answers render from LLM text only. Markdown tables and narrowly recognized uniform data lists become tables; raw tool-result tables are not appended. Chart directives and named chart-array sections are suppressed for this release. Keep the visualization module: response tables still use it.
 
 Generated DAX and raw diagnostics are available when debug access is enabled. In production, set `"debugMode":true` in `FEATURE_FLAGS_JSON` to return diagnostics. The browser setting controls visibility only, not access.
+
+Displayed token and cost values are zero placeholders, not measured usage or billing data.
 
 ## History and storage
 
 - Conversations and MCP session references: browser localStorage. Survive refresh, but not cleared site data or a different browser profile.
 - Display name, theme, and Settings: browser localStorage. These are local preferences, not an authenticated profile.
 - BFF sessions, messages, feedback, issue records, and settings API records: backend process memory. Lost on restart and not shared across replicas; no durable database or external ticket integration.
-- MCP history: retained by the MCP Host under its own policy. The UI does not fetch a remote history endpoint yet.
+- MCP session context: retained by the MCP Host under its own policy. Chat and streaming send MCP session IDs for follow-up context. The UI loads conversation history from browser storage.
+
+Sidebar titles are generated locally from user prompts. Manual renames stay browser-local and are not replaced by later prompts. Opening a chat reads its cached messages; no remote history or title request is made.
+
+Regeneration replaces the selected local answer and keeps later turns in place. Compatibility handling still groups previously cached empty regeneration copies and identifies missing cached answers. If an older cached conversation has no model metadata, choose its model before continuing. These safeguards read browser data only; they do not fetch or update cloud history.
 
 Tabs using the same origin and browser profile synchronize history through storage events and refresh it on focus. Different hostnames, ports, protocols, profiles, or devices do not share storage. Use the same exact URL in every tab.
 
@@ -114,7 +133,7 @@ The selected chat, draft, and generation indicator remain local to each tab. Clo
 
 Sidebar deletion and renaming affect the browser copy only, not BFF or MCP history. Regeneration replaces the selected answer and preserves later messages, but sends another prompt to the current MCP session; it does not rewind the Host's context.
 
-Storage writes are best-effort. Blocked or full storage does not stop chat or show a chat-storage warning. The current tab keeps its in-memory state, but unsaved history may disappear on refresh or close. The planned remote storage endpoint does not provide recovery until it is connected. Copy important answers before clearing site data.
+Storage writes are best-effort. Blocked or full storage does not stop chat or show a chat-storage warning. The current tab keeps its in-memory state, but unsaved history may disappear on refresh or close. Copy important answers before clearing site data.
 
 Feedback buttons update page state only. **Save issue** acknowledges the form without saving it or calling the BFF issue endpoint. Do not use either as a reporting or support channel during the pilot.
 
@@ -156,7 +175,7 @@ Manifests and the deployed URL are managed outside this repository. Compose is f
 - Access: restrict both UI and API to the internal audience. Do not expose the BFF directly. This build cannot separate users with different data entitlements.
 - TLS and CORS: use HTTPS and set `CORS_ALLOWED_ORIGINS` to the exact UI origin.
 - Timeouts: allow the 300-second MCP request plus overhead. The default browser timeout is 315 seconds.
-- Replicas: use one backend for this pilot. Sessions, cancellation, and rate limits are process-local. Replace in-memory rate limiting with a shared store before scaling.
+- Replicas: use one backend for this pilot. Sessions, cancellation, and rate limits are process-local.
 - Probes: liveness `/api/v1/health/live`; readiness `/api/v1/health/ready`.
 - Shutdown: in-flight requests have at most 10 seconds to finish after termination. Roll out when idle.
 - Resources: set requests/limits and monitor memory, restarts, error rates, and request duration. Session/message repositories have no retention cap or cleanup policy.

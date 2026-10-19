@@ -86,7 +86,9 @@ const groupHistoryByModel = (conversations: Conversation[]): ModelGroup[] => {
 
   conversations.forEach((conversation) => {
     const model = getModel(conversation.modelId);
-    const label = model.nickname || model.short;
+    const label = conversation.modelSelectionRequired
+      ? "Saved chats"
+      : model.nickname || model.short;
     const existing = modelGroups.get(label) ?? { short: model.short, color: model.color, list: [] };
     modelGroups.set(label, {
       short: model.short,
@@ -318,7 +320,7 @@ export function Sidebar({
               : isDeleting
                 ? "Deleting..."
                 : groupBy === "date"
-                  ? `${getModel(conversation.modelId).short} / ${formatRelativeDate(conversation.updatedAt)}`
+                  ? `${conversation.modelSelectionRequired ? "Saved chat" : getModel(conversation.modelId).short} / ${formatRelativeDate(conversation.updatedAt)}`
                   : formatRelativeDate(conversation.updatedAt)}
           </small>
         </button>

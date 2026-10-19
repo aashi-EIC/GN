@@ -4211,7 +4211,7 @@ tr:last-child td {
   }
 }
 
-/* Corporate visual adjustments */
+/* Workspace palette */
 html {
   background: var(--gn-white);
   -webkit-font-smoothing: antialiased;
@@ -4260,7 +4260,7 @@ body {
   border-radius: 8px;
 }
 
-/* Removed sidebar border color */
+/* Sidebar border */
 
 .topbar {
   min-height: 52px;
@@ -4387,7 +4387,7 @@ body {
   }
 }
 
-/* Match semantic model selector to the country dropdown without moving it */
+/* Semantic model selector */
 .welcome-model-control .model-picker.compact,
 .composer-model-control .model-picker.compact {
   width: min(238px, calc(100vw - 32px));
@@ -4482,7 +4482,7 @@ body {
   }
 }
 
-/* Reference Conversational BI dashboard styling */
+/* Dashboard controls */
 .app-shell {
   display: flex;
   flex-direction: row;
@@ -5324,7 +5324,7 @@ body {
   display: inline-flex;
 }
 
-/* For suggestions, make sure the tooltip container takes up the correct layout space */
+/* Suggestion tooltip layout */
 .suggestions .tooltip-container {
   display: inline-flex;
 }
@@ -5503,7 +5503,7 @@ body {
    UI scale
    ========================================== */
 
-/* 1. Welcome Message Hero */
+/* Welcome heading */
 .welcome h1 {
   font-size: clamp(24px, 2.4vw, 32px) !important;
   font-weight: 600 !important;
@@ -5517,7 +5517,7 @@ body {
   padding-top: 20px !important;
 }
 
-/* 2. Text Box / Chat Input (Composer) */
+/* Chat composer */
 .welcome-composer,
 .composer {
   width: min(800px, 100%) !important;
@@ -5579,7 +5579,7 @@ body {
   height: 16px !important;
 }
 
-/* 3. Semantic Model Dropdown */
+/* Semantic model dropdown */
 .model-picker.compact > button {
   min-height: 32px !important;
   height: 32px !important;
@@ -5622,7 +5622,7 @@ body {
   font-weight: 500 !important;
 }
 
-/* 4. Sidebar Previous Chats */
+/* Conversation history */
 .sidebar {
   width: 250px !important;
   flex-basis: 250px !important;
@@ -6291,6 +6291,46 @@ body {
 }
 
 /* Top navigation */
+.chat-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 1px solid var(--ui-border, var(--gn-line));
+  border-radius: 999px;
+  background: var(--ui-panel, var(--gn-white));
+  color: var(--ui-text, var(--gn-text));
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.chat-mode-badge[data-mode="streaming"] {
+  border-color: color-mix(in srgb, var(--gn-pink) 30%, var(--ui-border));
+  color: color-mix(in srgb, var(--gn-pink) 80%, var(--ui-text));
+}
+
+@media (max-width: 600px) {
+  .workspace > .topbar:has(.walkthrough-banner) {
+    align-items: flex-start;
+    height: 84px !important;
+    min-height: 84px !important;
+  }
+
+  .topbar:has(.walkthrough-banner) .chat-mode-badge {
+    position: absolute;
+    top: 53px;
+    left: max(14px, env(safe-area-inset-left));
+  }
+}
+
+@media (max-width: 360px) {
+  .topbar .walkthrough-banner-copy > span:last-child {
+    display: none;
+  }
+}
+
 .topbar {
   background: transparent !important;
   border-bottom: none !important;
@@ -7325,6 +7365,39 @@ body {
   }
 }
 
+.history-empty-notice,
+.history-model-notice {
+  color: var(--ui-muted, var(--gn-text));
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.history-empty-notice {
+  padding: 14px 16px;
+  border: 1px solid var(--ui-border, var(--gn-line));
+  border-radius: 12px;
+  background: var(--ui-panel, var(--gn-white));
+  margin-bottom: 18px;
+}
+
+.history-model-notice {
+  margin: 0 16px 8px;
+}
+
+.history-unavailable-row {
+  align-items: center;
+}
+
+.history-unavailable-answer {
+  color: var(--ui-muted, var(--gn-text));
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 10px 14px;
+  border-left: 2px solid var(--gn-pink);
+  background: color-mix(in srgb, var(--gn-pink) 4%, var(--ui-panel, #fff));
+  border-radius: 0 8px 8px 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .suggestions button,
   .send-btn,
@@ -7693,7 +7766,7 @@ body {
   }
 }
 
-/* Workspace refinements */
+/* Workspace surfaces */
 .welcome {
   padding: 44px 32px 72px !important;
   background: var(--ui-bg) !important;
@@ -8207,7 +8280,7 @@ body {
   }
 }
 
-/* Empty-chat workspace uses a neutral background without decorative lighting. */
+/* Welcome workspace surface */
 .workspace:has(> .welcome) {
   position: relative;
   overflow: hidden;
@@ -8232,7 +8305,7 @@ body {
   box-shadow: none !important;
 }
 
-/* Center Align & Fixed Position for Welcome Message and Textbox */
+/* Welcome composer positioning */
 .welcome {
   display: flex !important;
   flex-direction: column !important;
@@ -8301,7 +8374,7 @@ body {
   display: inline !important;
 }
 
-/* Ensure model dropdown opens float as absolute overlay without realigning parent elements */
+/* Overlay the model menu without changing layout. */
 .welcome-inner.model-menu-open .suggestion-section,
 .welcome-inner.model-menu-open .welcome-composer {
   margin-top: initial !important;
@@ -8666,7 +8739,7 @@ body {
   background: rgba(0, 0, 0, 0.08);
 }
 
-/* Remove hover popover from user profile */
+/* Profile hover state */
 .sidebar-account-card {
   display: none !important;
 }
@@ -9582,8 +9655,7 @@ body {
 
 /*
  * Keep both sidebar states mounted and move the rail on the compositor.
- * The workspace no longer changes width during the transition, so charts do
- * not receive a ResizeObserver update on every animation frame.
+ * A fixed workspace width avoids ResizeObserver updates on each animation frame.
  */
 .sidebar-expanded-content {
   display: flex;
@@ -11313,7 +11385,7 @@ body {
   }
 }
 
-/* Response action polish: keep tooltips inside the chat canvas and away from
+/* Response actions: keep tooltips inside the chat canvas and away from
    the Debug details control below them. */
 .response-actions .icon-btn::after,
 .user-message-actions .icon-btn::after {
@@ -12567,7 +12639,7 @@ body,
   }
 }
 
-/* Final surface polish: preserve the layout while making hierarchy and states calmer. */
+/* Surface hierarchy and interaction states */
 .welcome h1 {
   max-width: 960px !important;
   overflow: visible !important;

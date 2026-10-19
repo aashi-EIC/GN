@@ -408,7 +408,6 @@ function SafeResponseText({
 
     const visibleText = normalizeDataLists(removeChartScriptSections(text));
 
-    // Split text by code blocks ```code```
     const blocks = visibleText.split(/(```[\s\S]*?```)/g);
 
     return blocks.map((block, blockIdx) => {
@@ -417,9 +416,7 @@ function SafeResponseText({
         const language = lines[0]?.match(/^[a-zA-Z0-9_-]+$/) ? lines[0] : "";
         const codeContent = language ? lines.slice(1).join("\n") : lines.join("\n");
 
-        // MCP may include an empty JSON result before its explanatory text. An
-        // empty payload is not useful to end users and otherwise renders as a
-        // large code panel containing only [] or {}.
+        // Empty transport payloads are not answer content.
         if (isEmptyStructuredPayload(codeContent, language)) {
           return null;
         }
@@ -464,7 +461,6 @@ function SafeResponseText({
         );
       }
 
-      // Process regular markdown lines (headers, lists, KPI card grids, blockquotes, paragraphs)
       const lines = block.split("\n");
       const elements: React.ReactNode[] = [];
       let currentList: React.ReactNode[] = [];
@@ -619,7 +615,6 @@ function SafeResponseText({
           return;
         }
 
-        // Regular bullet point lines (- item or * item or • item)
         if (/^[-*•]\s+/.test(trimmed)) {
           flushKpiList(`${blockIdx}-${lineIdx}`);
           flushBlockquote(`${blockIdx}-${lineIdx}`);
@@ -632,7 +627,6 @@ function SafeResponseText({
           return;
         }
 
-        // Render regular blockquotes (or continue insight block)
         if (trimmed.startsWith(">")) {
           flushList(`${blockIdx}-${lineIdx}`);
           flushKpiList(`${blockIdx}-${lineIdx}`);
@@ -658,7 +652,6 @@ function SafeResponseText({
           return;
         }
 
-        // Flush all buffers if we hit a normal line
         flushList(`${blockIdx}-${lineIdx}`);
         flushKpiList(`${blockIdx}-${lineIdx}`);
         flushInsight(`${blockIdx}-${lineIdx}`);
@@ -674,7 +667,6 @@ function SafeResponseText({
           return;
         }
 
-        // Headers (# H1, ## H2, ### H3)
         if (trimmed.startsWith("### ")) {
           elements.push(
             <h3 key={`h3-${lineIdx}`} className="markdown-h3">

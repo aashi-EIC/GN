@@ -6,6 +6,7 @@ export function AppRouter({ shell }: { shell: ReactElement }) {
     <Routes>
       <Route path="/" element={shell} />
       <Route path="/chat" element={shell} />
+      <Route path="/chat/stream" element={shell} />
       <Route path="/chat/:conversationId" element={shell} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

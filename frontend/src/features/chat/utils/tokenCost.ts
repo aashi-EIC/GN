@@ -6,7 +6,7 @@ export function calculateTokenUsageAndCost(
   _promptText: string,
   _responseText: string,
 ): TokenUsage {
-  // Placeholder token usage - formula removed
+  // Usage accounting is not connected. These zeros are not measured usage or cost.
   return {
     inputTokens: 0,
     outputTokens: 0,

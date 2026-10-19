@@ -92,9 +92,7 @@ function humanizeColumnLabel(key: string): string {
 }
 
 /**
- * Table data is plain text, so remove inline Markdown markers that an LLM may
- * include for emphasis. Without this normalization values such as
- * `**Total Channels**` are displayed with the asterisks intact.
+ * Strip inline Markdown markers from plain-text table cells.
  */
 function normalizeTableText(value: string): string {
   return value

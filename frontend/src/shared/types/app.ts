@@ -4,6 +4,7 @@ export type Density = "comfortable" | "compact";
 export type TablePageSize = number;
 export type MessageRole = "user" | "assistant";
 export type FeedbackValue = "helpful" | "not-helpful";
+export type ChatTransportMode = "auto" | "standard" | "streaming";
 export type UserProfile = {
   email: string;
   name: string;
@@ -104,6 +105,14 @@ export type TokenUsage = {
 
 export type Message = {
   id: string;
+  requestKind?: "new";
+  regenerationAttempts?: Array<{ id: string; startedAt: string; completedAt?: string }>;
+  regenerationSources?: Array<{ sessionId: string; journeyId?: string; messageId?: string }>;
+  history?: {
+    sessionId: string;
+    journeyId?: string;
+    messageId?: string;
+  };
   backendId?: string;
   role: MessageRole;
   text: string;
@@ -118,10 +127,14 @@ export type Message = {
 
 export type Conversation = {
   id: string;
+  // Cached transcripts without model metadata require explicit model selection.
+  modelSelectionRequired?: boolean;
   mcpSessionId?: string;
   mcpMessageCount?: number;
   mcpSessionStatus?: string;
   title: string;
+  // "server" is accepted for cache compatibility; new titles are generated locally.
+  titleSource?: "local" | "server" | "manual";
   modelId: ModelId;
   countryCode?: CountryCode;
   messages: Message[];

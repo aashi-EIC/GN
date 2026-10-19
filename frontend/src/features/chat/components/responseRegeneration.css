@@ -100,7 +100,7 @@
   overflow: visible;
 }
 
-/* Reuse the original wave and text shimmer from globals.css; no per-character animation. */
+/* Shared wave and text-shimmer animations avoid per-character rendering. */
 
 .pending-response .streaming-status {
   color: var(--ui-muted);
@@ -327,7 +327,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* Keep the explicitly requested loader animations; other motion stays reduced. */
+  /* Loader animation remains active in reduced-motion mode. */
   .pending-response .thinking-wave i {
     animation-name: thinking-wave;
     animation-duration: 1.05s;

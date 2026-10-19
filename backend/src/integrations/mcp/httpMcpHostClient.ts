@@ -115,7 +115,7 @@ function getMcpUrl() {
 
 const jsonDecoder = new TextDecoder();
 
-async function readJsonResponse(response: Response) {
+export async function readJsonResponse(response: Response) {
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().includes("application/json")) {
     throw new UpstreamError("MCP host returned a non-JSON response");

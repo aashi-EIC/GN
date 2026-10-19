@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { AppRoot } from "./App";
 import { AppProviders } from "./providers";
 import { storageKeys } from "../shared/config/storage";
+import { getBrowserUserId } from "../shared/utils/browserIdentity";
 import "../styles/globals.css";
 
 try {
@@ -14,6 +15,8 @@ try {
 } catch {
   document.documentElement.dataset.theme = "light";
 }
+
+getBrowserUserId();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

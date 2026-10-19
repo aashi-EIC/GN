@@ -38,7 +38,7 @@ const schema = z.object({
   MCP_TIMEOUT_MS: integer(300_000),
   CHAT_STREAMING_ENABLED: bool.default(false),
   MCP_STREAM_ENDPOINT_PATH: z.string().min(1).default("/chat/stream"),
-  // Anonymous pilot metadata, not a verified user identity.
+  // Anonymous request metadata, not a verified user identity.
   MCP_STREAM_EMAIL: z.string().email().default("test@example.com"),
   MCP_MAX_RESPONSE_BYTES: integer(5_242_880),
   MCP_SAFE_RETRY_ENABLED: bool.default(false),
@@ -79,7 +79,7 @@ if (!parsed.success) {
 
 export const config = parsed.data;
 
-export function requireConfig<K extends keyof typeof config>(...keys: K[]): void {
+function requireConfig<K extends keyof typeof config>(...keys: K[]): void {
   const missing = keys.filter((key) => !config[key]);
   if (missing.length)
     throw new ConfigurationError(`Missing required configuration: ${missing.join(", ")}`);

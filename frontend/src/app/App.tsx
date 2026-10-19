@@ -1,6 +1,7 @@
 import { AnimatePresence } from "framer-motion";
 import { ArrowDown } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useMatch } from "react-router-dom";
 import { AppRouter } from "./router";
 import { uiActions, useAppDispatch, useAppSelector } from "./store";
 import { Composer } from "../features/chat/components/Composer";
@@ -17,6 +18,7 @@ import { AssistantMark } from "../shared/components/AssistantMark";
 import { storageKeys } from "../shared/config/storage";
 import { useConversationHistory } from "../features/chat/hooks/useConversationHistory";
 import { createStreamProgress } from "../features/chat/services/streamProgress";
+import { savedHistoryDisplayItems } from "../features/chat/utils/responseDisplay";
 import {
   buildMcpRequestPayload,
   formatUserFriendlyError,
@@ -30,6 +32,7 @@ import {
 } from "../features/settings/services/browserSettings";
 import type {
   Conversation,
+  ChatTransportMode,
   FeedbackValue,
   IssueReport,
   McpRequestAudit,
@@ -40,10 +43,19 @@ import type {
 } from "../shared/types/app";
 import type { CountryCode, ModelId } from "../features/chat/types/semantic";
 import { copyText, messageToPlainText } from "../shared/utils/clipboard";
-import { createId, createSessionId, titleFromUserMessages } from "../shared/utils/session";
+import {
+  createId,
+  createSessionId,
+  titleFromUserMessages,
+  localConversationTitle,
+} from "../shared/utils/session";
 import { getModel, normalizeCountryCode, normalizeModelId } from "../features/chat/utils/semantic";
 import { calculateTokenUsageAndCost } from "../features/chat/utils/tokenCost";
-import { replaceAssistantResponse } from "../features/chat/utils/regeneration";
+import {
+  recordRegenerationAttempt,
+  replaceAssistantResponse,
+} from "../features/chat/utils/regeneration";
+import { useSessionTitle } from "../features/chat/hooks/useSessionTitle";
 
 const WORKSPACE_USER: UserProfile = {
   name: "Workspace User",
@@ -65,10 +77,13 @@ function applyMcpSessionMetadata(
 }
 
 function AppRoot() {
-  return <AppRouter shell={<IntelligenceApp />} />;
+  const streamRoute = useMatch("/chat/stream");
+  const chatRoute = useMatch("/chat/*");
+  const mode: ChatTransportMode = streamRoute ? "streaming" : chatRoute ? "standard" : "auto";
+  return <AppRouter shell={<IntelligenceApp mode={mode} />} />;
 }
 
-function IntelligenceApp() {
+function IntelligenceApp({ mode }: { mode: ChatTransportMode }) {
   const [settings, setSettings] = useState<SettingsState>(readBrowserSettings);
   const [settingsSaveError, setSettingsSaveError] = useState<string | null>(null);
 
@@ -85,6 +100,7 @@ function IntelligenceApp() {
 
   return (
     <Workspace
+      mode={mode}
       user={effectiveUser}
       settings={settings}
       setSettings={handleUpdateSettings}
@@ -94,11 +110,13 @@ function IntelligenceApp() {
 }
 
 function Workspace({
+  mode,
   user,
   settings,
   setSettings,
   settingsSaveError,
 }: {
+  mode: ChatTransportMode;
   user: UserProfile;
   settings: SettingsState;
   setSettings: (settings: SettingsState) => void;
@@ -176,6 +194,7 @@ function Workspace({
   const activeConversationIsThinking = activeConversationId
     ? thinkingConversationIds.has(activeConversationId)
     : false;
+  useSessionTitle(activeConversation, activeConversationIsThinking, setConversations);
   const activeRegeneratingResponseId = activeConversationId
     ? regeneratingResponseIds[activeConversationId]
     : undefined;
@@ -350,7 +369,7 @@ function Workspace({
         : Math.max(1, distance * (1 - Math.exp(-elapsed / 65)));
       if (!reducedMotion.matches) frame = requestAnimationFrame(follow);
     };
-    // Observe only the active answer; token updates no longer render the workspace.
+    // Subscribe to the active answer without re-rendering the workspace for each token.
     const observer = new ResizeObserver(() => {
       if (!followStreamRef.current) {
         setShowJumpToLatest(
@@ -443,14 +462,14 @@ function Workspace({
     if (window.matchMedia("(max-width: 900px)").matches) {
       dispatch(uiActions.setSidebarOpen(false));
     }
-    setMagicHintDismissed(false);
     setActiveConversationId(null);
     setPrompt("");
+    setMagicHintDismissed(false);
     setModelsOpen(false);
   };
 
   const setActiveConversationModel = (nextModelId: ModelId) => {
-    if (activeConversation?.messages.length) {
+    if (activeConversation?.messages.length && !activeConversation.modelSelectionRequired) {
       setModelsOpen(false);
       showToast("Start a new chat to change the semantic model", "warning");
       return;
@@ -464,7 +483,7 @@ function Workspace({
     setConversations((current) =>
       current.map((conversation) =>
         conversation.id === activeConversation.id
-          ? { ...conversation, modelId: nextModelId }
+          ? { ...conversation, modelId: nextModelId, modelSelectionRequired: false }
           : conversation,
       ),
     );
@@ -474,9 +493,9 @@ function Workspace({
     if (window.matchMedia("(max-width: 900px)").matches) {
       dispatch(uiActions.setSidebarOpen(false));
     }
-    setMagicHintDismissed(true);
     setWalkthroughDismissed(true);
     setActiveConversationId(conversation.id);
+    setMagicHintDismissed(true);
     setSelectedModelId(normalizeModelId(conversation.modelId));
     setSelectedCountryCode(normalizeCountryCode(conversation.countryCode));
     setModelsOpen(false);
@@ -504,6 +523,11 @@ function Workspace({
 
   const submitPrompt = async (question = prompt) => {
     if (activeConversationIsThinking) return;
+    if (activeConversation?.modelSelectionRequired) {
+      setModelsOpen(true);
+      showToast("Select the semantic model for this saved chat before continuing", "warning");
+      return;
+    }
     const trimmedQuestion = question.trim();
     if (!trimmedQuestion) {
       return;
@@ -552,6 +576,7 @@ function Workspace({
     const userMessage: Message = {
       id: createId("msg"),
       role: "user",
+      requestKind: "new",
       text: trimmedQuestion,
       createdAt,
     };
@@ -566,10 +591,9 @@ function Workspace({
         return current.map((conversation) => {
           if (conversation.id !== conversationId) return conversation;
           const nextMessages = [...conversation.messages, userMessage];
-          const userMsgs = nextMessages.filter((m) => m.role === "user").map((m) => m.text);
           return {
             ...conversation,
-            title: titleFromUserMessages(userMsgs),
+            ...localConversationTitle(conversation, nextMessages),
             messages: nextMessages,
             updatedAt: createdAt,
           };
@@ -579,6 +603,7 @@ function Workspace({
       const nextConversation: Conversation = {
         id: conversationId,
         title: titleFromUserMessages([trimmedQuestion]),
+        titleSource: "local",
         modelId: currentModelId,
         countryCode: currentCountryCode,
         messages: [userMessage],
@@ -605,6 +630,7 @@ function Workspace({
         mcpRequest.payload,
         requestAudit,
         streamingCallbacks(conversationId),
+        mode,
       );
       const answer = insight.answer;
       if (insight.mcpSession?.requiresNewSession) {
@@ -706,6 +732,11 @@ function Workspace({
     if (!trimmedQuestion || !activeConversation) {
       return;
     }
+    if (activeConversation.modelSelectionRequired) {
+      setModelsOpen(true);
+      showToast("Select the semantic model for this saved chat before continuing", "warning");
+      return;
+    }
 
     const currentModelId = normalizeModelId(activeConversation.modelId ?? selectedModelId);
     const responseTablePageSize = settings.tablePageSize;
@@ -737,10 +768,9 @@ function Workspace({
       setConversations((current) =>
         current.map((conversation) => {
           if (conversation.id !== conversationId) return conversation;
-          const userMsgs = nextMessages.filter((m) => m.role === "user").map((m) => m.text);
           return {
             ...conversation,
-            title: titleFromUserMessages(userMsgs),
+            ...localConversationTitle(conversation, nextMessages),
             messages: nextMessages,
             updatedAt: createdAt,
           };
@@ -759,10 +789,29 @@ function Workspace({
       });
       requestAudit = mcpRequest.audit;
       persistMcpRequestAudit(requestAudit);
+      if (responseId) {
+        const attempt = requestAudit;
+        setConversations((current) =>
+          current.map((conversation) =>
+            conversation.id === conversationId
+              ? {
+                  ...conversation,
+                  messages: recordRegenerationAttempt(
+                    conversation.messages,
+                    messageId,
+                    attempt.request_id,
+                    attempt.sent_at,
+                  ),
+                }
+              : conversation,
+          ),
+        );
+      }
       const insight = await requestMcpInsight(
         mcpRequest.payload,
         requestAudit,
         streamingCallbacks(conversationId),
+        mode,
       );
       const answer = insight.answer;
       if (insight.mcpSession?.requiresNewSession) {
@@ -862,6 +911,26 @@ function Workspace({
         delete next[conversationId];
         return next;
       });
+      if (responseId && requestAudit) {
+        const attempt = requestAudit;
+        const completedAt = new Date().toISOString();
+        setConversations((current) =>
+          current.map((conversation) =>
+            conversation.id === conversationId
+              ? {
+                  ...conversation,
+                  messages: recordRegenerationAttempt(
+                    conversation.messages,
+                    messageId,
+                    attempt.request_id,
+                    attempt.sent_at,
+                    completedAt,
+                  ),
+                }
+              : conversation,
+          ),
+        );
+      }
       setThinkingConversationIds((current) => {
         const next = new Set(current);
         next.delete(conversationId);
@@ -942,7 +1011,9 @@ function Workspace({
     if (!trimmed) return;
     setConversations((current) =>
       current.map((conversation) =>
-        conversation.id === conversationId ? { ...conversation, title: trimmed } : conversation,
+        conversation.id === conversationId
+          ? { ...conversation, title: trimmed, titleSource: "manual" }
+          : conversation,
       ),
     );
     showToast("Chat title updated");
@@ -980,6 +1051,7 @@ function Workspace({
 
       <section className="workspace">
         <Navbar
+          responseMode={mode}
           modelId={selectedModelId}
           openGuide={openSelectedModelGuide}
           showWalkthroughBanner={!walkthroughDismissed && !tourOpen && !activeConversation}
@@ -1015,24 +1087,45 @@ function Workspace({
                 tabIndex={0}
                 aria-label="Conversation messages"
               >
-                {activeConversation.messages.map((message) => (
-                  <MessageBubble
-                    key={message.id}
-                    message={message}
-                    tablePageSize={message.tablePageSize ?? settings.tablePageSize}
-                    debugOpen={debugOpen}
-                    feedback={feedback[message.id]}
-                    copyMessage={copyMessage}
-                    markFeedback={markFeedback}
-                    onReportError={() => setIssueOpen(true)}
-                    onEditUserMessage={handleEditUserMessage}
-                    onRegenerateResponse={regenerateResponse}
-                    busy={activeConversationIsThinking}
-                    regenerating={message.id === activeRegeneratingResponseId}
-                    streamProgress={streamProgress}
-                    conversationId={activeConversation.id}
-                  />
-                ))}
+                {!activeConversation.messages.length && (
+                  <div className="history-empty-notice" role="status">
+                    No messages are saved in this browser for this conversation.
+                  </div>
+                )}
+                {savedHistoryDisplayItems(
+                  activeConversation.messages,
+                  activeConversationIsThinking,
+                ).map((item) =>
+                  item.message ? (
+                    <MessageBubble
+                      key={item.key}
+                      message={item.message}
+                      tablePageSize={item.message.tablePageSize ?? settings.tablePageSize}
+                      debugOpen={debugOpen}
+                      feedback={feedback[item.message.id]}
+                      copyMessage={copyMessage}
+                      markFeedback={markFeedback}
+                      onReportError={() => setIssueOpen(true)}
+                      onEditUserMessage={handleEditUserMessage}
+                      onRegenerateResponse={regenerateResponse}
+                      busy={activeConversationIsThinking}
+                      regenerating={item.message.id === activeRegeneratingResponseId}
+                      streamProgress={streamProgress}
+                      conversationId={activeConversation.id}
+                    />
+                  ) : (
+                    <div className="assistant-row history-unavailable-row" key={item.key}>
+                      <AssistantMark />
+                      <div
+                        className="history-unavailable-answer"
+                        role="note"
+                        aria-label="Saved answer unavailable"
+                      >
+                        No saved answer is available for this message.
+                      </div>
+                    </div>
+                  ),
+                )}
                 {activeConversationIsThinking && !activeRegeneratingResponseId && (
                   <div
                     className="assistant-row pending-row"
@@ -1067,11 +1160,15 @@ function Workspace({
                 showMagicHint={!magicHintDismissed}
                 dismissMagicHint={() => setMagicHintDismissed(true)}
                 busy={activeConversationIsThinking}
+                modelSelectionRequired={activeConversation.modelSelectionRequired}
                 modelId={normalizeModelId(activeConversation.modelId)}
                 setModelId={setActiveConversationModel}
                 modelsOpen={modelsOpen}
                 setModelsOpen={setModelsOpen}
-                modelLocked={activeConversation.messages.length > 0}
+                modelLocked={
+                  activeConversation.messages.length > 0 &&
+                  !activeConversation.modelSelectionRequired
+                }
                 countryCode={normalizeCountryCode(
                   activeConversation.countryCode ?? selectedCountryCode,
                 )}
