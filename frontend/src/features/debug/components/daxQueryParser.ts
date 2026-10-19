@@ -1,4 +1,3 @@
-/** Handle older debug payloads as well as the BFF's normalized DAX array. */
 export function readDaxQueries(value: unknown): string[] {
   const entries =
     typeof value === "string"
@@ -18,7 +17,6 @@ function stripDaxFence(query: string) {
   return query.replace(/^\s*```(?:dax)?\s*/i, "").replace(/\s*```\s*$/, "");
 }
 
-/** Find statement boundaries only outside DAX strings, identifiers, and comments. */
 function splitDaxStatements(source: string): string[] {
   const query = source.trim();
   if (!query) return [];
@@ -38,7 +36,6 @@ function splitDaxStatements(source: string): string[] {
     !/[A-Za-z0-9_]/.test(query[index - 1] ?? "") &&
     !/[A-Za-z0-9_]/.test(query[index + keyword.length] ?? "");
 
-  // A transport may concatenate the final ASC/DESC token with the next EVALUATE.
   const isJoinedEvaluate = (index: number) =>
     inOrderBy &&
     query.slice(index, index + 8).toUpperCase() === "EVALUATE" &&

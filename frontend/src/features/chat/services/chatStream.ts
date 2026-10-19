@@ -10,6 +10,20 @@ export type StreamCallbacks = {
   onTextDelta?: (text: string) => void;
 };
 
+function readStreamErrorMessage(record: Record<string, unknown>): string | undefined {
+  if (typeof record.message === "string" && record.message.trim()) {
+    return record.message.trim();
+  }
+  const errorObj = record.error;
+  if (errorObj && typeof errorObj === "object") {
+    const errorRec = errorObj as Record<string, unknown>;
+    if (typeof errorRec.message === "string" && errorRec.message.trim()) {
+      return errorRec.message.trim();
+    }
+  }
+  return undefined;
+}
+
 export async function isChatStreamingAvailable() {
   try {
     const response = await bffClient.get<{ streaming?: unknown }>("/chat/capabilities", {
@@ -22,7 +36,6 @@ export async function isChatStreamingAvailable() {
   }
 }
 
-/** Live answer deltas are transient; completion remains authoritative for saved history. */
 export async function requestStreamingChat(
   payload: McpRequestPayload,
   callbacks: StreamCallbacks,
@@ -31,13 +44,14 @@ export async function requestStreamingChat(
   const timeout = window.setTimeout(() => controller.abort(), env.apiTimeoutMs);
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   try {
+    const headers: Record<string, string> = {
+      "content-type": "application/json",
+      accept: "text/event-stream",
+      "x-browser-user-id": getBrowserUserId(),
+    };
     const response = await fetch(`${env.apiBaseUrl.replace(/\/$/, "")}/chat/stream`, {
       method: "POST",
-      headers: {
-        "content-type": "application/json",
-        accept: "text/event-stream",
-        "x-browser-user-id": getBrowserUserId(),
-      },
+      headers,
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
@@ -71,7 +85,7 @@ export async function requestStreamingChat(
         const lines = frame.split("\n");
         const event = lines.find((line) => line.startsWith("event: "))?.slice(7);
         const data = lines.find((line) => line.startsWith("data: "))?.slice(6);
-        if (!event || data === undefined) continue; // Heartbeat comment.
+        if (!event || data === undefined) continue;
         let value: unknown;
         try {
           value = JSON.parse(data);
@@ -82,8 +96,13 @@ export async function requestStreamingChat(
           throw new Error("The middleware returned an invalid stream event.");
         }
         const record = value as Record<string, unknown>;
-        if (event === "error")
-          throw new Error("The streaming analysis did not complete. Please try again.");
+        if (event === "error") {
+          const apiMessage = readStreamErrorMessage(record);
+          throw new Error(
+            apiMessage ??
+              "The analytics engine was unable to process this request. Please try asking a metric-focused question for your selected model.",
+          );
+        }
         if (event === "text_delta") {
           if (typeof record.text !== "string" || (answerLength += record.text.length) > 500_000) {
             throw new Error("The middleware returned an invalid text delta.");

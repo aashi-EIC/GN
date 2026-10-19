@@ -36,7 +36,7 @@ const requestBody = z.object({
 });
 
 export class HttpMcpStreamClient {
-  constructor(private readonly authentication: OutboundAuthenticationProvider) {}
+  constructor(private readonly authentication: OutboundAuthenticationProvider) { }
 
   async send(context: McpRequestContext, signal: AbortSignal, emit: StreamProgressHandler) {
     if (!config.CHAT_STREAMING_ENABLED) throw new ConfigurationError("Chat streaming is disabled");
@@ -48,17 +48,6 @@ export class HttpMcpStreamClient {
     // Apply configured mappings before validating the streaming request contract.
     // Credentials remain server-side; request bodies and upstream events are not logged.
     const mapped = adaptMcpRequest(context);
-    const parsed = requestBody.safeParse({
-      ...mapped,
-      user_id: context.browserUserId,
-      email: mapped.email ?? config.MCP_STREAM_EMAIL,
-      bearer_token: mapped.bearer_token ?? "",
-      message: context.prompt,
-      semantic_model_id: mapped.semantic_model_id ?? context.semanticModelId,
-      ...(context.mcpSessionId ? { session_id: context.mcpSessionId } : {}),
-    });
-    if (!parsed.success)
-      throw new ConfigurationError("Invalid MCP streaming request configuration");
     const timeoutSignal = AbortSignal.timeout(config.MCP_TIMEOUT_MS);
     const requestSignal = AbortSignal.any([signal, timeoutSignal]);
     let text = "";
@@ -66,6 +55,22 @@ export class HttpMcpStreamClient {
     let writing = false;
     try {
       const headers = await this.authentication.getHeaders(context.user, requestSignal);
+      const downstreamToken = this.authentication.getToken
+        ? await this.authentication.getToken(context.user, requestSignal)
+        : undefined;
+
+      const parsed = requestBody.safeParse({
+        ...mapped,
+        user_id: context.browserUserId,
+        email: mapped.email ?? config.MCP_STREAM_EMAIL,
+        bearer_token: mapped.bearer_token ?? downstreamToken ?? "",
+        message: context.prompt,
+        semantic_model_id: mapped.semantic_model_id ?? context.semanticModelId,
+        ...(context.mcpSessionId ? { session_id: context.mcpSessionId } : {}),
+      });
+      if (!parsed.success)
+        throw new ConfigurationError("Invalid MCP streaming request configuration");
+
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -141,7 +146,6 @@ export class HttpMcpStreamClient {
           requestSignal.throwIfAborted();
           return { ...final.data, llm_output: text };
         }
-        // Other pipeline events (DAX/tool payloads) never become answer text.
       }
       throw new UpstreamError("MCP stream ended before completion");
     } catch (error) {

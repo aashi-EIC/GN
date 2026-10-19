@@ -22,6 +22,15 @@ const schema = z.object({
 
   CORS_ALLOWED_ORIGINS: optionalText,
 
+  DISABLE_AUTH: bool.default(true),
+  ENTRA_AUTH_ENABLED: bool.default(false),
+  ENTRA_TENANT_ID: optionalText,
+  ENTRA_API_AUDIENCE: optionalText,
+  ENTRA_CLIENT_ID: optionalText,
+  ENTRA_ACCEPT_V1_TOKENS: bool.default(true),
+  ENTRA_REQUIRED_SCOPE: optionalText,
+  ENTRA_ALLOWED_ROLES: optionalText,
+
   SEMANTIC_MODELS_JSON: optionalText,
   FEATURE_FLAGS_JSON: optionalText,
   MAX_PROMPT_LENGTH: integer(20_000),
@@ -47,9 +56,14 @@ const schema = z.object({
     z.number().int().min(0).max(3),
   ),
 
-  MCP_AUTH_MODE: z.enum(["none", "api-key"]).default("none"),
+  MCP_AUTH_MODE: z.enum(["none", "api-key", "obo"]).default("none"),
   MCP_API_KEY_HEADER: optionalText,
   MCP_API_KEY_VALUE: optionalText,
+
+  OBO_TENANT_ID: optionalText,
+  OBO_CLIENT_ID: optionalText,
+  OBO_CLIENT_SECRET: optionalText,
+  OBO_DOWNSTREAM_SCOPE: optionalText,
 
   MCP_REQUEST_PROMPT_FIELD: z.preprocess(
     (value) => (value === "" ? undefined : value),
@@ -92,11 +106,33 @@ export function getRequired<K extends keyof typeof config>(key: K): string {
   return value;
 }
 
+export function getOboTenantId(): string {
+  const tenantId = config.OBO_TENANT_ID ?? config.ENTRA_TENANT_ID;
+  if (!tenantId)
+    throw new ConfigurationError("Missing required configuration: OBO_TENANT_ID or ENTRA_TENANT_ID");
+  return tenantId;
+}
+
+export function getDownstreamScopes(): string[] {
+  const raw = getRequired("OBO_DOWNSTREAM_SCOPE");
+  const scopes = raw
+    .split(/[,\s]+/)
+    .map((scope) => scope.trim())
+    .filter(Boolean);
+  if (!scopes.length)
+    throw new ConfigurationError("OBO_DOWNSTREAM_SCOPE must contain at least one scope");
+  return scopes;
+}
+
 export function assertRuntimeConfiguration() {
   requireConfig("MCP_BASE_URL", "MCP_ENDPOINT_PATH", "MCP_REQUEST_PROMPT_FIELD");
 
   if (config.MCP_AUTH_MODE === "api-key") {
     requireConfig("MCP_API_KEY_HEADER", "MCP_API_KEY_VALUE");
+  } else if (config.MCP_AUTH_MODE === "obo") {
+    requireConfig("OBO_CLIENT_ID", "OBO_CLIENT_SECRET", "OBO_DOWNSTREAM_SCOPE");
+    getOboTenantId();
+    getDownstreamScopes();
   }
   if (config.MCP_REQUEST_USER_FIELD && !config.MCP_REQUEST_USER_VALUE_SOURCE) {
     throw new ConfigurationError(

@@ -11,6 +11,7 @@ import {
   Pin,
   Search,
   Settings,
+  LogOut,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -120,6 +121,8 @@ export function Sidebar({
   setSidebarOpen,
   settingsOpen,
   setSettingsOpen,
+  onSignOut,
+  isEntraEnabled,
 }: {
   open: boolean;
   user: UserProfile;
@@ -135,9 +138,12 @@ export function Sidebar({
   setSidebarOpen: (open: boolean) => void;
   settingsOpen: boolean;
   setSettingsOpen: (open: boolean) => void;
+  onSignOut?: () => void;
+  isEntraEnabled?: boolean;
 }) {
   const [groupBy, setGroupBy] = useState<"date" | "topic">("date");
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [collapsedTopics, setCollapsedTopics] = useState<Record<string, boolean>>({});
@@ -165,6 +171,18 @@ export function Sidebar({
       timers.clear();
     };
   }, []);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && !target.closest(".sidebar-account-wrap") && !target.closest(".sidebar-account-popover")) {
+        setAccountMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [accountMenuOpen]);
 
   const handleDelete = async (conversation: Conversation) => {
     const id = conversation.id;
@@ -541,11 +559,36 @@ export function Sidebar({
         </nav>
 
         <div className="sidebar-footer account-footer">
+          {accountMenuOpen && (
+            <div className="sidebar-account-popover" role="dialog" aria-label="Account details">
+              <div className="sidebar-account-details">
+                <span className="account-popover-name">{user.name}</span>
+                {user.email && <span className="account-popover-email">{user.email}</span>}
+                <span className="account-auth-badge">
+                  {user.authProvider || (isEntraEnabled ? "Microsoft Entra ID" : "Local Workspace")}
+                </span>
+              </div>
+              {onSignOut && (
+                <button
+                  type="button"
+                  className="account-signout-btn"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    onSignOut();
+                  }}
+                >
+                  <LogOut size={13} />
+                  <span>Sign Out</span>
+                </button>
+              )}
+            </div>
+          )}
           <div className="sidebar-account-wrap expanded-account-wrap">
             <button
               className="sidebar-account-trigger"
               type="button"
               aria-label={`${user.name} account`}
+              onClick={() => setAccountMenuOpen((prev) => !prev)}
             >
               <span className="avatar sidebar-avatar">{initials(user.name)}</span>
               <span className="sidebar-account-name">{user.name}</span>
@@ -596,6 +639,7 @@ export function Sidebar({
               className="avatar sidebar-avatar collapsed-avatar"
               type="button"
               aria-label={`${user.name} account`}
+              onClick={() => setAccountMenuOpen((prev) => !prev)}
             >
               {initials(user.name)}
             </button>

@@ -22,7 +22,6 @@ function setPath(target: Record<string, unknown>, path: string, value: unknown) 
   current[parts.at(-1)!] = value;
 }
 
-/** Maps BFF request fields to the configured MCP payload. */
 export function adaptMcpRequest(context: McpRequestContext): Record<string, unknown> {
   const body: Record<string, unknown> = {};
 

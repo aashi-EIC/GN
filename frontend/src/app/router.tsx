@@ -1,10 +1,10 @@
 import type { ReactElement } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-
 export function AppRouter({ shell }: { shell: ReactElement }) {
   return (
     <Routes>
       <Route path="/" element={shell} />
+      <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="/chat" element={shell} />
       <Route path="/chat/stream" element={shell} />
       <Route path="/chat/:conversationId" element={shell} />

@@ -89,7 +89,6 @@
   color: var(--ui-text);
 }
 
-/* Align the assistant mark with the first response heading. */
 .assistant-row .markdown-response-body > div:first-child > .markdown-h1:first-child,
 .assistant-row .markdown-response-body > div:first-child > .markdown-h2:first-child,
 .assistant-row .markdown-response-body > div:first-child > .markdown-h3:first-child {
@@ -474,7 +473,6 @@
   font-weight: 700;
 }
 
-/* Tables rendered from response markdown */
 .response .minimal-table-container {
   display: block;
   margin: 12px 0;
@@ -500,7 +498,6 @@
   scrollbar-gutter: auto;
 }
 
-/* Markdown result tables use paging rather than a second vertical scrollbar. */
 .response .minimal-table-container .table-footer-pagination {
   min-height: 40px;
   padding: 6px 10px;

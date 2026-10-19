@@ -1,7 +1,6 @@
 const MAX_DAX_QUERY_LENGTH = 500_000;
 const MAX_DAX_QUERIES = 100;
 
-/** Normalize MCP transport shapes without rewriting the DAX expression itself. */
 export function normalizeGeneratedDaxQueries(value: unknown): string[] | undefined {
   if (typeof value === "string") {
     const query = value.trim();
@@ -15,7 +14,6 @@ export function normalizeGeneratedDaxQueries(value: unknown): string[] | undefin
   if (!Array.isArray(value)) return undefined;
   if (value.length === 0) return [];
 
-  // Some MCP responses serialize a single string as one character per array item.
   if (value.length > 1 && value.every((entry) => typeof entry === "string" && entry.length <= 1)) {
     if (value.length > MAX_DAX_QUERY_LENGTH) return undefined;
     const query = (value as string[]).join("").trim();
@@ -29,7 +27,6 @@ export function normalizeGeneratedDaxQueries(value: unknown): string[] | undefin
     .slice(0, MAX_DAX_QUERIES);
 }
 
-/** Split concatenated top-level DAX statements without touching strings or comments. */
 export function splitDaxStatements(source: string): string[] {
   const query = source.trim();
   if (!query) return [];
@@ -49,7 +46,6 @@ export function splitDaxStatements(source: string): string[] {
     !/[A-Za-z0-9_]/.test(query[index - 1] ?? "") &&
     !/[A-Za-z0-9_]/.test(query[index + keyword.length] ?? "");
 
-  // A transport may concatenate the final ASC/DESC token with the next EVALUATE.
   const isJoinedEvaluate = (index: number) =>
     inOrderBy &&
     query.slice(index, index + 8).toUpperCase() === "EVALUATE" &&

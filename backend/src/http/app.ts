@@ -64,7 +64,7 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["content-type", "x-browser-user-id", "x-correlation-id"],
+    allowedHeaders: ["content-type", "x-browser-user-id", "x-correlation-id", "authorization"],
   }),
 );
 

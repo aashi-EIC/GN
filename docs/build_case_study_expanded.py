@@ -103,7 +103,6 @@ def card(x,y,w,h,label,title,body,accent=TEAL):
 
 def page(): c.showPage()
 
-# 01 — cover
 c.drawImage(ImageReader(str(ART)),0,0,width=W,height=H,mask="auto")
 c.setFillColor(Color(0.018,0.055,0.11,alpha=.28)); c.rect(0,0,W,H,fill=1,stroke=0)
 txt(38,H-68,"NIELSEN  /  SOLUTION ENGINEERING",10,HexColor("#D1EBF2"),"Calibri-Bold")
@@ -117,7 +116,6 @@ para(56,140,"React experience  •  Node.js BFF  •  MCP integration  •  DAX-
 txt(38,39,"PROJECT SHOWCASE  /  OCTOBER 2026",9,HexColor("#C7D9E6"),"Calibri-Bold")
 page()
 
-# 02 — executive story
 header("01 / opportunity","From questions to decisions","A single analytics experience designed around how business users actually ask for information.",2)
 rr(34,498,W-68,174,NAVY,None,19)
 txt(56,641,"THE CHALLENGE",9,HexColor("#8BD6E5"),"Calibri-Bold")
@@ -137,7 +135,6 @@ txt(50,115,"THE DESIGN IN ONE LINE",8,TEAL,"Calibri-Bold")
 txt(50,96,"A focused BI experience that connects questions to governed analytical evidence.",10,INK,"Calibri-Bold")
 page()
 
-# 03 — experience
 header("02 / experience","One workspace, one question","The interface reduces the distance between a business prompt and a usable analytical result.",3)
 rr(34,199,W-68,461,HexColor("#F7FAFD"),LINE,18)
 rr(47,610,W-94,38,NAVY,None,10)
@@ -166,7 +163,6 @@ for i,(h,d) in enumerate([("Choose","Select trusted data"),("Ask","Use business 
     x=34+i*135; circle_num(x+11,140,i+1, [PINK,BLUE,TEAL,ORANGE][i]); txt(x+30,143,h,10,INK,"Calibri-Bold"); txt(x+30,127,d,8.5,MUTED)
 page()
 
-# 04 — architecture
 header("03 / architecture","A composable analytics stack","The UI and BFF add a business-friendly experience without replacing the existing analytical execution path.",4)
 bands=[
  ("01  EXPERIENCE","React UI","Chat, model picker, results, charts, export",PINK),
@@ -188,7 +184,6 @@ txt(83,145,"CROSS-CUTTING CONTROLS",8,HexColor("#91E0E7"),"Calibri-Bold")
 para(83,125,"Identity boundary  •  approved model mapping  •  diagnostics  •  secure configuration",W-166,10,14,WHITE)
 page()
 
-# 05 — detailed sequence
 header("04 / workflow","How an answer is produced","A request crosses defined layers, then returns as a readable result with analytical evidence.",5)
 lanes=[("USER",PINK),("UI + BFF",BLUE),("MCP HOST",TEAL),("MCP SERVER",ORANGE),("FABRIC",HexColor("#8B5CCB"))]
 xs=[53,162,285,412,532]
@@ -213,7 +208,6 @@ txt(50,187,"WHERE INTELLIGENCE IS APPLIED",8,TEAL,"Calibri-Bold")
 para(50,165,"The Host coordinates the conversation and MCP tools. In the observed server code, an LLM-assisted step creates DAX before the Power BI query tool runs. This is not a direct browser-to-Fabric call.",W-100,10,14,MUTED)
 page()
 
-# 06 — model and data
 header("05 / model governance","The semantic model is deliberate","The selected model is a business context decision, not an accidental side effect of the prompt.",6)
 rr(34,405,W-68,254,NAVY,None,16)
 txt(54,629,"CURRENT MODEL JOURNEY",9,HexColor("#91E0E7"),"Calibri-Bold")
@@ -234,7 +228,6 @@ txt(50,133,"EVOLUTION OPPORTUNITY",8,TEAL,"Calibri-Bold")
 para(50,112,"Discover approved models through the MCP Host, cache a governed catalogue, and populate the UI from one source of truth. This is a planned improvement, not current automatic discovery.",W-100,9.5,13,INK)
 page()
 
-# 07 — response experience
 header("06 / outputs","Answers built for review","The result is more than generated prose: users can inspect the analytical shape and move the data onward.",7)
 rr(34,263,W-68,397,WHITE,LINE,15)
 rr(49,608,W-98,37,NAVY,None,8)
@@ -267,7 +260,6 @@ for i,(title,body,col) in enumerate([("Narrative","Plain-language explanation",P
     para(x+12,143,body,99,8.5,11,MUTED)
 page()
 
-# 08 — security
 header("07 / trust","Security is a boundary, not a label","The current no-Entra edition keeps identity limitations explicit while providing a route to a per-user enterprise design.",8)
 rr(34,409,W-68,249,HexColor("#FFF7F1"),HexColor("#F3D5B5"),14)
 txt(52,625,"CURRENT ACCESS BOUNDARY",9,HexColor("#A25D1C"),"Calibri-Bold")
@@ -287,7 +279,6 @@ txt(51,163,"DESIGN PRINCIPLE",8,HexColor("#93E0E7"),"Calibri-Bold")
 para(51,139,"A session ID is conversation state. An authenticated identity is an authorization input. Production history and semantic-model permissions should be keyed to the latter, not retroactively inferred from the former.",W-102,10,14,WHITE)
 page()
 
-# 09 — operations
 header("08 / operations","Designed to be observable","The application already has useful diagnostic seams; production operations turn them into a measurable service.",9)
 rr(34,443,W-68,214,NAVY,None,15)
 txt(54,628,"REQUEST TRACE",9,HexColor("#91E0E7"),"Calibri-Bold")
@@ -309,7 +300,6 @@ for i,(a,b) in enumerate(rows):
 txt(34,85,"Operational measures above are the target service scorecard, not claimed production results.",8.5,MUTED)
 page()
 
-# 10 — scale
 header("09 / resilience","A clear path to scale","A horizontally scalable application depends on externalizing state before adding replicas.",10)
 rr(34,443,W-68,214,HexColor("#EEF6FD"),None,14)
 txt(51,626,"TODAY: FAST TO ITERATE",9,BLUE,"Calibri-Bold")
@@ -332,7 +322,6 @@ rr(34,78,W-68,71,PALE,None,10)
 para(50,124,"Then replicas can be scaled with demand and upgraded incrementally. Kubernetes Deployments and autoscaling are relevant patterns, but need client infrastructure and load testing before an availability claim.",W-100,9.5,13,MUTED)
 page()
 
-# 11 — upgrade/backup
 header("10 / lifecycle","Upgrade without losing confidence","A maintainable integration isolates contracts, configuration, and recoverable state.",11)
 phases=[
  ("01","CONTRACT","Version the BFF-to-Host request and response schema; keep adapter tests for real payload shapes.",PINK),
@@ -352,7 +341,6 @@ txt(51,142,"PRACTICAL RECOVERY TARGET",8,HexColor("#92E2E9"),"Calibri-Bold")
 para(51,119,"Back up what must survive a restart; rehearse restore; document who approves a model or endpoint change. The current process-local stores are not a durable backup solution.",W-102,9.8,13.5,WHITE)
 page()
 
-# 12 — value + references
 header("11 / reuse","A foundation for the next engagement","The reusable pattern is the separation of experience, orchestration, and governed analytics.",12)
 for i,(num,title,body,col) in enumerate([
  ("01","Experience layer","Adapt the chat, model selection, visual response, and guidance to a new business domain.",PINK),

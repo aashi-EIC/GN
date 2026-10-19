@@ -4,8 +4,9 @@ export type AuthenticatedUser = {
   tenantId: string;
   objectId: string;
   subject: string;
-  preferredUsername?: string;
+  preferredUsername?: string | undefined;
   roles: string[];
+  rawAccessToken?: string | undefined;
 };
 
 export type AuthenticatedRequest = Request & {

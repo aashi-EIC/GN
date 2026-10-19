@@ -14,7 +14,6 @@ export function normalizeTablePageSize(
   return Math.min(TABLE_PAGE_SIZE_MAX, Math.max(TABLE_PAGE_SIZE_MIN, Math.trunc(parsed)));
 }
 
-// This distribution has one shared backend identity. Personal preferences stay on this device.
 export function readBrowserSettings(): SettingsState {
   try {
     const value: unknown = JSON.parse(localStorage.getItem(storageKeys.settings) ?? "null");

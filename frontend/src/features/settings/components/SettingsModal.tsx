@@ -1,4 +1,4 @@
-import { Braces, CircleGauge, MoonStar, UserRound, X } from "lucide-react";
+import { Braces, CircleGauge, MoonStar, UserRound, X, LogOut } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { SettingsState } from "../../../shared/types/app";
 
@@ -10,6 +10,7 @@ export function SettingsModal({
   settingsSaveError,
   themeMode,
   toggleTheme,
+  onSignOut,
 }: {
   close: () => void;
   settings: SettingsState;
@@ -18,6 +19,7 @@ export function SettingsModal({
   settingsSaveError?: string | null;
   themeMode: "light" | "dark";
   toggleTheme: () => void;
+  onSignOut?: () => void;
 }) {
   const panelRef = useRef<HTMLElement>(null);
 
@@ -50,7 +52,6 @@ export function SettingsModal({
       const panel = panelRef.current;
       const target = event.target as Node;
 
-      // Outside the panel, keep native chat and sidebar scrolling (and zoom).
       if (!panel?.contains(target) || event.ctrlKey || !event.deltaY) return;
 
       if (panel?.contains(target)) {
@@ -163,6 +164,20 @@ export function SettingsModal({
               <span className="settings-switch-thumb" />
             </span>
           </button>
+
+          {onSignOut && (
+            <button
+              type="button"
+              className="sidebar-settings-row signout"
+              onClick={() => {
+                close();
+                onSignOut();
+              }}
+            >
+              <LogOut />
+              <span>Log out</span>
+            </button>
+          )}
         </div>
       </aside>
     </div>

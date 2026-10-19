@@ -77,8 +77,6 @@ function conversationKey(id: string) {
 export function createConversationHistory(tablePageSize: number) {
   let snapshot: Conversation[] = [];
   const listeners = new Set<() => void>();
-  // Failed storage writes stay in this tab's memory; optional persistence must
-  // never prevent a request or discard the response being displayed.
   const unsaved = new Map<string, string>();
   let positions = new Map<string, Map<string, MessagePosition>>();
 
@@ -236,8 +234,6 @@ export function createConversationHistory(tablePageSize: number) {
   }
 
   function update(action: HistoryUpdate) {
-    // Re-read immediately before computing the user's change, even if another
-    // tab's storage event has not been delivered yet.
     const current = read(snapshot);
     const next = action(current);
     const before = new Map(current.map((conversation) => [conversation.id, conversation]));

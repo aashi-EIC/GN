@@ -8,7 +8,7 @@ export type ChatTransportMode = "auto" | "standard" | "streaming";
 export type UserProfile = {
   email: string;
   name: string;
-  authProvider: "No Authentication";
+  authProvider: "No Authentication" | "Microsoft Entra ID" | "Local Workspace";
 };
 
 export type SettingsState = {

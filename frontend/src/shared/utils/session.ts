@@ -107,7 +107,7 @@ const STOP_WORDS = new Set([
 ]);
 
 export function titleFromUserMessages(userMessages: string[]): string {
-  const topMessages = userMessages.filter((m) => m && m.trim().length > 0).slice(0, 5);
+  const topMessages = userMessages.filter((m) => m && m.trim().length > 0).slice(0, 1);
   if (topMessages.length === 0) return "new chat";
 
   const wordCounts: Map<string, number> = new Map();

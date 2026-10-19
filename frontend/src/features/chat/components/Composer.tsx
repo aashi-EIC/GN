@@ -6,6 +6,7 @@ import { getModel } from "../utils/semantic";
 import { startVoiceInput } from "../utils/speech";
 import { ModelPicker } from "./ModelPicker";
 import { ChatPromptInput } from "./ChatPromptInput";
+import { TeamFooter } from "../../../shared/components/TeamFooter";
 
 export function Composer({
   prompt,
@@ -103,6 +104,7 @@ export function Composer({
           </div>
         </div>
       </div>
+      <TeamFooter className="chat-team-footer" />
     </div>
   );
 }

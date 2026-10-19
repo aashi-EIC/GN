@@ -757,8 +757,6 @@ function buildDebugData(message: Message) {
 
 function formatDaxQuery(query: string) {
   const normalized = query.replace(/\r\n?/g, "\n").trim();
-  // Keep existing formatting and comments intact. A display formatter must not
-  // accidentally move a comment across executable DAX.
   if (normalized.split("\n").length > 2 || /--|\/\/|\/\*/.test(normalized)) {
     return normalized
       .split("\n")

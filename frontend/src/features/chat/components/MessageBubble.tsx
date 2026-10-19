@@ -33,7 +33,9 @@ import { normalizeDataLists } from "../utils/responseTables";
 import { removeChartScriptSections, streamingDisplayText } from "../utils/responseDisplay";
 import { DebugDrawer } from "../../debug/components/DebugDrawer";
 import { renderInlineVisualMarkers } from "./InlineVisualMarkers";
+import { handleEnter } from "../../../shared/utils/keyboard";
 import type { StreamProgressStore } from "../services/streamProgress";
+import { ThinkingAnimation } from "./ThinkingAnimation";
 import "./messageBubbleMarkdown.css";
 import "./responseRegeneration.css";
 
@@ -51,6 +53,7 @@ function MessageBubbleComponent({
   regenerating = false,
   streamProgress,
   conversationId,
+  userPrompt,
 }: {
   message: Message;
   tablePageSize: TablePageSize;
@@ -65,6 +68,7 @@ function MessageBubbleComponent({
   regenerating?: boolean;
   streamProgress: StreamProgressStore;
   conversationId: string;
+  userPrompt?: string;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
@@ -104,6 +108,22 @@ function MessageBubbleComponent({
               value={editText}
               disabled={busy}
               onChange={(e) => setEditText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setIsEditing(false);
+                  setEditText(message.text);
+                  return;
+                }
+                handleEnter(e, () => {
+                  if (!busy && editText.trim() && onEditUserMessage) {
+                    if (editText.trim() !== message.text) {
+                      onEditUserMessage(message.id, editText.trim());
+                    }
+                    setIsEditing(false);
+                  }
+                });
+              }}
               autoFocus
               rows={Math.max(2, editText.split("\n").length)}
             />
@@ -161,8 +181,11 @@ function MessageBubbleComponent({
   const [errorSummary, errorSuggestion = ""] = message.text.split(suggestionMarker);
   const errorStatus =
     message.metrics?.find((metric) => metric.tone === "watch")?.value || "Request failed";
+  const hasDebugData = Boolean(
+    (message.debug && message.debug.length > 0) || message.mcpRequest,
+  );
   const debugTrigger =
-    debugOpen && message.debug ? (
+    hasDebugData && debugOpen !== false ? (
       <button
         type="button"
         className="debug-details-trigger"
@@ -193,6 +216,7 @@ function MessageBubbleComponent({
               progress={streamProgress}
               conversationId={conversationId}
               tablePageSize={tablePageSize}
+              userPrompt={userPrompt}
             />
           </div>
         )}
@@ -292,7 +316,7 @@ function MessageBubbleComponent({
           )}
 
           {isError && debugTrigger}
-          {debugOpen && message.debug && (
+          {hasDebugData && debugOpen !== false && (
             <DebugDrawer
               message={message}
               open={debugDrawerOpen}
@@ -324,10 +348,12 @@ export function PendingResponse({
   progress,
   conversationId,
   tablePageSize,
+  userPrompt,
 }: {
   progress: StreamProgressStore;
   conversationId: string;
   tablePageSize: TablePageSize;
+  userPrompt?: string;
 }) {
   const subscribe = useCallback(
     (listener: () => void) => progress.subscribe(conversationId, listener),
@@ -342,22 +368,7 @@ export function PendingResponse({
   return (
     <div className={`pending-response ${preview ? "has-preview" : ""}`} aria-busy="true">
       {preview && <SafeResponseText text={preview} tablePageSize={tablePageSize} streaming />}
-      <div
-        className={`thinking ${preview ? "streaming-status" : ""}`}
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        <span className={preview ? "streaming-dots" : "thinking-wave"} aria-hidden="true">
-          <i />
-          <i />
-          <i />
-          {!preview && <i />}
-        </span>
-        <span className="thinking-label">
-          {preview ? "Writing response…" : "Analyzing your data"}
-        </span>
-      </div>
+      <ThinkingAnimation preview={Boolean(preview)} prompt={userPrompt} />
     </div>
   );
 }
@@ -585,7 +596,6 @@ function SafeResponseText({
           return;
         }
 
-        // Check for KPI metric bullet lines: - **Label**: Value (Subtext) or - Label: Value
         const metricMatch = trimmed.match(
           /^[-*•]\s+(?:\*\*([^*]+)\*\*|([A-Za-z0-9\s_%–-]+)):\s*([^(]+?)(?:\s*\(([^)]+)\))?$/,
         );
@@ -604,7 +614,6 @@ function SafeResponseText({
           return;
         }
 
-        // Identify an insight heading before generic bullet and blockquote handling.
         if (hasInsightPrefix(trimmed)) {
           flushList(`${blockIdx}-${lineIdx}`);
           flushKpiList(`${blockIdx}-${lineIdx}`);
@@ -642,9 +651,6 @@ function SafeResponseText({
           return;
         }
 
-        // Blank lines are visual spacing, not the end of an insight section.
-        // Keeping the insight buffer open prevents subsequent quoted findings
-        // from falling back to separate Note cards.
         if (!trimmed) {
           flushList(`${blockIdx}-${lineIdx}`);
           flushKpiList(`${blockIdx}-${lineIdx}`);
@@ -709,7 +715,6 @@ function SafeResponseText({
   );
 }
 
-// Completed tables do not recalculate sorting/filtering when later prose streams in.
 const ResponseTable = memo(
   function ResponseTable({
     block,
@@ -801,7 +806,6 @@ function parseMarkdownTableRow(line: string) {
       backslashes += 1;
     }
     if (backslashes % 2 === 1) {
-      // An escaped pipe belongs to the cell, including inside inline code.
       cell = cell.slice(0, -1) + "|";
     } else {
       cells.push(cell.trim());
@@ -811,7 +815,6 @@ function parseMarkdownTableRow(line: string) {
   }
   cells.push(cell.trim());
 
-  // Outer delimiters are optional; keep genuine empty interior cells.
   if (source.startsWith("|")) cells.shift();
   if (lastDelimiter === source.length - 1) cells.pop();
   return cells;
@@ -877,8 +880,6 @@ function tableFromCodeBlock(
 }
 
 function renderFormattedInlineText(text: string): React.ReactNode {
-  // Preserve Markdown emphasis/code boundaries, then normalize visual markers
-  // only in the remaining prose so code samples are left untouched.
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g);
 
   return parts.map((part, idx) => {

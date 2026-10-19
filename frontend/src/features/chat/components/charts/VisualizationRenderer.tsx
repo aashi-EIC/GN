@@ -109,7 +109,7 @@ function normalizeTableValue(value: unknown): unknown {
 export function StructuredTable({
   block,
   minimal = false,
-  defaultPageSize = 5,
+  defaultPageSize = 10,
   receiving = false,
   partial = false,
 }: {
@@ -370,7 +370,6 @@ export function StructuredTable({
             <span>{copied ? "Copied" : "Copy"}</span>
           </button>
 
-          {/* Export CSV button */}
           <button
             type="button"
             className="btn-table-action"
@@ -385,7 +384,6 @@ export function StructuredTable({
         </div>
       </div>
 
-      {/* Main Table Container */}
       <div className={minimal ? "minimal-table-scroll-area" : "table-wrap"}>
         <table className={minimal ? "markdown-table" : "interactive-data-table"}>
           <thead>
@@ -452,7 +450,6 @@ export function StructuredTable({
         </table>
       </div>
 
-      {/* Footer Pagination Bar */}
       {!incomplete && (rawRows.length > 5 || (!isAll && rawRows.length > pageSize)) && (
         <div className="table-footer-pagination">
           <div className="pagination-info">

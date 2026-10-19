@@ -57,12 +57,6 @@ import {
 } from "../features/chat/utils/regeneration";
 import { useSessionTitle } from "../features/chat/hooks/useSessionTitle";
 
-const WORKSPACE_USER: UserProfile = {
-  name: "Workspace User",
-  email: "workspace@local",
-  authProvider: "No Authentication",
-};
-
 function applyMcpSessionMetadata(
   conversation: Conversation,
   metadata: McpSessionMetadata | undefined,
@@ -83,17 +77,22 @@ function AppRoot() {
   return <AppRouter shell={<IntelligenceApp mode={mode} />} />;
 }
 
+const WORKSPACE_USER: UserProfile = {
+  name: "Workspace User",
+  email: "workspace@local",
+  authProvider: "No Authentication",
+};
+
 function IntelligenceApp({ mode }: { mode: ChatTransportMode }) {
   const [settings, setSettings] = useState<SettingsState>(readBrowserSettings);
   const [settingsSaveError, setSettingsSaveError] = useState<string | null>(null);
 
   const handleUpdateSettings = (nextSettings: SettingsState) => {
     setSettings(nextSettings);
-
     setSettingsSaveError(persistBrowserSettings(nextSettings));
   };
 
-  const effectiveUser = {
+  const effectiveUser: UserProfile = {
     ...WORKSPACE_USER,
     name: settings.displayName.trim() || WORKSPACE_USER.name,
   };
@@ -148,7 +147,6 @@ function Workspace({
   const streamingCallbacks = (conversationId: string) => ({
     onTextDelta: (delta: string) => streamProgress.append(conversationId, delta),
     onStatus: (message: string) => streamProgress.setStatus(conversationId, message),
-    // Retain the authoritative MCP session even if this stream later disconnects.
     onSession: (id: string) =>
       setConversations((current) =>
         current.map((conversation) =>
@@ -327,7 +325,6 @@ function Workspace({
     let previousTop = container.scrollTop;
     const trackPosition = () => {
       const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
-      // An intentional upward scroll pauses following, even close to the bottom.
       if (container.scrollTop < previousTop - 1) followStreamRef.current = false;
       else if (distance < 8) followStreamRef.current = true;
       previousTop = container.scrollTop;
@@ -337,7 +334,6 @@ function Workspace({
       if (event.deltaY < 0) followStreamRef.current = false;
     };
     const pauseOnTouch = () => {
-      // Let native touch scrolling take control before the next animation frame.
       followStreamRef.current = false;
     };
     container.addEventListener("scroll", trackPosition, { passive: true });
@@ -697,7 +693,7 @@ function Workspace({
           {
             stage: "request_error",
             status: "warning",
-            detail: rawMessage,
+            detail: errorInfo.debugDetail ?? rawMessage,
           },
         ],
         mcpRequest: requestAudit ?? undefined,
@@ -846,10 +842,6 @@ function Workspace({
         ),
       );
     } catch (error) {
-      if (responseId) {
-        streamProgress.interrupt(conversationId, responseId, true);
-        return;
-      }
       const rawMessage =
         error instanceof Error
           ? error.message
@@ -857,8 +849,9 @@ function Workspace({
       const errorInfo = formatUserFriendlyError(rawMessage);
       const displayText = `${errorInfo.userMessage}\n\n💡 **Suggested Action**: ${errorInfo.suggestion}`;
       const tokenUsage = calculateTokenUsageAndCost(currentModelId, trimmedQuestion, displayText);
+      const targetMessageId = responseId ?? createId("msg");
       const responseMessage: Message = {
-        id: createId("msg"),
+        id: targetMessageId,
         role: "assistant",
         createdAt: new Date().toISOString(),
         tablePageSize: responseTablePageSize,
@@ -884,21 +877,27 @@ function Workspace({
           {
             stage: "request_error",
             status: "warning",
-            detail: rawMessage,
+            detail: errorInfo.debugDetail ?? rawMessage,
           },
         ],
         mcpRequest: requestAudit ?? undefined,
         tokenUsage,
       };
 
-      streamProgress.interrupt(conversationId, responseMessage.id);
+      if (responseId) {
+        streamProgress.clear(responseId);
+      } else {
+        streamProgress.interrupt(conversationId, responseMessage.id);
+      }
 
       setConversations((current) =>
         current.map((conversation) =>
           conversation.id === conversationId
             ? {
                 ...conversation,
-                messages: [...conversation.messages, responseMessage],
+                messages: responseId
+                  ? replaceAssistantResponse(conversation.messages, responseId, responseMessage)
+                  : [...conversation.messages, responseMessage],
                 updatedAt: responseMessage.createdAt,
               }
             : conversation,
@@ -1087,45 +1086,32 @@ function Workspace({
                 tabIndex={0}
                 aria-label="Conversation messages"
               >
-                {!activeConversation.messages.length && (
-                  <div className="history-empty-notice" role="status">
-                    No messages are saved in this browser for this conversation.
-                  </div>
-                )}
-                {savedHistoryDisplayItems(
-                  activeConversation.messages,
-                  activeConversationIsThinking,
-                ).map((item) =>
-                  item.message ? (
-                    <MessageBubble
-                      key={item.key}
-                      message={item.message}
-                      tablePageSize={item.message.tablePageSize ?? settings.tablePageSize}
-                      debugOpen={debugOpen}
-                      feedback={feedback[item.message.id]}
-                      copyMessage={copyMessage}
-                      markFeedback={markFeedback}
-                      onReportError={() => setIssueOpen(true)}
-                      onEditUserMessage={handleEditUserMessage}
-                      onRegenerateResponse={regenerateResponse}
-                      busy={activeConversationIsThinking}
-                      regenerating={item.message.id === activeRegeneratingResponseId}
-                      streamProgress={streamProgress}
-                      conversationId={activeConversation.id}
-                    />
-                  ) : (
-                    <div className="assistant-row history-unavailable-row" key={item.key}>
-                      <AssistantMark />
-                      <div
-                        className="history-unavailable-answer"
-                        role="note"
-                        aria-label="Saved answer unavailable"
-                      >
-                        No saved answer is available for this message.
-                      </div>
-                    </div>
-                  ),
-                )}
+                {activeConversation.messages.map((message, index) => (
+                  <MessageBubble
+                    key={message.id}
+                    message={message}
+                    tablePageSize={message.tablePageSize ?? settings.tablePageSize}
+                    debugOpen={debugOpen}
+                    feedback={feedback[message.id]}
+                    copyMessage={copyMessage}
+                    markFeedback={markFeedback}
+                    onReportError={() => setIssueOpen(true)}
+                    onEditUserMessage={handleEditUserMessage}
+                    onRegenerateResponse={regenerateResponse}
+                    busy={activeConversationIsThinking}
+                    regenerating={message.id === activeRegeneratingResponseId}
+                    streamProgress={streamProgress}
+                    conversationId={activeConversation.id}
+                    userPrompt={
+                      message.role === "assistant"
+                        ? activeConversation.messages
+                            .slice(0, index)
+                            .filter((m) => m.role === "user")
+                            .at(-1)?.text
+                        : undefined
+                    }
+                  />
+                ))}
                 {activeConversationIsThinking && !activeRegeneratingResponseId && (
                   <div
                     className="assistant-row pending-row"
@@ -1137,6 +1123,7 @@ function Workspace({
                         progress={streamProgress}
                         conversationId={activeConversation.id}
                         tablePageSize={settings.tablePageSize}
+                        userPrompt={lastUserMessage?.text}
                       />
                     </article>
                   </div>
