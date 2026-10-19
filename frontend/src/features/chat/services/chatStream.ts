@@ -32,12 +32,10 @@ export async function isChatStreamingAvailable() {
     });
     return response.data.streaming === true;
   } catch {
-    // Safe fallback BEFORE submitting an analytical request; older BFFs have no capability route.
     return false;
   }
 }
 
-/** Live answer deltas are transient; completion remains authoritative for saved history. */
 export async function requestStreamingChat(
   payload: McpRequestPayload,
   callbacks: StreamCallbacks,
@@ -80,7 +78,6 @@ export async function requestStreamingChat(
       }
       bytes += chunk.value.byteLength;
       if (bytes > 10_485_760) throw new Error("The streamed response exceeded the size limit.");
-      // Our BFF emits LF-delimited, single-line JSON data. HTTP chunks may split anywhere.
       pending += decoder.decode(chunk.value, { stream: true });
       let boundary: number;
       while ((boundary = pending.indexOf("\n\n")) !== -1) {
@@ -89,7 +86,7 @@ export async function requestStreamingChat(
         const lines = frame.split("\n");
         const event = lines.find((line) => line.startsWith("event: "))?.slice(7);
         const data = lines.find((line) => line.startsWith("data: "))?.slice(6);
-        if (!event || data === undefined) continue; // Heartbeat comment.
+        if (!event || data === undefined) continue;
         let value: unknown;
         try {
           value = JSON.parse(data);

@@ -91,11 +91,6 @@ function humanizeColumnLabel(key: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-/**
- * Table data is plain text, so remove inline Markdown markers that an LLM may
- * include for emphasis. Without this normalization values such as
- * `**Total Channels**` are displayed with the asterisks intact.
- */
 function normalizeTableText(value: string): string {
   return value
     .replace(/\[([^\]]+)]\([^)]+\)/g, "$1")
@@ -372,7 +367,6 @@ export function StructuredTable({
             <span>{copied ? "Copied" : "Copy"}</span>
           </button>
 
-          {/* Export CSV button */}
           <button
             type="button"
             className="btn-table-action"
@@ -387,7 +381,6 @@ export function StructuredTable({
         </div>
       </div>
 
-      {/* Main Table Container */}
       <div className={minimal ? "minimal-table-scroll-area" : "table-wrap"}>
         <table className={minimal ? "markdown-table" : "interactive-data-table"}>
           <thead>
@@ -454,7 +447,6 @@ export function StructuredTable({
         </table>
       </div>
 
-      {/* Footer Pagination Bar */}
       {!incomplete && (rawRows.length > 5 || (!isAll && rawRows.length > pageSize)) && (
         <div className="table-footer-pagination">
           <div className="pagination-info">

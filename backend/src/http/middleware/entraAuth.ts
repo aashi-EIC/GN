@@ -12,7 +12,6 @@ const DEFAULT_DEV_USER: AuthenticatedUser = {
   roles: [],
 };
 
-// Remote JWKS cache for Microsoft Entra ID
 let cachedJWKS: ReturnType<typeof createRemoteJWKSet> | null = null;
 let cachedTenantId: string | undefined = undefined;
 
@@ -66,7 +65,6 @@ export const entraAuth: RequestHandler = async (req, res, next) => {
     const tenantId = config.ENTRA_TENANT_ID;
     const jwks = getJWKS(tenantId);
 
-    // Prepare acceptable issuers
     const expectedIssuers: string[] = [];
     if (tenantId && tenantId !== "common") {
       expectedIssuers.push(`https://login.microsoftonline.com/${tenantId}/v2.0`);
@@ -75,7 +73,6 @@ export const entraAuth: RequestHandler = async (req, res, next) => {
       }
     }
 
-    // Prepare acceptable audience
     const audienceCandidates = [
       config.ENTRA_API_AUDIENCE,
       config.ENTRA_CLIENT_ID,
@@ -91,7 +88,6 @@ export const entraAuth: RequestHandler = async (req, res, next) => {
 
     const { payload } = await jwtVerify(token, jwks, verificationOptions);
 
-    // Extract claims
     const objectId = (payload.oid || payload.sub || "unknown-user") as string;
     const userTenantId = (payload.tid as string) || tenantId || "unknown-tenant";
     const subject = (payload.sub as string) || objectId;
@@ -102,7 +98,6 @@ export const entraAuth: RequestHandler = async (req, res, next) => {
       payload.unique_name
     ) as string | undefined;
 
-    // Roles extraction
     const rawRoles = payload.roles;
     const roles: string[] = Array.isArray(rawRoles)
       ? (rawRoles as string[])
@@ -110,7 +105,6 @@ export const entraAuth: RequestHandler = async (req, res, next) => {
         ? [rawRoles]
         : [];
 
-    // Check allowed roles if configured
     if (config.ENTRA_ALLOWED_ROLES) {
       const allowedRoles = config.ENTRA_ALLOWED_ROLES.split(",")
         .map((r) => r.trim())
@@ -128,7 +122,6 @@ export const entraAuth: RequestHandler = async (req, res, next) => {
       }
     }
 
-    // Check required scope if configured
     if (config.ENTRA_REQUIRED_SCOPE) {
       const rawScopes = (payload.scp as string) || "";
       const scopes = rawScopes.split(" ").filter(Boolean);
@@ -160,7 +153,7 @@ export const entraAuth: RequestHandler = async (req, res, next) => {
     logger.warn({ error: errMessage }, "Entra ID JWT verification failed");
 
     if (!isAuthEnforced) {
-      // In dev mode when auth is not strictly enforced, log warning but allow request to continue with dev identity
+
       logger.info("Auth not strictly enforced, falling back to local workspace identity");
       Object.assign(req, { user: DEFAULT_DEV_USER });
       return next();

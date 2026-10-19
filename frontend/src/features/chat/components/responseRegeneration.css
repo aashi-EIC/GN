@@ -4,7 +4,7 @@
 }
 
 .response.is-regenerating > .response-content {
-  /* Keep later turns in place while the previous answer is hidden. */
+  
   visibility: hidden;
   pointer-events: none;
 }
@@ -31,7 +31,6 @@
   top: 16px;
 }
 
-/* The final turn has no later messages whose position needs preserving. */
 .messages > .assistant-row.regenerating-row:not(:has(~ .assistant-row, ~ .user-row)) {
   align-items: center;
 }
@@ -81,7 +80,6 @@
   margin-top: 12px;
 }
 
-/* Run once on first visible content, not again for every token. */
 .pending-response > .markdown-response-body {
   animation: stream-preview-in 180ms ease-out;
 }
@@ -99,8 +97,6 @@
   position: static;
   overflow: visible;
 }
-
-/* Reuse the original wave and text shimmer from globals.css; no per-character animation. */
 
 .pending-response .streaming-status {
   color: var(--ui-muted);
@@ -146,12 +142,10 @@
   animation-delay: -1s;
 }
 
-/* Keep widths stable as complete rows arrive. This applies only to the live preview. */
 .pending-response table {
   table-layout: fixed;
 }
 
-/* Small result tables fit mobile; four or more columns retain horizontal scrolling. */
 .response
   :is(.minimal-table-container, .interactive-table-container)
   table:not(:has(th:nth-child(4))) {
@@ -169,7 +163,6 @@
   animation: stream-mark 2s ease-in-out infinite;
 }
 
-/* Once text arrives, only the small writing dots remain animated. */
 .messages .assistant-row:has(.pending-response.has-preview) > .ai-mark.assistant-mark {
   animation: none;
 }
@@ -295,7 +288,6 @@
   }
 }
 
-/* The writing indicator uses opacity only, without shifting the response. */
 @keyframes stream-writing-pulse {
   0%,
   100% {
@@ -327,7 +319,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* Keep the explicitly requested loader animations; other motion stays reduced. */
+  
   .pending-response .thinking-wave i {
     animation-name: thinking-wave;
     animation-duration: 1.05s;

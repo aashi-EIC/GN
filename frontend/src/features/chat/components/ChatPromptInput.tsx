@@ -13,7 +13,6 @@ const SLASH_COMMANDS = [
 
 type SlashCommand = (typeof SLASH_COMMANDS)[number];
 
-// Set to true to restore the animated command hint.
 const MAGIC_COMMAND_ANIMATION_ENABLED = false;
 
 function slashQuery(value: string): string | null {

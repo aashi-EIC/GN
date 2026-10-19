@@ -27,7 +27,6 @@ def base(kicker,title,subtitle):
     return im,d
 def save(im,name): im.save(OUT/name,optimize=True)
 
-# 1. Five-layer architecture with a clear data/security boundary.
 im,d=base('Figure 1  |  solution architecture','From business question to governed data','Five responsibilities, one connected experience')
 cards=[
  ('01','React UI','Question + model\nAnswer + visualization',PINK),
@@ -50,7 +49,6 @@ for i,(a,b) in enumerate([('Identity','Verified user context'),('Model policy','
     text(d,(x+32,788),a,29,WHITE,True); text(d,(x+32,832),b,24,MUTED)
 save(im,'nielsen_doc_architecture.png')
 
-# 2. Sequence diagram emphasizing return path and two analytical decisions.
 im,d=base('Figure 2  |  end-to-end flow','One question, a traceable answer','Forward request and evidence-bearing return')
 lanes=[('USER',PINK),('UI + BFF',BLUE),('MCP HOST',TEAL),('MCP SERVER',ORANGE),('FABRIC',PURPLE)]
 xs=[147,506,869,1232,1591]
@@ -64,7 +62,6 @@ for i,(a,b,y,label) in enumerate(steps):
     text(d,((xs[a]+xs[b])//2,y-35),f'{i+1:02}  {label}',23,WHITE,True,'mm')
 save(im,'nielsen_doc_sequence.png')
 
-# 3. Contract ownership and semantic model context.
 im,d=base('Figure 3  |  api integration','Contracts stay at their boundary','The browser does not own Fabric credentials or upstream payload quirks')
 nodes=[
  (82,303,545,671,'BROWSER / REACT',PINK,['Question + selected model','Conversation ID','Rendered answer / chart']),
@@ -84,7 +81,6 @@ text(d,(114,772),'SERVER-CONTROLLED CONTEXT',25,CYAN,True)
 text(d,(114,817),'Approved catalogue  •  credentials  •  timeouts  •  correlation ID  •  diagnostics policy',30,WHITE)
 save(im,'nielsen_doc_contracts.png')
 
-# 4. Production Entra sign-in, OBO exchange, and independent Fabric credential.
 im,d=base('Figure 4  |  Entra authentication','Two API audiences, one verified user','BFF validation and on-behalf-of exchange precede model authorization')
 cols=[
  ('01','USER','Entra sign-in',PINK),
@@ -107,7 +103,6 @@ text(d,(113,832),'BFF audience  •  MCP Host audience  •  separate Power BI e
 text(d,(113,871),'Session IDs preserve conversation state; they do not replace authorization.',24,MUTED)
 save(im,'nielsen_doc_security.png')
 
-# 5. Deployment topology across the application and analytical tiers.
 im,d=base('Figure 5  |  deployment topology','Independent tiers, controlled routing','Same-origin web access with analytical services behind the application edge')
 panel(d,(82,296,1718,697),'#132E49','#416582',24,3)
 text(d,(114,329),'APPLICATION NETWORK',25,CYAN,True)
@@ -131,7 +126,6 @@ arrow(d,(450,720),(450,747),CYAN,5)
 arrow(d,(852,836),(940,836),CYAN,5)
 save(im,'nielsen_doc_deployment.png')
 
-# 6. Governed model onboarding and controlled change.
 im,d=base('Figure 6  |  model onboarding','New models enter through a governed path','Publish, map, validate, release and monitor without surprising users')
 stages=[
  ('01','DISCOVER','Fabric model + metadata',BLUE),

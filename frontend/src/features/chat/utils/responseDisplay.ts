@@ -1,13 +1,10 @@
 import type { Conversation, Message, TablePageSize } from "../../../shared/types/app";
 
-/** Only the live preview: never change the final answer or its existing parser. */
 export function streamingDisplayText(text: string) {
   let preview = text.replace(/\r\n?/g, "\n");
-  // An unfinished code/array block must not flash as prose before it can be classified.
   const fences = [...preview.matchAll(/^\s*```[^\n]*/gm)];
   if (fences.length % 2) preview = preview.slice(0, fences.at(-1)!.index);
   const lines = preview.split("\n");
-  // Do not feed a partially received table cell (or escape sequence) to the table parser.
   const hasDelimiter = (line: string) => /(?:^|[^\\])(?:\\\\)*\|/.test(line);
   if (hasDelimiter(lines.at(-1) ?? "")) lines.pop();
   let tableEnd = lines.length;
@@ -18,7 +15,7 @@ export function streamingDisplayText(text: string) {
     tableStart < tableEnd &&
     !lines.slice(tableStart, tableEnd).some((line) => /^\s*\|?\s*:?-{3,}/.test(line))
   ) {
-    lines.splice(tableStart, tableEnd - tableStart); // Hold a table header until its separator arrives.
+    lines.splice(tableStart, tableEnd - tableStart);
   }
   return removeChartScriptSections(lines.join("\n"))
     .replace(/^\s*(?:#{1,6}\s*)?2\s*[- ]?d(?:imensional)?\s+array(?:\s+format)?\s*:?\s*$/gim, "")

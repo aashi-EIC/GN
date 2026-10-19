@@ -19,7 +19,7 @@ export function LoginPage() {
     setLocalError(null);
     if (!isEntraConfigured()) {
       setLocalError(
-        "Microsoft Entra ID is not yet configured. Please set VITE_ENTRA_CLIENT_ID and VITE_ENTRA_TENANT_ID",
+        "Microsoft Entra ID is not yet configured. Please set credentials.",
       );
       return;
     }
@@ -37,7 +37,6 @@ export function LoginPage() {
   return (
     <div className="entra-login-viewport">
       <div className="entra-login-card">
-        {/* Brand Header */}
         <div className="entra-login-header">
           <div className="entra-login-brand-row">
             <img
@@ -52,10 +51,8 @@ export function LoginPage() {
           </p>
         </div>
 
-        {/* Subtle Horizontal Divider */}
         <div className="entra-login-divider" />
 
-        {/* Action Section */}
         <div className="entra-login-body">
           <p className="entra-login-subtitle">
             Sign in with your organizational account
@@ -82,7 +79,6 @@ export function LoginPage() {
                 </>
               ) : (
                 <>
-                  {/* Official Microsoft 4-square logo */}
                   <svg
                     className="microsoft-logo-icon"
                     width="18"
@@ -101,7 +97,6 @@ export function LoginPage() {
             </button>
           </div>
 
-          {/* Footer note with red/pink outline shield */}
           <div className="entra-login-sso-badge">
             <ShieldCheck size={16} className="entra-shield-icon" />
             <span className="entra-shield-text">

@@ -46,11 +46,6 @@ export const msalConfig: Configuration = {
   },
 };
 
-/**
- * Strips lingering MSAL authentication parameters (code, state, error)
- * from window.location.hash and window.location.search to prevent MSAL's
- * isInPopup() check from falsely identifying the main window as a nested popup.
- */
 export function cleanStaleAuthUrl(): void {
   if (typeof window === "undefined") return;
   const { hash, search, pathname, origin } = window.location;
@@ -66,7 +61,6 @@ export function cleanStaleAuthUrl(): void {
     try {
       window.history.replaceState({}, document.title, origin + pathname);
     } catch {
-      // Ignore in non-standard environments
     }
   }
 }
@@ -85,7 +79,6 @@ export async function getMsalInstance(): Promise<PublicClientApplication | null>
         const pca = new PublicClientApplication(msalConfig);
         await pca.initialize();
 
-        // Handle redirect promise if user arrived via redirect
         try {
           const redirectResponse = await pca.handleRedirectPromise();
           if (redirectResponse?.account) {
@@ -105,8 +98,6 @@ export async function getMsalInstance(): Promise<PublicClientApplication | null>
             console.warn("[MSAL] Redirect handling encountered an unexpected error:", redirectError);
           }
         } finally {
-          // Immediately remove any lingering state/code parameters so future
-          // preflight checks do not mistake this page for an in-flight popup
           cleanStaleAuthUrl();
         }
 
@@ -142,7 +133,6 @@ export async function loginWithEntra(): Promise<AccountInfo | null> {
   const pca = await getMsalInstance();
   if (!pca) throw new Error("Microsoft Entra ID is not enabled or configured");
 
-  // If already authenticated in cache, restore and proceed immediately
   const existingAccount = pca.getActiveAccount() || pca.getAllAccounts()[0];
   if (existingAccount) {
     pca.setActiveAccount(existingAccount);
@@ -158,12 +148,6 @@ export async function loginWithEntra(): Promise<AccountInfo | null> {
   return null;
 }
 
-/**
- * Signs the user out of this application only (local logout).
- * Clears the active account and cached MSAL tokens for this application
- * WITHOUT navigating to Microsoft's global SSO sign-out endpoint (which would
- * terminate the user's Microsoft session across all other browser tabs like Teams, Outlook, etc.).
- */
 export async function logoutFromEntra(): Promise<void> {
   const pca = await getMsalInstance();
 
@@ -179,7 +163,6 @@ export async function logoutFromEntra(): Promise<void> {
     console.warn("[MSAL] Error during local cache clearing:", err);
   }
 
-  // Remove any remaining MSAL-related keys from localStorage and sessionStorage
   if (typeof window !== "undefined") {
     try {
       const clearMsalKeys = (storage: Storage) => {
@@ -218,7 +201,6 @@ export async function acquireEntraToken(): Promise<string | null> {
     }
   }
 
-  // Request token with the BFF API scopes so the token is accepted for OBO
   const silentRequest: SilentRequest = {
     scopes: env.entraScopes,
     account,

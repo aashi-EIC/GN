@@ -47,7 +47,6 @@ import { getModel, normalizeCountryCode, normalizeModelId } from "../features/ch
 import { calculateTokenUsageAndCost } from "../features/chat/utils/tokenCost";
 import { replaceAssistantResponse } from "../features/chat/utils/regeneration";
 
-
 function applyMcpSessionMetadata(
   conversation: Conversation,
   metadata: McpSessionMetadata | undefined,
@@ -157,7 +156,6 @@ function Workspace({
   const streamingCallbacks = (conversationId: string) => ({
     onTextDelta: (delta: string) => streamProgress.append(conversationId, delta),
     onStatus: (message: string) => streamProgress.setStatus(conversationId, message),
-    // Retain the authoritative MCP session even if this stream later disconnects.
     onSession: (id: string) =>
       setConversations((current) =>
         current.map((conversation) =>
@@ -335,7 +333,6 @@ function Workspace({
     let previousTop = container.scrollTop;
     const trackPosition = () => {
       const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
-      // An intentional upward scroll pauses following, even close to the bottom.
       if (container.scrollTop < previousTop - 1) followStreamRef.current = false;
       else if (distance < 8) followStreamRef.current = true;
       previousTop = container.scrollTop;
@@ -345,7 +342,6 @@ function Workspace({
       if (event.deltaY < 0) followStreamRef.current = false;
     };
     const pauseOnTouch = () => {
-      // Let native touch scrolling take control before the next animation frame.
       followStreamRef.current = false;
     };
     container.addEventListener("scroll", trackPosition, { passive: true });
@@ -377,7 +373,6 @@ function Workspace({
         : Math.max(1, distance * (1 - Math.exp(-elapsed / 65)));
       if (!reducedMotion.matches) frame = requestAnimationFrame(follow);
     };
-    // Observe only the active answer; token updates no longer render the workspace.
     const observer = new ResizeObserver(() => {
       if (!followStreamRef.current) {
         setShowJumpToLatest(
@@ -1047,7 +1042,7 @@ function Workspace({
                 tabIndex={0}
                 aria-label="Conversation messages"
               >
-                {activeConversation.messages.map((message) => (
+                {activeConversation.messages.map((message, index) => (
                   <MessageBubble
                     key={message.id}
                     message={message}
@@ -1063,6 +1058,14 @@ function Workspace({
                     regenerating={message.id === activeRegeneratingResponseId}
                     streamProgress={streamProgress}
                     conversationId={activeConversation.id}
+                    userPrompt={
+                      message.role === "assistant"
+                        ? activeConversation.messages
+                            .slice(0, index)
+                            .filter((m) => m.role === "user")
+                            .at(-1)?.text
+                        : undefined
+                    }
                   />
                 ))}
                 {activeConversationIsThinking && !activeRegeneratingResponseId && (
@@ -1076,6 +1079,7 @@ function Workspace({
                         progress={streamProgress}
                         conversationId={activeConversation.id}
                         tablePageSize={settings.tablePageSize}
+                        userPrompt={lastUserMessage?.text}
                       />
                     </article>
                   </div>

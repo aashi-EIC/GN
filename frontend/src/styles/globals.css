@@ -1319,7 +1319,6 @@ textarea:focus {
   position: relative;
 }
 
-/* ── Team branding footer ── */
 .welcome-team-footer {
   position: absolute;
   bottom: 12px;
@@ -1576,7 +1575,6 @@ textarea:focus {
   line-height: 1.35;
 }
 
-/* Country Picker Custom Dropdown */
 .country-picker-wrap {
   position: relative;
   display: inline-block;
@@ -2222,7 +2220,6 @@ tr:last-child td {
   line-height: 1.5;
 }
 
-/* Compact per-message debug entry point and viewport drawer. */
 .debug-details-trigger {
   display: inline-flex;
   align-items: center;
@@ -3729,7 +3726,6 @@ tr:last-child td {
   background: var(--gn-burgundy);
 }
 
-/* Application workspace */
 .app-shell {
   background: var(--gn-white);
 }
@@ -4313,7 +4309,6 @@ tr:last-child td {
   }
 }
 
-/* Corporate visual adjustments */
 html {
   background: var(--gn-white);
   -webkit-font-smoothing: antialiased;
@@ -4361,8 +4356,6 @@ body {
 .login-card {
   border-radius: 8px;
 }
-
-/* Removed sidebar border color */
 
 .topbar {
   min-height: 52px;
@@ -4489,7 +4482,6 @@ body {
   }
 }
 
-/* Match semantic model selector to the country dropdown without moving it */
 .welcome-model-control .model-picker.compact,
 .composer-model-control .model-picker.compact {
   width: min(238px, calc(100vw - 32px));
@@ -4585,7 +4577,6 @@ body {
   }
 }
 
-/* Reference Conversational BI dashboard styling */
 .app-shell {
   display: flex;
   flex-direction: row;
@@ -4698,7 +4689,6 @@ body {
   height: 35px;
 }
 
-/* Hey-BI badge pill */
 .hey-bi-badge {
   display: inline-flex;
   align-items: center;
@@ -4754,7 +4744,6 @@ body {
   height: 19px;
 }
 
-/* Header Guide Popover */
 .guide-button-wrap {
   position: relative;
   display: inline-block;
@@ -5169,7 +5158,6 @@ body {
   }
 }
 
-/* Conversational BI light palette and topbar controls */
 :root {
   --ui-bg: #ffffff;
   --ui-panel: #ffffff;
@@ -5318,7 +5306,6 @@ body {
   color: var(--gn-white);
 }
 
-/* Active chat layout: bottom-docked rectangular composer */
 .chat {
   min-height: calc(100vh - 48px);
   height: calc(100vh - 48px);
@@ -5411,9 +5398,6 @@ body {
   }
 }
 
-/* Keep the application pinned to the viewport and let the message thread own
-   vertical scrolling. This also avoids mobile browser chrome making a 100vh
-   calculation taller than the visible page. */
 .app-shell {
   height: 100dvh;
   min-height: 0;
@@ -5444,17 +5428,15 @@ body {
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
-  /* Nested result tables also need horizontal touch gestures. */
+  
   touch-action: auto;
 }
 
-/* Tooltip styles */
 .tooltip-container {
   position: relative;
   display: inline-flex;
 }
 
-/* For suggestions, make sure the tooltip container takes up the correct layout space */
 .suggestions .tooltip-container {
   display: inline-flex;
 }
@@ -5509,7 +5491,6 @@ body {
   }
 }
 
-/* Microphone pulse animation */
 @keyframes mic-record-pulse {
   0% {
     transform: scale(1);
@@ -5539,7 +5520,6 @@ body {
   animation: mic-record-pulse 1.2s infinite ease-in-out;
 }
 
-/* Token consumption display styles */
 .token-usage-info {
   display: flex;
   align-items: center;
@@ -5558,7 +5538,6 @@ body {
   color: #cbd5e1;
 }
 
-/* Settings Token Summary styles */
 .settings-tokens-summary {
   margin: 20px 0 16px;
   padding: 16px 0 0;
@@ -5591,7 +5570,6 @@ body {
   font-weight: 700;
 }
 
-/* Profile Token Summary styles */
 .profile-token-summary {
   padding: 10px 12px;
   background: var(--gn-line);
@@ -5629,11 +5607,6 @@ body {
   font-weight: 700;
 }
 
-/* ==========================================
-   UI scale
-   ========================================== */
-
-/* 1. Welcome Message Hero */
 .welcome h1 {
   font-size: clamp(24px, 2.4vw, 32px) !important;
   font-weight: 600 !important;
@@ -5647,7 +5620,6 @@ body {
   padding-top: 20px !important;
 }
 
-/* 2. Text Box / Chat Input (Composer) */
 .welcome-composer,
 .composer {
   width: min(800px, 100%) !important;
@@ -5709,7 +5681,6 @@ body {
   height: 16px !important;
 }
 
-/* 3. Semantic Model Dropdown */
 .model-picker.compact>button {
   min-height: 32px !important;
   height: 32px !important;
@@ -5752,7 +5723,6 @@ body {
   font-weight: 500 !important;
 }
 
-/* 4. Sidebar Previous Chats */
 .sidebar {
   width: 250px !important;
   flex-basis: 250px !important;
@@ -5833,10 +5803,6 @@ body {
 .history-item.active .history-delete-btn {
   opacity: 1;
 }
-
-/* ==========================================
-   Sidebar footer and settings layout
-   ========================================== */
 
 .sidebar {
   display: flex !important;
@@ -5925,7 +5891,6 @@ body {
   align-items: center;
 }
 
-/* Collapsed sidebar */
 .sidebar.closed {
   width: 52px !important;
   flex-basis: 52px !important;
@@ -6053,8 +6018,6 @@ body {
   transform: translateY(50%) scale(1);
 }
 
-/* Let the account tooltip leave the narrow rail without letting chat history
-   take over the footer space. */
 .sidebar,
 .sidebar.closed {
   overflow: visible !important;
@@ -6080,7 +6043,6 @@ body {
   visibility: visible;
 }
 
-/* Interaction states */
 .welcome {
   place-items: center;
   padding-inline: clamp(18px, 4vw, 48px) !important;
@@ -6353,7 +6315,6 @@ body {
   }
 }
 
-/* Settings Modal Elements */
 .settings-field-group {
   display: flex;
   flex-direction: column;
@@ -6420,7 +6381,6 @@ body {
   background: rgba(239, 68, 68, 0.14);
 }
 
-/* Top navigation */
 .topbar {
   background: transparent !important;
   border-bottom: none !important;
@@ -6589,7 +6549,6 @@ body {
   color: #f40953;
 }
 
-/* Sidebar navigation */
 .sidebar.open {
   width: 292px !important;
   flex-basis: 292px !important;
@@ -6720,7 +6679,6 @@ body {
   opacity: 0.8;
 }
 
-/* Sidebar History Label Row & Recents Toggle */
 .history-label-row {
   display: flex !important;
   align-items: center !important;
@@ -6773,7 +6731,6 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Sidebar History Date Section & Headings */
 .sidebar.open .history-date-section {
   gap: 2px;
   padding: 2px 0;
@@ -6850,7 +6807,6 @@ body {
   font-weight: 600 !important;
 }
 
-/* Sidebar History Chat Items */
 .sidebar.open .history-item {
   grid-template-columns: minmax(0, 1fr) 28px;
   min-height: 32px !important;
@@ -7013,7 +6969,6 @@ body {
   }
 }
 
-/* Workspace layout */
 .workspace>.topbar {
   min-height: 52px !important;
   height: 52px !important;
@@ -7475,7 +7430,6 @@ body {
   }
 }
 
-/* Prevent off-screen action tooltips from creating an Edge scrollbar artifact. */
 .chat>.messages {
   overflow-x: clip !important;
 }
@@ -7495,8 +7449,6 @@ body {
   content: none !important;
 }
 
-/* Prompt cards contain their complete label, so they should never truncate or
-   repeat it in a tooltip. */
 .suggestions button span {
   display: block !important;
   overflow: visible !important;
@@ -7522,7 +7474,6 @@ body {
   outline-offset: 2px;
 }
 
-/* Collapsed rail */
 .sidebar.closed {
   width: 76px !important;
   flex-basis: 76px !important;
@@ -7839,7 +7790,6 @@ body {
   }
 }
 
-/* Workspace refinements */
 .welcome {
   padding: 44px 32px 72px !important;
   background: var(--ui-bg) !important;
@@ -8313,8 +8263,6 @@ body {
   }
 }
 
-/* Match the comfortable browser-80% density while the browser remains at
-   100%. Compensating dimensions keep the scaled desktop app viewport-filling. */
 @media (min-width: 1100px) {
 
   html,
@@ -8361,7 +8309,6 @@ body {
   }
 }
 
-/* Empty-chat workspace uses a neutral background without decorative lighting. */
 .workspace:has(> .welcome) {
   position: relative;
   overflow: hidden;
@@ -8386,7 +8333,6 @@ body {
   box-shadow: none !important;
 }
 
-/* Center Align & Fixed Position for Welcome Message and Textbox */
 .welcome {
   display: flex !important;
   flex-direction: column !important;
@@ -8525,7 +8471,6 @@ body {
   max-width: min(80%, 960px) !important;
 }
 
-/* Welcome name treatment */
 .welcome-name-gradient {
   background: linear-gradient(135deg, #f40953 0%, #ff4b82 50%, #7928ca 100%) !important;
   -webkit-background-clip: text !important;
@@ -8535,7 +8480,6 @@ body {
   display: inline !important;
 }
 
-/* Ensure model dropdown opens float as absolute overlay without realigning parent elements */
 .welcome-inner.model-menu-open .suggestion-section,
 .welcome-inner.model-menu-open .welcome-composer {
   margin-top: initial !important;
@@ -8557,8 +8501,6 @@ body {
   margin: 0 !important;
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.22) !important;
 }
-
-/* Typography */
 
 .welcome h1 {
   font-family:
@@ -8599,7 +8541,6 @@ body {
   letter-spacing: -0.01em !important;
 }
 
-/* Chat width */
 .welcome-inner {
   width: min(1500px, 96%) !important;
   max-width: 1500px !important;
@@ -8634,7 +8575,6 @@ body {
   max-width: min(85%, 1150px) !important;
 }
 
-/* Sidebar History Model Group Badges */
 .history-model-badge {
   display: inline-flex;
   align-items: center;
@@ -8660,7 +8600,6 @@ body {
   z-index: 500 !important;
 }
 
-/* Three-Dots Menu, Pinning & Inline Title Edit in Sidebar History */
 .sidebar.open .history-item {
   display: flex !important;
   align-items: center !important;
@@ -8809,7 +8748,6 @@ body {
   outline: none;
 }
 
-/* Keep an open chat menu neutral when its parent conversation is selected. */
 .sidebar.open .history-item.active .history-popover-menu button:not(.danger) {
   color: var(--ui-text) !important;
 }
@@ -8845,7 +8783,6 @@ body {
   color: #f40953;
 }
 
-/* History Item Inline Rename */
 .history-item.editing {
   display: flex;
   align-items: center;
@@ -8900,12 +8837,10 @@ body {
   background: rgba(0, 0, 0, 0.08);
 }
 
-/* Remove hover popover from user profile */
 .sidebar-account-card {
   display: none !important;
 }
 
-/* Error card and retry action */
 .response-error-state {
   width: min(720px, calc(100% - 41px)) !important;
   padding: 0 !important;
@@ -9028,11 +8963,6 @@ body {
   }
 }
 
-/* ==========================================================================
-   Data tables
-   ========================================================================== */
-
-/* --- Interactive Table Container --- */
 .interactive-table-container {
   margin: 16px 0;
   border: 1px solid rgba(0, 93, 143, 0.16);
@@ -9042,7 +8972,6 @@ body {
   overflow: hidden;
 }
 
-/* Table toolbar */
 .table-header-toolbar {
   display: flex;
   align-items: center;
@@ -9064,7 +8993,6 @@ body {
   color: #005d8f;
 }
 
-/* Data and markdown tables */
 .interactive-table-container,
 .table-wrap,
 .markdown-table-wrap {
@@ -9159,7 +9087,6 @@ body {
   border-color: color-mix(in srgb, var(--ui-border) 80%, transparent) !important;
 }
 
-/* Table header and rows */
 .interactive-data-table,
 .markdown-table {
   width: 100% !important;
@@ -9232,7 +9159,6 @@ body {
   text-align: left;
 }
 
-/* Table Status Badges & Percentage Highlights */
 .table-badge {
   display: inline-flex;
   align-items: center;
@@ -9280,7 +9206,6 @@ body {
   font-style: italic;
 }
 
-/* Pagination Footer */
 .table-footer-pagination {
   display: flex;
   align-items: center;
@@ -9471,7 +9396,6 @@ body {
   color: #002041;
 }
 
-/* Data visualization toolbar */
 .universal-chart-panel {
   margin: 16px 0;
   border: 1px solid rgba(0, 93, 143, 0.16);
@@ -9601,7 +9525,6 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* Responsive motion */
 .workspace {
   position: relative;
   isolation: isolate;
@@ -9673,7 +9596,6 @@ body {
   transform: none;
 }
 
-/* Keep the header clean: no ambient wash or decorative guide underline. */
 .workspace>.topbar {
   background: var(--ui-bg) !important;
 }
@@ -9807,18 +9729,12 @@ body {
   transform: scale(1.08);
 }
 
-/* Avoid the clipped dark tooltip edge appearing beside the collapsed rail. */
 .sidebar.closed .icon-btn::after,
 .collapsed-brand-trigger::after {
   display: none !important;
   content: none !important;
 }
 
-/*
- * Keep both sidebar states mounted and move the rail on the compositor.
- * The workspace no longer changes width during the transition, so charts do
- * not receive a ResizeObserver update on every animation frame.
- */
 .sidebar-expanded-content {
   display: flex;
   flex: 1 1 auto;
@@ -9922,7 +9838,6 @@ body {
   }
 }
 
-/* On small screens the navigation overlays the workspace instead of squeezing it. */
 .workspace>.topbar .mobile-menu {
   display: none;
 }
@@ -9974,7 +9889,6 @@ body {
   }
 }
 
-/* Sidebar typography */
 .sidebar.open .ask-brand {
   font-size: 16px;
   font-weight: 700;
@@ -10229,7 +10143,6 @@ body {
   }
 }
 
-/* Compact generative loading state. */
 .messages .assistant-row:has(.thinking) {
   align-items: center;
   min-height: 42px;
@@ -10374,10 +10287,6 @@ body {
   }
 }
 
-/* ==========================================================================
-   Markdown response formatting
-   ========================================================================== */
-
 .markdown-response-body {
   font-size: 14.5px;
   line-height: 1.65;
@@ -10517,7 +10426,6 @@ body {
   border: 1px solid rgba(0, 93, 143, 0.12);
 }
 
-/* Code Blocks */
 .markdown-code-block {
   margin: 14px 0;
   border-radius: 8px;
@@ -10573,7 +10481,6 @@ body {
   line-height: 1.5;
 }
 
-/* KPI Card Grid */
 .kpi-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -10678,7 +10585,6 @@ body {
   border: 1px solid rgba(0, 93, 143, 0.12);
 }
 
-/* Code Blocks */
 .markdown-code-block {
   margin: 14px 0;
   border-radius: 8px;
@@ -10734,7 +10640,6 @@ body {
   line-height: 1.5;
 }
 
-/* KPI Card Grid */
 .kpi-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -10794,7 +10699,6 @@ body {
   color: #005d8f;
 }
 
-/* KPI card grid */
 .kpi-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -10865,7 +10769,6 @@ body {
   color: #005d8f;
 }
 
-/* Executive Insight Card Banner */
 .executive-insight-block {
   margin: 14px 0;
   padding: 14px 18px;
@@ -10900,10 +10803,6 @@ body {
   font-weight: 450;
 }
 
-/* ==========================================================================
-   User Guide Modal Styling
-   ========================================================================== */
-
 .guide-modal-container {
   display: flex;
   flex-direction: column;
@@ -10911,7 +10810,6 @@ body {
   padding: 4px 0 8px;
 }
 
-/* Header Banner */
 .guide-modal-header {
   display: flex;
   align-items: flex-start;
@@ -10973,7 +10871,6 @@ body {
   color: var(--ui-muted, #64748b);
 }
 
-/* Guide Description Card */
 .guide-card {
   padding: 16px 18px;
   border-radius: 12px;
@@ -11005,7 +10902,6 @@ body {
   color: var(--ui-text, #1e293b);
 }
 
-/* Suggested Prompts Section */
 .guide-prompts-section {
   display: flex;
   flex-direction: column;
@@ -11065,7 +10961,6 @@ body {
   font-weight: 500;
 }
 
-/* Bullet List inside Guide Card */
 .guide-card-bullet-list {
   margin: 12px 0 0;
   padding: 0;
@@ -11090,7 +10985,6 @@ body {
   margin-top: 2px;
 }
 
-/* Quick Tip Banner */
 .guide-quick-tip {
   display: flex;
   align-items: flex-start;
@@ -11114,7 +11008,6 @@ body {
   font-weight: 700;
 }
 
-/* Objective Points / Badges */
 .guide-objective-pills {
   display: flex;
   flex-direction: column;
@@ -11151,7 +11044,6 @@ body {
   color: var(--ui-text, #1e293b);
 }
 
-/* Guide highlights */
 .guide-highlights-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -11184,7 +11076,6 @@ body {
   white-space: nowrap;
 }
 
-/* Navigation Tabs */
 .guide-tabs {
   display: flex;
   align-items: center;
@@ -11241,7 +11132,6 @@ body {
   }
 }
 
-/* Prompt Card Left & Arrow */
 .guide-prompt-card {
   justify-content: space-between !important;
 }
@@ -11267,7 +11157,6 @@ body {
   color: #005d8f;
 }
 
-/* Overall Objective Custom Section */
 .guide-objective-card-wrapper {
   position: relative;
   overflow: hidden;
@@ -11348,7 +11237,6 @@ body {
   min-width: 14px;
 }
 
-/* Wide model guide layout */
 .guide-modal {
   width: min(820px, 100%);
   max-height: min(90vh, 860px);
@@ -11563,8 +11451,6 @@ body {
   }
 }
 
-/* Response action polish: keep tooltips inside the chat canvas and away from
-   the Debug details control below them. */
 .response-actions .icon-btn::after,
 .user-message-actions .icon-btn::after {
   top: auto !important;
@@ -11644,8 +11530,6 @@ body {
   }
 }
 
-/* Composer ambient lighting: a restrained gradient edge, inner highlight and
-   soft reflected glow make the input feel elevated without washing out the UI. */
 .welcome-composer,
 .composer {
   position: relative;
@@ -11739,7 +11623,6 @@ body {
   }
 }
 
-/* Gracenote night palette */
 :root[data-theme="dark"] {
   color-scheme: dark;
   color: #f7fbff;
@@ -12005,7 +11888,6 @@ body,
   }
 }
 
-/* A compact invitation beside the theme switch, shown until chat begins. */
 .tour-mark {
   display: inline-grid;
   flex: 0 0 auto;
@@ -12204,7 +12086,6 @@ body,
   }
 }
 
-/* Hardcoded: Keep walkthrough banner animations active even if system animations are turned off. */
 @media (prefers-reduced-motion: reduce) {
   .header-actions .walkthrough-banner {
     animation: walkthrough-banner-beacon 5s ease-in-out infinite !important;
@@ -12227,7 +12108,6 @@ body,
   }
 }
 
-/* Guided, on-screen walkthrough. */
 .guided-tour {
   position: fixed;
   inset: 0;
@@ -12555,7 +12435,6 @@ body,
   }
 }
 
-/* Hardcoded: Keep guided tour animations and spotlight transitions active even if system animations are turned off. */
 @media (prefers-reduced-motion: reduce) {
   .guided-tour-backdrop {
     animation: guided-tour-fade 300ms ease both !important;
@@ -12581,7 +12460,6 @@ body,
   }
 }
 
-/* Discoverable slash commands without putting fake text into the editable prompt. */
 .magic-command-hint {
   position: absolute;
   top: 17px;
@@ -12646,7 +12524,6 @@ body,
   }
 }
 
-/* Slash commands are available in both the welcome and active chat composers. */
 .welcome-composer:has(.slash-command-menu),
 .composer:has(.slash-command-menu) {
   z-index: 30;
@@ -12764,7 +12641,6 @@ body,
   }
 }
 
-/* Phone and tablet controls share the available width without shrinking touch targets. */
 @media (max-width: 900px) {
   .app-shell {
     padding-top: env(safe-area-inset-top);
@@ -12816,7 +12692,6 @@ body,
   }
 }
 
-/* Final surface polish: preserve the layout while making hierarchy and states calmer. */
 .welcome h1 {
   max-width: 960px !important;
   overflow: visible !important;
@@ -12903,7 +12778,6 @@ body,
     transform: none !important;
   }
 }
-
 
 html:has(.entra-login-viewport),
 body:has(.entra-login-viewport),
@@ -13162,7 +13036,6 @@ body.entra-auth-active #root {
   }
 }
 
-/* Sidebar Account Menu / Popover */
 .sidebar-account-popover {
   position: absolute;
   bottom: 60px;

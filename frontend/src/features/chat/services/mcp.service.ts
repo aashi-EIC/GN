@@ -28,7 +28,6 @@ export function buildMcpRequestPayload({
     ...(mcpSessionId ? { mcp_session_id: mcpSessionId } : {}),
     semantic_model_id: modelId,
     prompt,
-    // Capture is independent of whether the debug panel is currently visible.
     debug: true,
   };
   const audit: McpRequestAudit = {
@@ -48,9 +47,7 @@ export async function requestMcpInsight(
   answer: Omit<Message, "id" | "role" | "createdAt">;
   mcpSession?: McpSessionMetadata;
 }> {
-  // An analysis may still be running after a network failure. Retry only on user action.
   try {
-    // Default builds do not even load the streaming transport or make a capability request.
     const streaming = env.chatStreamingEnabled ? await import("./chatStream") : undefined;
     const response =
       streaming && (await streaming.isChatStreamingAvailable())

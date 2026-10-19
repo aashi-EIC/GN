@@ -47,7 +47,6 @@ export function normalizeDataLists(text: string): string {
       items.push(item);
       end++;
     }
-    // Only convert a complete, uniform list; prose and mixed lists stay untouched.
     const before = [...result].reverse().find((line) => line.trim());
     const after = lines[end];
     const isList = (line?: string) => Boolean(line && /^\s*(?:[-*\u2022]|\d+[.)])\s+/.test(line));

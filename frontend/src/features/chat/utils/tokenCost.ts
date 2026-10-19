@@ -6,7 +6,6 @@ export function calculateTokenUsageAndCost(
   _promptText: string,
   _responseText: string,
 ): TokenUsage {
-  // Placeholder token usage - formula removed
   return {
     inputTokens: 0,
     outputTokens: 0,

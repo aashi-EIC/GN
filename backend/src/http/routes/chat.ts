@@ -22,7 +22,6 @@ import type { AuthenticatedRequest } from "../../types.js";
 
 const chatBody = z
   .object({
-    // Anonymous correlation only; never use this browser-controlled ID for authorization.
     browser_user_id: z.string().uuid().optional(),
     session_id: z.string().uuid(),
     mcp_session_id: z.string().trim().min(1).max(256).optional(),
@@ -206,13 +205,9 @@ chatRouter.post("/chat", async (request, res) => {
   const controller = registerChatRequest(req.correlationId, req.user);
   const signal = AbortSignal.any([req.requestSignal, controller.signal]);
   try {
-    // Capture redacted diagnostics whenever this deployment permits debug access.
-    // The frontend setting controls visibility only, so users can inspect an
-    // earlier response after turning the debug panel on.
     const includeDebug = config.NODE_ENV !== "production" || getFeatureFlags(req.user).debugMode;
     const result = await processChat({
       prompt: body.prompt,
-      // Falling back to the session keeps rolling deployments compatible with older frontends.
       browserUserId: body.browser_user_id ?? body.session_id,
       sessionId: body.session_id,
       ...(body.mcp_session_id ? { mcpSessionId: body.mcp_session_id } : {}),

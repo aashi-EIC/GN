@@ -3,8 +3,6 @@ import { storageKeys } from "../../../shared/config/storage";
 import { isSessionId } from "../../../shared/utils/session";
 import { normalizeStoredConversation } from "../utils/responseDisplay";
 
-// Keep the old snapshot as a read-only baseline. New writes affect individual
-// fields/messages, so two tabs never overwrite each other's entire history.
 const prefix = `${storageKeys.conversations}:v2:`;
 const metadataFields = [
   "title",
@@ -54,8 +52,6 @@ function isConversation(value: unknown): value is Conversation {
   );
 }
 
-// Older builds allowed non-UUID IDs. Map those deterministically so every tab
-// refers to the same legacy chat. This is an identifier, not a security token.
 function stableLegacyId(id: string) {
   const hex = [0, 1, 2, 3]
     .map((salt) => {
@@ -76,8 +72,6 @@ function conversationKey(id: string) {
 export function createConversationHistory(tablePageSize: number) {
   let snapshot: Conversation[] = [];
   const listeners = new Set<() => void>();
-  // Failed storage writes stay in this tab's memory; optional persistence must
-  // never prevent a request or discard the response being displayed.
   const unsaved = new Map<string, string>();
   let positions = new Map<string, Map<string, MessagePosition>>();
 
@@ -192,8 +186,6 @@ export function createConversationHistory(tablePageSize: number) {
   }
 
   function publish(next: Conversation[]) {
-    // Retain unchanged objects so a remote sidebar edit does not remount or
-    // redraw every answer, table, and regeneration animation in the current tab.
     const previous = new Map(snapshot.map((conversation) => [conversation.id, conversation]));
     next = next.map((conversation) => {
       const existing = previous.get(conversation.id);
@@ -234,8 +226,6 @@ export function createConversationHistory(tablePageSize: number) {
   }
 
   function update(action: HistoryUpdate) {
-    // Re-read immediately before computing the user's change, even if another
-    // tab's storage event has not been delivered yet.
     const current = read(snapshot);
     const next = action(current);
     const before = new Map(current.map((conversation) => [conversation.id, conversation]));

@@ -89,7 +89,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isEnabled]);
 
-  // Initial account discovery
   useEffect(() => {
     if (!isEnabled) {
       setIsLoading(false);

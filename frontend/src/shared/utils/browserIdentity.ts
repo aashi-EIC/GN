@@ -3,10 +3,6 @@ import { createSessionId, isSessionId } from "./session";
 
 let fallbackBrowserUserId: string | undefined;
 
-/**
- * Returns an anonymous correlation ID for this browser profile. This value
- * separates demo traffic; it is user-controlled and must never authorize access.
- */
 export function getBrowserUserId(): string {
   try {
     const storedId = localStorage.getItem(storageKeys.browserUserId);

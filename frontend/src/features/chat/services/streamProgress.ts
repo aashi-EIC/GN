@@ -6,7 +6,6 @@ type Progress = Readonly<{
 }>;
 const idle: Progress = { text: "", status: "Analyzing your data" };
 
-/** Per-workspace, in-memory previews. Token updates never touch conversation history. */
 export function createStreamProgress() {
   const snapshots = new Map<string, Progress>();
   const pending = new Map<
@@ -36,8 +35,6 @@ export function createStreamProgress() {
       buffer.text += delta;
       if (buffer.timer !== undefined) return;
       const batch = buffer;
-      // Small deltas remain immediate on the next batch. Large bursts catch up in
-      // three batches, without delaying completion or increasing the render rate.
       batch.revealUntil = performance.now() + 150;
       const flush = () => {
         if (pending.get(id) !== batch) return;
@@ -52,7 +49,6 @@ export function createStreamProgress() {
           batch.visibleLength + Math.max(120, Math.ceil(remaining / batchesLeft)),
         );
         if (end < batch.text.length) {
-          // Prefer a nearby word boundary and never cut a UTF-16 surrogate pair.
           const boundary = batch.text.slice(end, end + 24).search(/\s/);
           if (boundary >= 0) end += boundary + 1;
           const previous = batch.text.charCodeAt(end - 1);
@@ -61,7 +57,6 @@ export function createStreamProgress() {
         }
         batch.visibleLength = end;
         snapshots.set(id, { ...store.getSnapshot(id), text: batch.text.slice(0, end) });
-        // Schedule before notifying so a re-entrant clear/dispose cancels this too.
         if (end < batch.text.length) batch.timer = window.setTimeout(flush, 50);
         notify(id);
       };
@@ -74,8 +69,6 @@ export function createStreamProgress() {
       notify(id);
     },
     interrupt(id: string, messageId: string, restored = false) {
-      // Preserve received text only in memory, including the last queued batch.
-      // A failed regeneration restores the original answer instead of showing two answers.
       const text = restored ? "" : (pending.get(id)?.text ?? store.getSnapshot(id).text);
       if (!text.trim() && !restored) return;
       snapshots.set(messageId, {

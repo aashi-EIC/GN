@@ -12,7 +12,6 @@ export function saveToStorage<T>(key: string, value: T) {
     localStorage.setItem(key, JSON.stringify(value));
     return true;
   } catch {
-    // Local persistence is best-effort; unavailable storage must not interrupt chat.
     return false;
   }
 }

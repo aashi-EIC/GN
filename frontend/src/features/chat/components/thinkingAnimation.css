@@ -1,0 +1,115 @@
+/* Dynamic Thinking Animation Styles - Matching the Nielsen GN Theme */
+
+.thinking {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 32px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.thinking-wave {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+}
+
+.thinking-wave i {
+  display: block;
+  flex: 0 0 3px;
+  width: 3px;
+  height: 17px;
+  margin: 0 !important;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2e88ff, #a338e8 52%, var(--gn-pink, #f02d84));
+  transform-origin: center;
+  animation: thinking-wave 1.05s ease-in-out infinite;
+}
+
+.thinking-wave i:nth-child(2) {
+  animation-delay: 90ms;
+}
+
+.thinking-wave i:nth-child(3) {
+  animation-delay: 180ms;
+}
+
+.thinking-wave i:nth-child(4) {
+  animation-delay: 270ms;
+}
+
+.thinking-label {
+  display: inline-flex;
+  align-items: center;
+  background: linear-gradient(
+    90deg,
+    var(--ui-muted, #71717a) 0%,
+    var(--ui-text, #f4f4f5) 42%,
+    var(--gn-pink, #f02d84) 50%,
+    var(--ui-text, #f4f4f5) 58%,
+    var(--ui-muted, #71717a) 100%
+  );
+  background-size: 220% 100%;
+  background-clip: text;
+  color: var(--ui-muted, #71717a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: thinking-shimmer 2.4s linear infinite;
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thinking-step-container {
+  display: inline-block;
+  position: relative;
+}
+
+.thinking-step-text {
+  display: inline-block;
+  animation: thinking-step-swap 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.thinking-step-text.is-keyword {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+@keyframes thinking-step-swap {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+    filter: blur(1px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-wave i {
+    animation: none;
+    opacity: 0.8;
+  }
+  .thinking-label {
+    animation: none;
+    background: none;
+    -webkit-text-fill-color: var(--ui-text, #f4f4f5);
+    color: var(--ui-text, #f4f4f5);
+  }
+  .thinking-step-text {
+    animation: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .thinking-label {
+    background: none;
+    -webkit-text-fill-color: CanvasText;
+  }
+}

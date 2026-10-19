@@ -52,7 +52,6 @@ export function SettingsModal({
       const panel = panelRef.current;
       const target = event.target as Node;
 
-      // Outside the panel, keep native chat and sidebar scrolling (and zoom).
       if (!panel?.contains(target) || event.ctrlKey || !event.deltaY) return;
 
       if (panel?.contains(target)) {

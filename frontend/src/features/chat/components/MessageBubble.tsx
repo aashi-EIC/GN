@@ -35,6 +35,7 @@ import { DebugDrawer } from "../../debug/components/DebugDrawer";
 import { renderInlineVisualMarkers } from "./InlineVisualMarkers";
 import { handleEnter } from "../../../shared/utils/keyboard";
 import type { StreamProgressStore } from "../services/streamProgress";
+import { ThinkingAnimation } from "./ThinkingAnimation";
 import "./messageBubbleMarkdown.css";
 import "./responseRegeneration.css";
 
@@ -52,6 +53,7 @@ function MessageBubbleComponent({
   regenerating = false,
   streamProgress,
   conversationId,
+  userPrompt,
 }: {
   message: Message;
   tablePageSize: TablePageSize;
@@ -66,6 +68,7 @@ function MessageBubbleComponent({
   regenerating?: boolean;
   streamProgress: StreamProgressStore;
   conversationId: string;
+  userPrompt?: string;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
@@ -213,6 +216,7 @@ function MessageBubbleComponent({
               progress={streamProgress}
               conversationId={conversationId}
               tablePageSize={tablePageSize}
+              userPrompt={userPrompt}
             />
           </div>
         )}
@@ -344,10 +348,12 @@ export function PendingResponse({
   progress,
   conversationId,
   tablePageSize,
+  userPrompt,
 }: {
   progress: StreamProgressStore;
   conversationId: string;
   tablePageSize: TablePageSize;
+  userPrompt?: string;
 }) {
   const subscribe = useCallback(
     (listener: () => void) => progress.subscribe(conversationId, listener),
@@ -362,22 +368,7 @@ export function PendingResponse({
   return (
     <div className={`pending-response ${preview ? "has-preview" : ""}`} aria-busy="true">
       {preview && <SafeResponseText text={preview} tablePageSize={tablePageSize} streaming />}
-      <div
-        className={`thinking ${preview ? "streaming-status" : ""}`}
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        <span className={preview ? "streaming-dots" : "thinking-wave"} aria-hidden="true">
-          <i />
-          <i />
-          <i />
-          {!preview && <i />}
-        </span>
-        <span className="thinking-label">
-          {preview ? "Writing response…" : "Analyzing your data"}
-        </span>
-      </div>
+      <ThinkingAnimation preview={Boolean(preview)} prompt={userPrompt} />
     </div>
   );
 }
@@ -428,7 +419,6 @@ function SafeResponseText({
 
     const visibleText = normalizeDataLists(removeChartScriptSections(text));
 
-    // Split text by code blocks ```code```
     const blocks = visibleText.split(/(```[\s\S]*?```)/g);
 
     return blocks.map((block, blockIdx) => {
@@ -437,9 +427,6 @@ function SafeResponseText({
         const language = lines[0]?.match(/^[a-zA-Z0-9_-]+$/) ? lines[0] : "";
         const codeContent = language ? lines.slice(1).join("\n") : lines.join("\n");
 
-        // MCP may include an empty JSON result before its explanatory text. An
-        // empty payload is not useful to end users and otherwise renders as a
-        // large code panel containing only [] or {}.
         if (isEmptyStructuredPayload(codeContent, language)) {
           return null;
         }
@@ -484,7 +471,6 @@ function SafeResponseText({
         );
       }
 
-      // Process regular markdown lines (headers, lists, KPI card grids, blockquotes, paragraphs)
       const lines = block.split("\n");
       const elements: React.ReactNode[] = [];
       let currentList: React.ReactNode[] = [];
@@ -609,7 +595,6 @@ function SafeResponseText({
           return;
         }
 
-        // Check for KPI metric bullet lines: - **Label**: Value (Subtext) or - Label: Value
         const metricMatch = trimmed.match(
           /^[-*•]\s+(?:\*\*([^*]+)\*\*|([A-Za-z0-9\s_%–-]+)):\s*([^(]+?)(?:\s*\(([^)]+)\))?$/,
         );
@@ -628,7 +613,6 @@ function SafeResponseText({
           return;
         }
 
-        // Identify an insight heading before generic bullet and blockquote handling.
         if (hasInsightPrefix(trimmed)) {
           flushList(`${blockIdx}-${lineIdx}`);
           flushKpiList(`${blockIdx}-${lineIdx}`);
@@ -639,7 +623,6 @@ function SafeResponseText({
           return;
         }
 
-        // Regular bullet point lines (- item or * item or • item)
         if (/^[-*•]\s+/.test(trimmed)) {
           flushKpiList(`${blockIdx}-${lineIdx}`);
           flushBlockquote(`${blockIdx}-${lineIdx}`);
@@ -652,7 +635,6 @@ function SafeResponseText({
           return;
         }
 
-        // Render regular blockquotes (or continue insight block)
         if (trimmed.startsWith(">")) {
           flushList(`${blockIdx}-${lineIdx}`);
           flushKpiList(`${blockIdx}-${lineIdx}`);
@@ -668,9 +650,6 @@ function SafeResponseText({
           return;
         }
 
-        // Blank lines are visual spacing, not the end of an insight section.
-        // Keeping the insight buffer open prevents subsequent quoted findings
-        // from falling back to separate Note cards.
         if (!trimmed) {
           flushList(`${blockIdx}-${lineIdx}`);
           flushKpiList(`${blockIdx}-${lineIdx}`);
@@ -678,7 +657,6 @@ function SafeResponseText({
           return;
         }
 
-        // Flush all buffers if we hit a normal line
         flushList(`${blockIdx}-${lineIdx}`);
         flushKpiList(`${blockIdx}-${lineIdx}`);
         flushInsight(`${blockIdx}-${lineIdx}`);
@@ -694,7 +672,6 @@ function SafeResponseText({
           return;
         }
 
-        // Headers (# H1, ## H2, ### H3)
         if (trimmed.startsWith("### ")) {
           elements.push(
             <h3 key={`h3-${lineIdx}`} className="markdown-h3">
@@ -737,7 +714,6 @@ function SafeResponseText({
   );
 }
 
-// Completed tables do not recalculate sorting/filtering when later prose streams in.
 const ResponseTable = memo(
   function ResponseTable({
     block,
@@ -829,7 +805,6 @@ function parseMarkdownTableRow(line: string) {
       backslashes += 1;
     }
     if (backslashes % 2 === 1) {
-      // An escaped pipe belongs to the cell, including inside inline code.
       cell = cell.slice(0, -1) + "|";
     } else {
       cells.push(cell.trim());
@@ -839,7 +814,6 @@ function parseMarkdownTableRow(line: string) {
   }
   cells.push(cell.trim());
 
-  // Outer delimiters are optional; keep genuine empty interior cells.
   if (source.startsWith("|")) cells.shift();
   if (lastDelimiter === source.length - 1) cells.pop();
   return cells;
@@ -905,8 +879,6 @@ function tableFromCodeBlock(
 }
 
 function renderFormattedInlineText(text: string): React.ReactNode {
-  // Preserve Markdown emphasis/code boundaries, then normalize visual markers
-  // only in the remaining prose so code samples are left untouched.
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g);
 
   return parts.map((part, idx) => {
