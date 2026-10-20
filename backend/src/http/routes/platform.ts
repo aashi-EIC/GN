@@ -13,6 +13,8 @@ import {
   saveUserSettings,
 } from "../../persistence/repositories/settingsRepository.js";
 import type { AuthenticatedRequest, AuthenticatedUser } from "../../types.js";
+import { getMonthlyTokenQuota } from "../../application/services/monthlyTokenQuota.js";
+import { readBrowserUserId } from "../browserIdentity.js";
 
 const modelParams = z.object({ modelId: z.string().trim().min(1).max(256) });
 const messageParams = z.object({ messageId: z.string().uuid() });
@@ -44,6 +46,12 @@ const settingsBody = z
   .strict();
 
 export const platformRouter = Router();
+
+platformRouter.get("/usage/monthly", async (request, res) => {
+  const identity = readBrowserUserId(request);
+  res.setHeader("Cache-Control", "no-store");
+  res.json(await getMonthlyTokenQuota(identity));
+});
 
 function permissionsFor(_user: AuthenticatedUser) {
   return [
@@ -83,6 +91,7 @@ platformRouter.get("/bootstrap", (request, res) => {
     limits: {
       maximum_prompt_length: config.MAX_PROMPT_LENGTH,
       maximum_history_items: config.MAX_HISTORY_ITEMS,
+      monthly_token_limit: config.MONTHLY_TOKEN_LIMIT,
     },
   });
 });

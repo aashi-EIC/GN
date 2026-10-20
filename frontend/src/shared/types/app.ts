@@ -100,7 +100,8 @@ export type McpRequestAudit = McpRequestPayload & {
 export type TokenUsage = {
   inputTokens: number;
   outputTokens: number;
-  cost: number;
+  totalTokens: number;
+  source: "reported";
 };
 
 export type Message = {

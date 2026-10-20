@@ -26,6 +26,7 @@ const schema = z.object({
   FEATURE_FLAGS_JSON: optionalText,
   MAX_PROMPT_LENGTH: integer(20_000),
   MAX_HISTORY_ITEMS: integer(10),
+  MONTHLY_TOKEN_LIMIT: integer(1_000_000).refine(Number.isSafeInteger),
 
   RATE_LIMIT_WINDOW_MS: integer(60_000),
   RATE_LIMIT_MAX: integer(30),

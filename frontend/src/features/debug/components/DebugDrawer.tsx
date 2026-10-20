@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { DebugEvent, Message } from "../../../shared/types/app";
 import { readDaxQueries } from "./daxQueryParser";
+import { parseDebugTokenUsage } from "../../chat/utils/tokenUsage";
 
 type DebugTabId = "overview" | "request" | "mcp" | "dax" | "bff" | "events";
 
@@ -929,6 +930,9 @@ function getDebugStatus(events?: DebugEvent[]) {
 }
 
 function redactSensitiveValues(value: unknown, key = "", depth = 0): unknown {
+  if (key === "token_usage") {
+    return parseDebugTokenUsage(value) ?? "[REDACTED]";
+  }
   if (sensitiveKeyPattern.test(key)) return "[REDACTED]";
   if (depth >= 15 || value === null || typeof value !== "object") return value;
   if (Array.isArray(value)) {

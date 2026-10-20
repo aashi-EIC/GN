@@ -1,6 +1,8 @@
 import { Braces, CircleGauge, MoonStar, UserRound, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { SettingsState } from "../../../shared/types/app";
+import { TokenUsageBar } from "../../chat/components/TokenUsageBar";
+import { useMonthlyTokenQuota } from "../hooks/useMonthlyTokenQuota";
 
 export function SettingsModal({
   close,
@@ -20,6 +22,7 @@ export function SettingsModal({
   toggleTheme: () => void;
 }) {
   const panelRef = useRef<HTMLElement>(null);
+  const { quota, error: quotaError, loading: quotaLoading } = useMonthlyTokenQuota();
 
   useEffect(() => {
     const trigger = document.activeElement;
@@ -123,9 +126,35 @@ export function SettingsModal({
               <CircleGauge />
               <span>Token usage</span>
             </div>
-            <div>
-              <span>Input tokens</span>
-            </div>
+            {quota ? (
+              <TokenUsageBar
+                usage={quota.usage}
+                limit={quota.limit}
+                label={quota.unconfirmed ? "Confirmed monthly usage" : "Monthly token usage"}
+              />
+            ) : (
+              <p className="token-usage-description" role={quotaError ? "alert" : "status"}>
+                {quotaLoading
+                  ? "Loading monthly usage…"
+                  : "Monthly usage is unavailable. Reopen Settings to retry."}
+              </p>
+            )}
+            {quota?.pending ? (
+              <p className="token-usage-description" role="status">
+                {quota.pending} request(s) awaiting final usage.
+              </p>
+            ) : null}
+            {quota?.unconfirmed ? (
+              <p className="token-usage-description" role="status">
+                Some requests did not report token usage. This balance may be incomplete; you can
+                continue chatting.
+              </p>
+            ) : null}
+            {quota && quota.remaining === 0 ? (
+              <p className="token-usage-description" role="status">
+                Monthly limit reached. New requests resume next month.
+              </p>
+            ) : null}
           </div>
 
           {toggleDebug && (

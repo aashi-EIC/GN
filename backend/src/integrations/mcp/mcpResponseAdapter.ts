@@ -4,6 +4,7 @@ import { UpstreamError } from "../../errors.js";
 import { assertSafeUnknown } from "../../security/contentSafety.js";
 import type { McpContentBlock, McpHostResponse } from "../../types.js";
 import { normalizeGeneratedDaxField, normalizeGeneratedDaxQueries } from "./daxQueryNormalizer.js";
+import { readTokenUsage } from "./tokenUsage.js";
 
 const scalar = z.union([z.string(), z.number().finite(), z.boolean(), z.null()]);
 const column = z.union([
@@ -99,7 +100,12 @@ const currentMcpResponse = z
   .passthrough();
 
 export function adaptMcpResponse(input: unknown): McpHostResponse {
-  const normalizedInput = normalizeGeneratedDaxField(input);
+  const normalized = normalizeGeneratedDaxField(input);
+  const tokenUsage = readTokenUsage(readPath(normalized, "token_usage"));
+  const normalizedInput =
+    normalized && typeof normalized === "object" && !Array.isArray(normalized)
+      ? { ...normalized, token_usage: tokenUsage }
+      : normalized;
   const mcpSession = readMcpSession(normalizedInput);
   const generatedDaxQueries = readGeneratedDaxQueries(normalizedInput);
   const parsed = mcpResponse.safeParse(normalizedInput);
@@ -107,6 +113,7 @@ export function adaptMcpResponse(input: unknown): McpHostResponse {
     assertSafeUnknown(parsed.data);
     return {
       answer: parsed.data.answer as McpHostResponse["answer"],
+      ...(tokenUsage ? { token_usage: tokenUsage } : {}),
       ...(mcpSession?.id ? { mcp_session_id: mcpSession.id } : {}),
       ...(mcpSession ? { mcp_session: mcpSession } : {}),
       ...(generatedDaxQueries ? { generated_dax_queries: generatedDaxQueries } : {}),
@@ -128,6 +135,7 @@ export function adaptMcpResponse(input: unknown): McpHostResponse {
       text: current.data.llm_output,
       blocks,
     },
+    ...(tokenUsage ? { token_usage: tokenUsage } : {}),
     ...(mcpSession?.id ? { mcp_session_id: mcpSession.id } : {}),
     ...(mcpSession ? { mcp_session: mcpSession } : {}),
     ...(generatedDaxQueries ? { generated_dax_queries: generatedDaxQueries } : {}),
@@ -213,7 +221,9 @@ function adaptFlexibleResponse(input: unknown): McpHostResponse {
     : buildTableBlocks(normalized);
   const mcpSession = readMcpSession(normalized);
   const generatedDaxQueries = readGeneratedDaxQueries(normalized);
+  const tokenUsage = readTokenUsage(readPath(normalized, "token_usage"));
   const result: McpHostResponse = {
+    ...(tokenUsage ? { token_usage: tokenUsage } : {}),
     answer: {
       text,
       ...(blocks.length ? { blocks } : {}),

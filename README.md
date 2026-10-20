@@ -57,6 +57,21 @@ Open <http://localhost:5173>. The BFF runs at <http://localhost:3000>.
 
 `frontend/.env.example` covers the public API URL and request timeout. `backend/.env.example` covers server settings, CORS, models, rate limits, and MCP.
 
+`MONTHLY_TOKEN_LIMIT=1000000` sets the allowance shared by both chat modes and all models on one BFF instance. Usage is held in BFF memory, independently of browser chat history. No external usage store is required. `/api/v1/bootstrap` exposes the configured limit; `/api/v1/usage/monthly` returns the current balance using `x-browser-user-id`.
+
+### Monthly token quota
+
+- Calendar months reset at 00:00 UTC on the first day. Requests are charged to the month in which they were admitted. Accounting starts when the BFF starts; older local transcripts are not backfilled. Restarting or redeploying the BFF clears usage.
+- Normal chat rejects new requests with HTTP 429 once reported usage reaches the allowance. Streaming returns an SSE error with code `MONTHLY_TOKEN_LIMIT_EXCEEDED`. Neither path submits that rejected request to MCP.
+- MCP reports tokens after completion. Requests already in flight may cross the allowance; this is an admission limit, not an upstream hard token-spend ceiling. Parallel tabs remain supported. In-process updates are synchronous and each request settles once, avoiding lost increments or duplicate settlement within the instance.
+- Every admitted attempt counts, including regeneration. Deleting, renaming, or replacing a saved response does not refund usage. Only validated MCP totals are charged; text-based estimates are never used.
+- Missing or invalid usage and interrupted submitted requests mark the balance as incomplete in Settings but do not block later requests. No tokens are estimated for those attempts, so this counter can understate actual consumption. Errors before submission release the pending entry without charging tokens.
+- The identity is still an anonymous browser UUID, not a verified person. Clearing or changing that ID bypasses per-person attribution. Keep the pilot restricted; the quota does not provide authentication.
+- Chat requires a UUID in `x-browser-user-id` or `browser_user_id`. If both are supplied, they must match. A session ID is never used as a quota identity, so starting a new chat cannot reset usage.
+- Counters are process-local and are not shared across BFF replicas. Use one BFF instance for the pilot. This is a best-effort usage allowance, not a durable billing or cost-control system. Old monthly records are removed after a seven-day retention window.
+
+For Rancher, set `MONTHLY_TOKEN_LIMIT` on the BFF workload and run a single replica. Restart the BFF after changing its environment; doing so also resets the usage counter.
+
 ### MCP connection
 
 - Set `MCP_BASE_URL` and `MCP_ENDPOINT_PATH` for the deployed Host.
@@ -112,13 +127,15 @@ Answers render from LLM text only. Markdown tables and narrowly recognized unifo
 
 Generated DAX and raw diagnostics are available when debug access is enabled. In production, set `"debugMode":true` in `FEATURE_FLAGS_JSON` to return diagnostics. The browser setting controls visibility only, not access.
 
-Displayed token and cost values are zero placeholders, not measured usage or billing data.
+The MCP response in debug mode preserves validated token totals and, when supplied, the `calls` breakdown (`call_label`, `prompt_tokens`, `completion_tokens`, `total_tokens`). Credentials and unknown usage fields are excluded. Invalid call details do not affect the reported aggregate totals or quota accounting. The per-call breakdown is not added to chat replies or the Settings bar.
+
+Token usage is shown only in Settings as a monthly quota bar, with reported input/output counts and the server allowance. Settings loads the balance on open, on focus and after chat requests in that tab. The balance comes from BFF memory, not local messages, so deleting or replacing a reply cannot lower it. Pending requests and incomplete usage are labeled explicitly. No costs are estimated and no usage bar is displayed inside chat replies.
 
 ## History and storage
 
 - Conversations and MCP session references: browser localStorage. Survive refresh, but not cleared site data or a different browser profile.
 - Display name, theme, and Settings: browser localStorage. These are local preferences, not an authenticated profile.
-- BFF sessions, messages, feedback, issue records, and settings API records: backend process memory. Lost on restart and not shared across replicas; no durable database or external ticket integration.
+- BFF sessions, messages, feedback, issue records, settings API records, and monthly token usage: backend process memory. Lost on restart and not shared across replicas; no durable database or external ticket integration.
 - MCP session context: retained by the MCP Host under its own policy. Chat and streaming send MCP session IDs for follow-up context. The UI loads conversation history from browser storage.
 
 Sidebar titles are generated locally from user prompts. Manual renames stay browser-local and are not replaced by later prompts. Opening a chat reads its cached messages; no remote history or title request is made.
@@ -175,7 +192,7 @@ Manifests and the deployed URL are managed outside this repository. Compose is f
 - Access: restrict both UI and API to the internal audience. Do not expose the BFF directly. This build cannot separate users with different data entitlements.
 - TLS and CORS: use HTTPS and set `CORS_ALLOWED_ORIGINS` to the exact UI origin.
 - Timeouts: allow the 300-second MCP request plus overhead. The default browser timeout is 315 seconds.
-- Replicas: use one backend for this pilot. Sessions, cancellation, and rate limits are process-local.
+- Replicas: use one backend for this pilot. Sessions, cancellation, rate limits, and monthly token counters are process-local.
 - Probes: liveness `/api/v1/health/live`; readiness `/api/v1/health/ready`.
 - Shutdown: in-flight requests have at most 10 seconds to finish after termination. Roll out when idle.
 - Resources: set requests/limits and monitor memory, restarts, error rates, and request duration. Session/message repositories have no retention cap or cleanup policy.

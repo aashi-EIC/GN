@@ -65,6 +65,11 @@ export type McpContentBlock =
     };
 
 export type McpHostResponse = {
+  token_usage?: {
+    total_prompt_tokens: number;
+    total_completion_tokens: number;
+    total_tokens: number;
+  };
   answer: {
     text: string;
     blocks?: McpContentBlock[];

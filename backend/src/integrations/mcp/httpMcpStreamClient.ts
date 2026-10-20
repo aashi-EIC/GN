@@ -25,6 +25,7 @@ const metadata = z.object({
   generated_dax_query: z.array(z.unknown()).max(100).optional(),
   tool_result: z.array(z.unknown()).max(100).optional(),
   expected_format: z.string().max(100).optional(),
+  token_usage: z.unknown().optional(),
 });
 const requestBody = z.object({
   user_id: z.string().trim().min(1).max(256),

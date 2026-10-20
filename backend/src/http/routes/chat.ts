@@ -20,6 +20,7 @@ import {
   renameOwnedSession,
 } from "../../persistence/repositories/sessionRepository.js";
 import type { AuthenticatedRequest } from "../../types.js";
+import { readBrowserUserId } from "../browserIdentity.js";
 import { readJsonResponse } from "../../integrations/mcp/httpMcpHostClient.js";
 
 const chatBody = z
@@ -130,6 +131,7 @@ chatRouter.post("/chat/stream", async (request, res) => {
   if (!config.CHAT_STREAMING_ENABLED) throw new NotFoundError("Chat streaming is disabled");
   const req = request as AuthenticatedRequest;
   const body = chatBody.parse(req.body);
+  const browserUserId = readBrowserUserId(req, body.browser_user_id);
   getAccessibleModel(req.user, body.semantic_model_id);
   const controller = registerChatRequest(req.correlationId, req.user);
   const signal = AbortSignal.any([
@@ -159,7 +161,7 @@ chatRouter.post("/chat/stream", async (request, res) => {
     const result = await processChat(
       {
         prompt: body.prompt,
-        browserUserId: body.browser_user_id ?? body.session_id,
+        browserUserId,
         sessionId: body.session_id,
         ...(body.mcp_session_id ? { mcpSessionId: body.mcp_session_id } : {}),
         semanticModelId: body.semantic_model_id,
@@ -172,6 +174,7 @@ chatRouter.post("/chat/stream", async (request, res) => {
     );
     const response = {
       answer: { text: result.answer.text },
+      ...(result.token_usage ? { token_usage: result.token_usage } : {}),
       message_id: result.message_id,
       user_message_id: result.user_message_id,
       request_id: req.correlationId,
@@ -188,7 +191,13 @@ chatRouter.post("/chat/stream", async (request, res) => {
     logger.warn({ correlationId: req.correlationId, code }, "Chat stream did not complete");
     if (!signal.aborted && !res.destroyed) {
       await emit("error", {
-        error: { code, message: "The streaming analysis did not complete. Please try again." },
+        error: {
+          code,
+          message:
+            error instanceof AppError && code === "MONTHLY_TOKEN_LIMIT_EXCEEDED"
+              ? error.message
+              : "The streaming analysis did not complete. Please try again.",
+        },
       }).catch(() => undefined);
     }
   } finally {
@@ -255,6 +264,7 @@ chatRouter.post("/chat/:requestId/cancel", async (request, res) => {
 chatRouter.post("/chat", async (request, res) => {
   const req = request as AuthenticatedRequest;
   const body = chatBody.parse(req.body);
+  const browserUserId = readBrowserUserId(req, body.browser_user_id);
   getAccessibleModel(req.user, body.semantic_model_id);
 
   const controller = registerChatRequest(req.correlationId, req.user);
@@ -264,8 +274,7 @@ chatRouter.post("/chat", async (request, res) => {
     const includeDebug = config.NODE_ENV !== "production" || getFeatureFlags(req.user).debugMode;
     const result = await processChat({
       prompt: body.prompt,
-      // Falling back to the session keeps rolling deployments compatible with older frontends.
-      browserUserId: body.browser_user_id ?? body.session_id,
+      browserUserId,
       sessionId: body.session_id,
       ...(body.mcp_session_id ? { mcpSessionId: body.mcp_session_id } : {}),
       semanticModelId: body.semantic_model_id,
@@ -277,6 +286,7 @@ chatRouter.post("/chat", async (request, res) => {
     const debug = "debug" in result ? result.debug : undefined;
     const publicResult = {
       answer: result.answer,
+      ...(result.token_usage ? { token_usage: result.token_usage } : {}),
       message_id: result.message_id,
       user_message_id: result.user_message_id,
       ...(result.mcp_session_id ? { mcp_session_id: result.mcp_session_id } : {}),

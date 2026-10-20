@@ -50,7 +50,6 @@ import {
   localConversationTitle,
 } from "../shared/utils/session";
 import { getModel, normalizeCountryCode, normalizeModelId } from "../features/chat/utils/semantic";
-import { calculateTokenUsageAndCost } from "../features/chat/utils/tokenCost";
 import {
   recordRegenerationAttempt,
   replaceAssistantResponse,
@@ -636,18 +635,12 @@ function Workspace({
       if (insight.mcpSession?.requiresNewSession) {
         showToast("MCP session ended. Your next prompt will start a new session.", "warning");
       }
-      const tokenUsage = calculateTokenUsageAndCost(
-        currentModelId,
-        trimmedQuestion,
-        answer.text || "",
-      );
       const responseMessage: Message = {
         id: createId("msg"),
         role: "assistant",
         createdAt: new Date().toISOString(),
         tablePageSize: responseTablePageSize,
         mcpRequest: requestAudit,
-        tokenUsage,
         ...answer,
       };
 
@@ -669,7 +662,6 @@ function Workspace({
           : "The analytics engine could not complete this request.";
       const errorInfo = formatUserFriendlyError(rawMessage);
       const displayText = `${errorInfo.userMessage}\n\n💡 **Suggested Action**: ${errorInfo.suggestion}`;
-      const tokenUsage = calculateTokenUsageAndCost(currentModelId, trimmedQuestion, displayText);
       const responseMessage: Message = {
         id: createId("msg"),
         role: "assistant",
@@ -701,7 +693,6 @@ function Workspace({
           },
         ],
         mcpRequest: requestAudit ?? undefined,
-        tokenUsage,
       };
 
       streamProgress.interrupt(conversationId, responseMessage.id);
@@ -817,18 +808,12 @@ function Workspace({
       if (insight.mcpSession?.requiresNewSession) {
         showToast("MCP session ended. Your next prompt will start a new session.", "warning");
       }
-      const tokenUsage = calculateTokenUsageAndCost(
-        currentModelId,
-        trimmedQuestion,
-        answer.text || "",
-      );
       const responseMessage: Message = {
         id: createId("msg"),
         role: "assistant",
         createdAt: new Date().toISOString(),
         tablePageSize: responseTablePageSize,
         mcpRequest: requestAudit,
-        tokenUsage,
         ...answer,
       };
 
@@ -847,6 +832,9 @@ function Workspace({
       );
     } catch (error) {
       if (responseId) {
+        if (error instanceof Error && error.message.toLowerCase().includes("monthly token")) {
+          showToast(formatUserFriendlyError(error.message).userMessage, "warning");
+        }
         streamProgress.interrupt(conversationId, responseId, true);
         return;
       }
@@ -856,7 +844,6 @@ function Workspace({
           : "The analytics engine could not complete this request.";
       const errorInfo = formatUserFriendlyError(rawMessage);
       const displayText = `${errorInfo.userMessage}\n\n💡 **Suggested Action**: ${errorInfo.suggestion}`;
-      const tokenUsage = calculateTokenUsageAndCost(currentModelId, trimmedQuestion, displayText);
       const responseMessage: Message = {
         id: createId("msg"),
         role: "assistant",
@@ -888,7 +875,6 @@ function Workspace({
           },
         ],
         mcpRequest: requestAudit ?? undefined,
-        tokenUsage,
       };
 
       streamProgress.interrupt(conversationId, responseMessage.id);

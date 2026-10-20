@@ -3526,7 +3526,7 @@ tr:last-child td {
 }
 
 .sidebar-settings-usage .usage-title,
-.sidebar-settings-usage div:not(.usage-title) {
+.sidebar-settings-usage > div:not(.usage-title):not(.token-usage-bar) {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3545,7 +3545,7 @@ tr:last-child td {
   height: 18px;
 }
 
-.sidebar-settings-usage div:not(.usage-title) {
+.sidebar-settings-usage > div:not(.usage-title):not(.token-usage-bar) {
   color: #64748b;
   font-size: 12px;
 }

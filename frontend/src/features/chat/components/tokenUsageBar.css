@@ -1,0 +1,79 @@
+.token-usage-bar {
+  width: min(100%, 340px);
+  min-width: 0;
+  margin-block: 16px 12px;
+  color: var(--ui-text, #082443);
+  font-size: 12px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+.token-usage-heading,
+.token-usage-legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.token-usage-heading > span,
+.token-usage-heading small,
+.token-usage-legend {
+  color: var(--ui-secondary, #52647b);
+}
+
+.token-usage-heading strong,
+.token-usage-legend strong {
+  color: var(--ui-text, #082443);
+  font-weight: 600;
+}
+
+.token-usage-heading small {
+  font-size: inherit;
+  font-weight: 400;
+}
+
+.token-usage-track {
+  display: flex;
+  height: 7px;
+  margin-block: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-text, #082443) 10%, transparent);
+}
+
+.token-usage-input {
+  background: var(--gn-pink, #ff0054);
+}
+
+.token-usage-output {
+  background: var(--ui-text, #082443);
+}
+
+.token-usage-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.token-usage-legend i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.token-usage-description {
+  margin: 5px 0 0;
+  color: var(--ui-secondary, #52647b);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.sidebar-settings-usage .token-usage-bar {
+  margin-block: 8px 0;
+}
+
+.sidebar-settings-usage .token-usage-bar strong {
+  color: var(--ui-text, #082443);
+}

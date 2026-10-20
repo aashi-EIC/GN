@@ -82,8 +82,20 @@ export async function requestStreamingChat(
           throw new Error("The middleware returned an invalid stream event.");
         }
         const record = value as Record<string, unknown>;
-        if (event === "error")
-          throw new Error("The streaming analysis did not complete. Please try again.");
+        if (event === "error") {
+          const error =
+            record.error && typeof record.error === "object"
+              ? (record.error as Record<string, unknown>)
+              : undefined;
+          const quotaMessages: Record<string, string> = {
+            MONTHLY_TOKEN_LIMIT_EXCEEDED: "Monthly token limit reached.",
+          };
+          throw new Error(
+            typeof error?.code === "string" && Object.hasOwn(quotaMessages, error.code)
+              ? quotaMessages[error.code]
+              : "The streaming analysis did not complete. Please try again.",
+          );
+        }
         if (event === "text_delta") {
           if (typeof record.text !== "string" || (answerLength += record.text.length) > 500_000) {
             throw new Error("The middleware returned an invalid text delta.");

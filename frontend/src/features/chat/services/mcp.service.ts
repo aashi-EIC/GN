@@ -13,6 +13,7 @@ import type { ModelId } from "../types/semantic";
 import { createId } from "../../../shared/utils/session";
 import { getBrowserUserId } from "../../../shared/utils/browserIdentity";
 import { loadFromStorage, saveToStorage } from "../../../shared/utils/storage";
+import { parseTokenUsage } from "../utils/tokenUsage";
 
 export function buildMcpRequestPayload({
   conversationId,
@@ -71,12 +72,14 @@ export async function requestMcpInsight(
         : await bffClient.post<ChatResponse>("/chat", payload);
     const answer = parseChatResponse(response.data);
     const mcpSession = readMcpSessionMetadata(response.data);
+    const tokenUsage = parseTokenUsage(response.data.token_usage);
 
     return {
       answer: withMcpRuntime(
         {
           text: answer.text,
           backendId: response.data.message_id,
+          ...(tokenUsage ? { tokenUsage } : {}),
         },
         audit,
         response.data.request_id,
@@ -97,6 +100,8 @@ export async function requestMcpInsight(
     }
 
     throw error;
+  } finally {
+    window.dispatchEvent(new Event("monthly-token-usage-updated"));
   }
 }
 
@@ -161,6 +166,7 @@ function withMcpRuntime(
 }
 
 export type ChatResponse = {
+  token_usage?: unknown;
   answer?: {
     text?: unknown;
     blocks?: unknown;
@@ -250,6 +256,15 @@ type FriendlyError = {
 };
 
 const FRIENDLY_ERROR_RULES: Array<{ matchingTerms: string[]; response: FriendlyError }> = [
+  {
+    matchingTerms: ["monthly token limit reached"],
+    response: {
+      userMessage: "Your monthly token limit has been reached.",
+      suggestion:
+        "New requests will be available when your allowance resets at the start of the next UTC month. You can still read saved chats.",
+      statusLabel: "Monthly limit reached",
+    },
+  },
   {
     matchingTerms: [
       "streaming is disabled for this deployment",
