@@ -91,7 +91,7 @@ export function TourModal({ close, modelId }: { close: () => void; modelId: Mode
       description:
         "Copy, rate, retry, or report an answer. Debug details show the underlying request when you need it.",
       tipLabel: "Next step",
-      tip: "Type /help in the chat box whenever you want to revisit this guide.",
+      tip: "Type /tour in the chat box whenever you want to revisit this walkthrough.",
     },
   ];
   const step = steps[stepIndex];

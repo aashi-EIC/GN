@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { ModelId } from "../../chat/types/semantic";
 import { getModel } from "../../chat/utils/semantic";
+import { getModelGuideTabs } from "../../chat/utils/modelCatalog";
 import { Modal } from "../../../shared/components/Modal";
 
 type GuideTab = "overview" | "prompts";
@@ -26,6 +27,7 @@ export function GuideModal({
   onSelectPrompt?: (prompt: string) => void;
 }) {
   const activeModel = getModel(modelId);
+  const tabs = getModelGuideTabs();
   const [activeTab, setActiveTab] = useState<GuideTab>("overview");
 
   return (
@@ -67,7 +69,7 @@ export function GuideModal({
             onClick={() => setActiveTab("overview")}
           >
             <BookOpen size={14} />
-            <span>Executive Overview</span>
+            <span>{tabs[0]}</span>
           </button>
           <button
             type="button"
@@ -75,7 +77,9 @@ export function GuideModal({
             onClick={() => setActiveTab("prompts")}
           >
             <HelpCircle size={14} />
-            <span>Suggested Prompts ({activeModel.prompts.length})</span>
+            <span>
+              {tabs[1]} ({activeModel.prompts.length})
+            </span>
           </button>
         </div>
 
@@ -85,7 +89,7 @@ export function GuideModal({
               <div className="guide-card guide-objective-card-wrapper">
                 <div className="guide-card-header">
                   <Target size={15} className="guide-card-icon" />
-                  <span>Overall Objective</span>
+                  <span>{activeModel.objectiveHeading ?? "Overall Objective"}</span>
                 </div>
 
                 <p className="guide-objective-lead">{activeModel.objective}</p>
@@ -120,7 +124,7 @@ export function GuideModal({
               <div className="guide-card">
                 <div className="guide-card-header">
                   <Briefcase size={15} className="guide-card-icon" />
-                  <span>Business Purpose</span>
+                  <span>{activeModel.businessHeading ?? "Business Purpose"}</span>
                 </div>
                 <p className="guide-card-text">{activeModel.businessPurpose}</p>
                 {activeModel.businessPoints && activeModel.businessPoints.length > 0 && (

@@ -3,6 +3,8 @@
 .codex
 .env
 .env.*
+**/.env
+**/.env.*
 .idea
 .npm-cache
 .vite

@@ -14,6 +14,7 @@ import { TourModal } from "../shared/components/TourModal";
 import { Navbar } from "../shared/components/Navbar";
 import { Sidebar } from "../shared/components/Sidebar";
 import { ToastNotification } from "../shared/components/ToastNotification";
+import { TeamBranding } from "../shared/components/TeamBranding";
 import { AssistantMark } from "../shared/components/AssistantMark";
 import { storageKeys } from "../shared/config/storage";
 import { useConversationHistory } from "../features/chat/hooks/useConversationHistory";
@@ -49,7 +50,12 @@ import {
   titleFromUserMessages,
   localConversationTitle,
 } from "../shared/utils/session";
-import { getModel, normalizeCountryCode, normalizeModelId } from "../features/chat/utils/semantic";
+import {
+  getModel,
+  isModelAvailable,
+  normalizeCountryCode,
+  normalizeModelId,
+} from "../features/chat/utils/semantic";
 import {
   recordRegenerationAttempt,
   replaceAssistantResponse,
@@ -144,6 +150,16 @@ function Workspace({
   const [modelsOpen, setModelsOpen] = useState(false);
   const [streamProgress] = useState(createStreamProgress);
   useEffect(() => () => streamProgress.dispose(), [streamProgress]);
+  const finishedGenerationIds = useRef(new Set<string>());
+  useEffect(() => {
+    // Clear previews after the completed UI commits, not while it still subscribes.
+    for (const id of finishedGenerationIds.current) {
+      if (!thinkingConversationIds.has(id)) {
+        streamProgress.clear(id);
+        finishedGenerationIds.current.delete(id);
+      }
+    }
+  }, [thinkingConversationIds, streamProgress]);
   const streamingCallbacks = (conversationId: string) => ({
     onTextDelta: (delta: string) => streamProgress.append(conversationId, delta),
     onStatus: (message: string) => streamProgress.setStatus(conversationId, message),
@@ -157,7 +173,6 @@ function Workspace({
         ),
       ),
   });
-  const clearGenerationStatus = (conversationId: string) => streamProgress.clear(conversationId);
   const [guideOpen, setGuideOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [walkthroughDismissed, setWalkthroughDismissed] = useState(false);
@@ -468,6 +483,7 @@ function Workspace({
   };
 
   const setActiveConversationModel = (nextModelId: ModelId) => {
+    if (!isModelAvailable(nextModelId)) return;
     if (activeConversation?.messages.length && !activeConversation.modelSelectionRequired) {
       setModelsOpen(false);
       showToast("Start a new chat to change the semantic model", "warning");
@@ -522,24 +538,20 @@ function Workspace({
 
   const submitPrompt = async (question = prompt) => {
     if (activeConversationIsThinking) return;
-    if (activeConversation?.modelSelectionRequired) {
-      setModelsOpen(true);
-      showToast("Select the semantic model for this saved chat before continuing", "warning");
-      return;
-    }
     const trimmedQuestion = question.trim();
     if (!trimmedQuestion) {
       return;
     }
     setMagicHintDismissed(true);
 
-    const command = /^\/(help|new|settings|metrics|glossary)(?:\s|$)/i
+    const command = /^\/(help|tour|new|settings|metrics|glossary)(?:\s|$)/i
       .exec(trimmedQuestion)?.[1]
       .toLowerCase();
-    if (command === "help") {
+    if (command === "help" || command === "tour") {
       setPrompt("");
       setModelsOpen(false);
-      setTourOpen(true);
+      if (command === "help") setGuideOpen(true);
+      else setTourOpen(true);
       return;
     }
     if (command === "new") {
@@ -560,6 +572,12 @@ function Workspace({
       return;
     }
 
+    if (activeConversation?.modelSelectionRequired) {
+      setModelsOpen(true);
+      showToast("Select the semantic model for this saved chat before continuing", "warning");
+      return;
+    }
+
     const conversationId = activeConversation?.id ?? createSessionId();
     if (thinkingConversationIds.has(conversationId)) return;
     followStreamRef.current = true;
@@ -567,6 +585,10 @@ function Workspace({
     setWalkthroughDismissed(true);
 
     const currentModelId = normalizeModelId(activeConversation?.modelId ?? selectedModelId);
+    if (!isModelAvailable(currentModelId)) {
+      showToast("This model is unavailable. Start a new chat with an available model.", "warning");
+      return;
+    }
     const currentCountryCode = normalizeCountryCode(
       activeConversation?.countryCode ?? selectedCountryCode,
     );
@@ -709,7 +731,7 @@ function Workspace({
         ),
       );
     } finally {
-      clearGenerationStatus(conversationId);
+      finishedGenerationIds.current.add(conversationId);
       setThinkingConversationIds((current) => {
         const next = new Set(current);
         next.delete(conversationId);
@@ -730,6 +752,10 @@ function Workspace({
     }
 
     const currentModelId = normalizeModelId(activeConversation.modelId ?? selectedModelId);
+    if (!isModelAvailable(currentModelId)) {
+      showToast("This model is unavailable. Start a new chat with an available model.", "warning");
+      return;
+    }
     const responseTablePageSize = settings.tablePageSize;
     const createdAt = new Date().toISOString();
     const conversationId = activeConversation.id;
@@ -737,6 +763,14 @@ function Workspace({
 
     const msgIndex = activeConversation.messages.findIndex((m) => m.id === messageId);
     if (msgIndex === -1) return;
+
+    const previousResponse = responseId
+      ? activeConversation.messages.find((message) => message.id === responseId)
+      : undefined;
+    const canRestoreResponse =
+      previousResponse?.role === "assistant" &&
+      Boolean(previousResponse.text.trim()) &&
+      !previousResponse.debug?.some((event) => event.stage === "request_error");
 
     if (responseId) streamProgress.clear(responseId);
     else
@@ -831,7 +865,7 @@ function Workspace({
         ),
       );
     } catch (error) {
-      if (responseId) {
+      if (responseId && canRestoreResponse) {
         if (error instanceof Error && error.message.toLowerCase().includes("monthly token")) {
           showToast(formatUserFriendlyError(error.message).userMessage, "warning");
         }
@@ -877,21 +911,23 @@ function Workspace({
         mcpRequest: requestAudit ?? undefined,
       };
 
-      streamProgress.interrupt(conversationId, responseMessage.id);
+      streamProgress.interrupt(conversationId, responseId ?? responseMessage.id);
 
       setConversations((current) =>
         current.map((conversation) =>
           conversation.id === conversationId
             ? {
                 ...conversation,
-                messages: [...conversation.messages, responseMessage],
+                messages: responseId
+                  ? replaceAssistantResponse(conversation.messages, responseId, responseMessage)
+                  : [...conversation.messages, responseMessage],
                 updatedAt: responseMessage.createdAt,
               }
             : conversation,
         ),
       );
     } finally {
-      clearGenerationStatus(conversationId);
+      finishedGenerationIds.current.add(conversationId);
       setRegeneratingResponseIds((current) => {
         const next = { ...current };
         delete next[conversationId];
@@ -1037,7 +1073,6 @@ function Workspace({
 
       <section className="workspace">
         <Navbar
-          responseMode={mode}
           modelId={selectedModelId}
           openGuide={openSelectedModelGuide}
           showWalkthroughBanner={!walkthroughDismissed && !tourOpen && !activeConversation}
@@ -1112,21 +1147,23 @@ function Workspace({
                     </div>
                   ),
                 )}
-                {activeConversationIsThinking && !activeRegeneratingResponseId && (
-                  <div
-                    className="assistant-row pending-row"
-                    key={`loading-${activeConversationId}`}
-                  >
-                    <AssistantMark />
-                    <article className="response streaming-response">
-                      <PendingResponse
-                        progress={streamProgress}
-                        conversationId={activeConversation.id}
-                        tablePageSize={settings.tablePageSize}
-                      />
-                    </article>
-                  </div>
-                )}
+                {activeConversationIsThinking &&
+                  !activeRegeneratingResponseId &&
+                  activeConversation.messages.at(-1)?.role === "user" && (
+                    <div
+                      className="assistant-row pending-row"
+                      key={`loading-${activeConversationId}`}
+                    >
+                      <AssistantMark />
+                      <article className="response streaming-response">
+                        <PendingResponse
+                          progress={streamProgress}
+                          conversationId={activeConversation.id}
+                          tablePageSize={settings.tablePageSize}
+                        />
+                      </article>
+                    </div>
+                  )}
                 <div ref={bottomRef} />
               </div>
 
@@ -1162,6 +1199,7 @@ function Workspace({
             </>
           )}
         </main>
+        <TeamBranding />
       </section>
 
       {tourOpen && <TourModal close={closeTour} modelId={selectedModelId} />}

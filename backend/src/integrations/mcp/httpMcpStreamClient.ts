@@ -22,8 +22,10 @@ const metadata = z.object({
   session_id: z.string().trim().min(1).max(256),
   message_count: z.number().int().nonnegative(),
   session_status: z.string().trim().min(1).max(100),
-  generated_dax_query: z.array(z.unknown()).max(100).optional(),
-  tool_result: z.array(z.unknown()).max(100).optional(),
+  // These may contain rows or serialized characters, not just tool calls.
+  // readSse bounds the complete upstream stream by MCP_MAX_RESPONSE_BYTES.
+  generated_dax_query: z.array(z.unknown()).optional(),
+  tool_result: z.array(z.unknown()).optional(),
   expected_format: z.string().max(100).optional(),
   token_usage: z.unknown().optional(),
 });
@@ -35,6 +37,17 @@ const requestBody = z.object({
   semantic_model_id: z.string().min(1).max(256),
   session_id: z.string().min(1).max(256).optional(),
 });
+
+// Expose stage labels, never upstream messages containing intents, DAX or tool data.
+const processingLabels: Readonly<Record<string, string>> = {
+  greeting: "Preparing your response",
+  classifying: "Understanding your question",
+  classified: "Question understood",
+  decided: "Planning next steps",
+  executing: "Running your query",
+  tool_complete: "Reviewing query results",
+  responding: "Preparing your response",
+};
 
 export class HttpMcpStreamClient {
   constructor(private readonly authentication: OutboundAuthenticationProvider) {}
@@ -65,6 +78,12 @@ export class HttpMcpStreamClient {
     let text = "";
     let sessionId: string | undefined;
     let writing = false;
+    let lastStatus: string | undefined;
+    const emitStatus = async (message: string) => {
+      if (lastStatus === message) return;
+      lastStatus = message;
+      await emit({ event: "status", data: { message } });
+    };
     try {
       const headers = await this.authentication.getHeaders(context.user, requestSignal);
       const response = await fetch(url, {
@@ -114,11 +133,9 @@ export class HttpMcpStreamClient {
             sessionId = session.data.session_id;
             await emit({ event: "session", data: session.data });
           }
-          // Fixed labels prevent tool data in upstream status messages reaching the UI.
-          await emit({
-            event: "status",
-            data: { message: writing ? "Writing your response" : "Analyzing your data" },
-          });
+          if (!writing && value.stage && Object.hasOwn(processingLabels, value.stage)) {
+            await emitStatus(processingLabels[value.stage]!);
+          }
         } else if (frame.event === "token") {
           if (typeof value.token !== "string")
             throw new UpstreamError("MCP stream returned an invalid text token");
@@ -127,7 +144,7 @@ export class HttpMcpStreamClient {
             throw new UpstreamError("MCP streamed answer exceeded the size limit");
           if (!writing && text.trim()) {
             writing = true;
-            await emit({ event: "status", data: { message: "Writing your response" } });
+            await emitStatus("Writing your response");
           }
           if (value.token) await emit({ event: "text_delta", data: { text: value.token } });
         } else if (frame.event === "done") {

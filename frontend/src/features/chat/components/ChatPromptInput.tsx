@@ -4,7 +4,8 @@ import { handleEnter } from "../../../shared/utils/keyboard";
 import { MagicCommandHint } from "./MagicCommandHint";
 
 const SLASH_COMMANDS = [
-  { name: "/help", description: "Open the guided walkthrough", available: true },
+  { name: "/help", description: "Open the selected model guide", available: true },
+  { name: "/tour", description: "Open the guided walkthrough", available: true },
   { name: "/new", description: "Start a new conversation", available: true },
   { name: "/settings", description: "Open workspace settings", available: true },
   { name: "/metrics", description: "", available: false },

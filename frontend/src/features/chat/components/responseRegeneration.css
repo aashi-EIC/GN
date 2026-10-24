@@ -102,6 +102,36 @@
 
 /* Shared wave and text-shimmer animations avoid per-character rendering. */
 
+.pending-response .thinking {
+  max-width: 100%;
+}
+
+.pending-response .thinking-wave {
+  flex-shrink: 0;
+}
+
+.pending-response .processing-step {
+  --processing-step-offset: 70%;
+  --processing-step-duration: 360ms;
+  display: inline-grid;
+  align-items: center;
+  min-width: 0;
+  height: 1.6em;
+  overflow: hidden;
+  line-height: 1.6;
+}
+
+/* The keyed label rolls once per status change; token batches retain the same node. */
+.pending-response .processing-step-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  animation:
+    processing-step-roll var(--processing-step-duration) cubic-bezier(0.22, 1, 0.36, 1) both,
+    thinking-shimmer 2.4s linear infinite;
+}
+
 .pending-response .streaming-status {
   color: var(--ui-muted);
   gap: 8px;
@@ -116,6 +146,11 @@
   color: var(--ui-muted);
   -webkit-text-fill-color: currentColor;
   animation: none;
+}
+
+.pending-response .streaming-status .processing-step-label {
+  animation: processing-step-roll var(--processing-step-duration) cubic-bezier(0.22, 1, 0.36, 1)
+    both;
 }
 
 .pending-response .streaming-dots {
@@ -295,6 +330,17 @@
   }
 }
 
+@keyframes processing-step-roll {
+  from {
+    opacity: 0.25;
+    transform: translateY(var(--processing-step-offset));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* The writing indicator uses opacity only, without shifting the response. */
 @keyframes stream-writing-pulse {
   0%,
@@ -327,6 +373,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Keep status feedback animated, with less travel in reduced-motion mode. */
+  .pending-response .processing-step {
+    --processing-step-offset: 4px;
+    --processing-step-duration: 240ms;
+  }
+
   /* Loader animation remains active in reduced-motion mode. */
   .pending-response .thinking-wave i {
     animation-name: thinking-wave;

@@ -24,6 +24,7 @@ RUN npm ci --workspace backend --include-workspace-root=false --omit=dev --no-au
     && npm cache clean --force
 
 COPY --from=build --chown=node:node /app/backend/dist ./backend/dist
+COPY --from=build --chown=node:node /app/backend/config ./backend/config
 
 USER node
 

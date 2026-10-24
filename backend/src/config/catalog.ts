@@ -2,43 +2,11 @@ import { z } from "zod";
 import { ConfigurationError, NotFoundError } from "../errors.js";
 import type { AuthenticatedUser } from "../types.js";
 import { config } from "./env.js";
+import { parseModelGuide } from "./modelGuide.js";
+import { readModelCatalogueSource } from "./modelCatalogueSource.js";
+import { applyModelPolicy } from "./modelPolicy.js";
 
-const semanticModelSchema = z
-  .object({
-    id: z.string().trim().min(1).max(256),
-    name: z.string().trim().min(1).max(160),
-    short: z.string().trim().min(1).max(20),
-    nickname: z.string().trim().max(160).optional(),
-    description: z.string().trim().min(1).max(2_000),
-    guide: z.string().trim().max(5_000).optional(),
-    color: z
-      .string()
-      .regex(/^#[0-9a-f]{6}$/i)
-      .optional(),
-    examplePrompts: z.array(z.string().trim().min(1).max(2_000)).max(12).default([]),
-    supportedVisualizations: z
-      .array(
-        z.enum([
-          "kpi",
-          "bar",
-          "line",
-          "area",
-          "pie",
-          "donut",
-          "scatter",
-          "bubble",
-          "histogram",
-          "heatmap",
-          "combo",
-          "table",
-        ]),
-      )
-      .max(12)
-      .default([]),
-    enabled: z.boolean().default(true),
-    allowedRoles: z.array(z.string().trim().min(1).max(128)).max(50).default([]),
-  })
-  .strict();
+export type { SemanticModelDefinition } from "./modelGuide.js";
 
 const featureFlagsSchema = z
   .object({
@@ -49,41 +17,36 @@ const featureFlagsSchema = z
   })
   .strict();
 
-export type SemanticModelDefinition = z.infer<typeof semanticModelSchema>;
-
-function parseJson(value: string | undefined, label: string): unknown {
-  if (!value) return undefined;
+function readFeatureFlags() {
   try {
-    return JSON.parse(value);
+    return featureFlagsSchema.parse(JSON.parse(config.FEATURE_FLAGS_JSON ?? "{}"));
   } catch {
-    throw new ConfigurationError(`${label} must contain valid JSON`);
+    throw new ConfigurationError("Invalid FEATURE_FLAGS_JSON configuration");
   }
 }
 
-const models = z
-  .array(semanticModelSchema)
-  .max(100)
-  .parse(parseJson(config.SEMANTIC_MODELS_JSON, "SEMANTIC_MODELS_JSON") ?? []);
-
-const featureFlags = featureFlagsSchema.parse(
-  parseJson(config.FEATURE_FLAGS_JSON, "FEATURE_FLAGS_JSON") ?? {},
+// Imports wait for validation before the HTTP server can start. Never reload on a request.
+const { policy, guide } = await readModelCatalogueSource();
+const catalogue = applyModelPolicy(
+  parseModelGuide(guide, config.SEMANTIC_MODEL_GUIDE_EXCLUDED_IDS),
+  policy,
 );
+const featureFlags = readFeatureFlags();
 
 export function listAccessibleModels(_user: AuthenticatedUser) {
-  return models.filter((model) => model.enabled);
+  return catalogue.models;
+}
+
+export function getModelGuideTabs() {
+  return catalogue.tabs;
 }
 
 export function getAccessibleModel(_user: AuthenticatedUser, modelId: string) {
-  if (models.length === 0) return undefined;
-
-  const model = models.find((entry) => entry.id === modelId);
-  if (!model || !model.enabled) throw new NotFoundError("Semantic model not found");
+  const model = catalogue.models.find((entry) => entry.id === modelId);
+  if (!model) throw new NotFoundError("Semantic model not found");
   return model;
 }
 
 export function getFeatureFlags(_user: AuthenticatedUser) {
-  return {
-    ...featureFlags,
-    debugMode: featureFlags.debugMode,
-  };
+  return { ...featureFlags };
 }

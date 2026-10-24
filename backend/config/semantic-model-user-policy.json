@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "model_guide_s3_path": "s3://q-lib/CONVERSATIONAL_BI_FRONTEND_JSON_CONFIG/semantic_model_guide/semantic_model_guide.json",
+  "semantic_models": {
+    "tsg": {
+      "semantic_model_id": "schedule_completeness_tsg",
+      "display_name": "Schedule Completeness TSG"
+    },
+    "vod": {
+      "semantic_model_id": "mapping_stats_vod",
+      "display_name": "Mapping Stats VOD"
+    },
+    "ALLIANCE": {
+      "semantic_model_id": "alliance",
+      "display_name": "Alliance Metrics"
+    },
+    "cpx_metrics": {
+      "semantic_model_id": "cpx_metrics",
+      "display_name": "CPX Metrics"
+    }
+  }
+}

@@ -1,5 +1,5 @@
 import { ChevronDown } from "lucide-react";
-import { semanticModels } from "../../../shared/constants/semanticModels";
+import { getSemanticModels } from "../utils/modelCatalog";
 import type { ModelId } from "../types/semantic";
 import { getModel } from "../utils/semantic";
 import { Tooltip } from "../../../shared/components/Tooltip";
@@ -60,7 +60,7 @@ export function ModelPicker({
       </button>
       {open && !disabled && (
         <div className="model-menu">
-          {semanticModels.map((model) => (
+          {getSemanticModels().map((model) => (
             <button
               key={model.id}
               className={model.id === modelId ? "selected" : ""}

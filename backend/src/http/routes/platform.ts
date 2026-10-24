@@ -1,8 +1,12 @@
 import { Router } from "express";
 import { z } from "zod";
-import { getAccessibleModel, getFeatureFlags, listAccessibleModels } from "../../config/catalog.js";
+import {
+  getAccessibleModel,
+  getFeatureFlags,
+  getModelGuideTabs,
+  listAccessibleModels,
+} from "../../config/catalog.js";
 import { config } from "../../config/env.js";
-import { NotFoundError } from "../../errors.js";
 import {
   createIssueReport,
   deleteMessageFeedback,
@@ -84,9 +88,11 @@ platformRouter.get("/me", (request, res) => {
 
 platformRouter.get("/bootstrap", (request, res) => {
   const req = request as AuthenticatedRequest;
+  res.setHeader("Cache-Control", "no-store");
   res.json({
     user: userView(req.user),
     semantic_models: listAccessibleModels(req.user),
+    guide_tabs: getModelGuideTabs(),
     features: getFeatureFlags(req.user),
     limits: {
       maximum_prompt_length: config.MAX_PROMPT_LENGTH,
@@ -117,14 +123,15 @@ platformRouter.put("/settings", (request, res) => {
 
 platformRouter.get("/semantic-models", (request, res) => {
   const req = request as AuthenticatedRequest;
-  res.json({ semantic_models: listAccessibleModels(req.user) });
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ semantic_models: listAccessibleModels(req.user), guide_tabs: getModelGuideTabs() });
 });
 
 platformRouter.get("/semantic-models/:modelId", (request, res) => {
   const req = request as unknown as AuthenticatedRequest;
   const { modelId } = modelParams.parse(req.params);
   const model = getAccessibleModel(req.user, modelId);
-  if (!model) throw new NotFoundError("Semantic model catalogue is not configured");
+  res.setHeader("Cache-Control", "no-store");
   res.json({ semantic_model: model });
 });
 
@@ -132,10 +139,10 @@ platformRouter.get("/semantic-models/:modelId/prompts", (request, res) => {
   const req = request as unknown as AuthenticatedRequest;
   const { modelId } = modelParams.parse(req.params);
   const model = getAccessibleModel(req.user, modelId);
-  if (!model) throw new NotFoundError("Semantic model catalogue is not configured");
+  res.setHeader("Cache-Control", "no-store");
   res.json({
     semantic_model_id: model.id,
-    prompts: model.examplePrompts.map((prompt, index) => ({
+    prompts: model.prompts.map((prompt, index) => ({
       id: `${model.id}-${index + 1}`,
       prompt,
     })),

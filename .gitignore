@@ -9,6 +9,8 @@ node_modules/
 .env
 .env.*
 !.env.example
+!backend/.env.deployment.example
+!frontend/.env.deployment.example
 
 # Generated output and caches
 dist/

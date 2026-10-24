@@ -7,7 +7,6 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { motion, useReducedMotion } from "framer-motion";
 import {
   AlertTriangle,
   Check,
@@ -72,7 +71,6 @@ function MessageBubbleComponent({
   const [moreOpen, setMoreOpen] = useState(false);
   const [debugDrawerOpen, setDebugDrawerOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
-  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (!moreOpen) return undefined;
@@ -180,10 +178,7 @@ function MessageBubbleComponent({
       data-message-id={message.id}
     >
       <AssistantMark />
-      <motion.article
-        initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2 }}
+      <article
         className={`response ${isError ? "response-error-state" : ""} ${regenerating ? "is-regenerating" : ""}`}
         aria-busy={regenerating}
       >
@@ -300,7 +295,7 @@ function MessageBubbleComponent({
             />
           )}
         </div>
-      </motion.article>
+      </article>
     </div>
   );
 }
@@ -337,8 +332,9 @@ export function PendingResponse({
     () => progress.getSnapshot(conversationId),
     [progress, conversationId],
   );
-  const { text } = useSyncExternalStore(subscribe, getSnapshot);
+  const { text, status } = useSyncExternalStore(subscribe, getSnapshot);
   const preview = useMemo(() => streamingDisplayText(text), [text]);
+  const label = preview ? "Writing response…" : status;
   return (
     <div className={`pending-response ${preview ? "has-preview" : ""}`} aria-busy="true">
       {preview && <SafeResponseText text={preview} tablePageSize={tablePageSize} streaming />}
@@ -354,8 +350,10 @@ export function PendingResponse({
           <i />
           {!preview && <i />}
         </span>
-        <span className="thinking-label">
-          {preview ? "Writing response…" : "Analyzing your data"}
+        <span className="processing-step">
+          <span key={label} className="thinking-label processing-step-label">
+            {label}
+          </span>
         </span>
       </div>
     </div>

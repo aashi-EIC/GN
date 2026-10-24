@@ -1,4 +1,4 @@
-export type ModelId = "mapping_stats_vod" | "mapping_stats_svc" | "schedule_completeness_tsg";
+export type ModelId = string;
 
 export type CountryCode = "US";
 
@@ -10,10 +10,12 @@ export type SemanticModel = {
   description: string;
   guide: string;
   objective?: string;
+  objectiveHeading?: string;
   objectiveSummary?: string;
   objectiveNote?: string;
   objectivePoints?: Array<{ label?: string; text: string }>;
   businessPurpose?: string;
+  businessHeading?: string;
   businessSummary?: string;
   businessPoints?: string[];
   quickTip?: string;

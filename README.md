@@ -8,12 +8,12 @@ Everyone reaching the BFF shares one workspace identity, even though conversatio
 
 ## Delivery scope
 
-| Area                | Current behaviour                                                      |
-| ------------------- | ---------------------------------------------------------------------- |
-| Chat                | Normal and SSE transports; streaming requires both feature flags.      |
-| Rendering           | LLM text and response tables; chart output is suppressed.              |
-| History and titles  | Browser-local conversations, prompt-based titles, and manual renaming. |
-| Identity and models | Shared workspace identity, browser UUIDs, and configured model IDs.    |
+| Area                | Current behaviour                                                             |
+| ------------------- | ----------------------------------------------------------------------------- |
+| Chat                | Normal and SSE transports; streaming requires both feature flags.             |
+| Rendering           | LLM text and response tables; chart output is suppressed.                     |
+| History and titles  | Browser-local conversations, prompt-based titles, and manual renaming.        |
+| Identity and models | Shared workspace identity, browser UUIDs, and startup-loaded model catalogue. |
 
 ## Repository
 
@@ -57,6 +57,18 @@ Open <http://localhost:5173>. The BFF runs at <http://localhost:3000>.
 
 `frontend/.env.example` covers the public API URL and request timeout. `backend/.env.example` covers server settings, CORS, models, rate limits, and MCP.
 
+### Deployment environment files
+
+Use `backend/.env.deployment.example` for the BFF workload and `frontend/.env.deployment.example` for the frontend workload. These profiles contain the supplied nonproduction S3/role/MCP settings, enable streaming, and target `https://conv-bi.k8s-np.cloud.gracenote.com`. Apply their key/value pairs as runtime environment variables in Kubernetes/Rancher; a file in the codebase alone does not configure the running pod. The frontend container generates `runtime-config.js` from its runtime environment.
+
+The BFF profile uses S3 mode, reads the supplied policy key, obtains the guide path from that policy, maps TSG/VOD/CPX to their MCP IDs and sets the monthly allowance to 1,000,000 tokens. Its exact CORS origin has no trailing slash. The frontend uses `/api/v1`; the ingress must route `/api` to the BFF and all other paths to the frontend. These profiles assume that ingress routing, not a standalone frontend Nginx API proxy.
+
+Both streaming flags are enabled. The BFF MCP timeout is 600,000 ms; the browser timeout is 700,000 ms. Configure ingress read/idle timeouts accordingly and disable SSE buffering. Raw debug diagnostics are disabled in the deployment profile; enable `debugMode` only for an approved restricted audience.
+
+The deployment profiles contain no live API keys, AWS credentials or Power BI bearer token. The BFF service account must supply AWS source credentials permitted to assume the supplied role, which must read both S3 objects. The bearer token is empty under the current optional-token contract. If the Host later requires credentials, inject them into the BFF through Secrets, never frontend settings. Do not distribute populated local `.env` files: they may contain temporary credentials, obsolete auth settings and host-only file paths.
+
+Keep the ordinary `.env.example` files for native development and local Compose. Root `.env` is used for Compose interpolation only, not as a Kubernetes environment source. Compose takes BFF CORS from `backend/.env`; public frontend variables can be overridden through the shell or root `.env`. No running service needs restarting merely to prepare the handover profiles. Deploying them requires workload rollouts and a real S3 access check.
+
 `MONTHLY_TOKEN_LIMIT=1000000` sets the allowance shared by both chat modes and all models on one BFF instance. Usage is held in BFF memory, independently of browser chat history. No external usage store is required. `/api/v1/bootstrap` exposes the configured limit; `/api/v1/usage/monthly` returns the current balance using `x-browser-user-id`.
 
 ### Monthly token quota
@@ -81,7 +93,68 @@ For Rancher, set `MONTHLY_TOKEN_LIMIT` on the BFF workload and run a single repl
 - Set `MCP_AUTH_MODE=none` for an unauthenticated server-to-server endpoint. For API-key authentication, set `MCP_AUTH_MODE=api-key`, `MCP_API_KEY_HEADER`, and `MCP_API_KEY_VALUE`.
 - Keep API keys out of frontend variables and never commit a populated `.env` file.
 
-Populate `SEMANTIC_MODELS_JSON` with approved models before deployment. Leaving it as `[]` disables the server-side model allowlist. Match these bundled UI IDs: `schedule_completeness_tsg` and `mapping_stats_vod`. Adding a model to Power BI does not add it to the UI picker.
+### Semantic model catalogue
+
+The dropdown and Model Guide use a startup-loaded JSON catalogue. The BFF loads the model policy first, then its guide, and joins entries by canonical model ID. Policy registry keys such as `tsg` and `vod` are aliases; `semantic_model_id` must match the guide's `id` and the MCP contract. An explicit `MCP_MODEL_ID_MAP_JSON` mapping remains available for existing deployments.
+
+The policy's `display_name` supplies the UI model name. The guide uses `modelGuide.tabs` and `modelGuide.models` for descriptions, overview sections, highlights and suggested prompts. A registered model without guide content is not published; an enabled, non-excluded guide model missing from the policy prevents startup rather than silently granting it access. Duplicate canonical IDs are rejected. The bundled pair publishes TSG, VOD and CPX Metrics. CPX includes the Customer Health Score overview and example prompts; `MCP_MODEL_ID_MAP_JSON` maps its catalogue ID `cpx_metrics` to MCP's `cpxm`.
+
+For S3 deployments, upload the updated guide to the object referenced by the policy before restarting the BFF. The bundled guide does not override S3 content.
+
+The BFF reads and validates this JSON once during startup, then serves its in-memory snapshot through `/api/v1/semantic-models`, the model-detail and prompts routes, and `/api/v1/bootstrap`. Invalid JSON, duplicate IDs, invalid fields or a catalogue with no enabled models prevent startup. All chat requests use this same model allowlist; an unknown or disabled model is rejected before MCP is called. There is no empty-catalogue bypass.
+
+Set `SEMANTIC_MODEL_GUIDE_SOURCE=file` for local development. Empty `SEMANTIC_MODEL_POLICY_PATH` and `SEMANTIC_MODEL_GUIDE_PATH` use the paired files in `backend/config/`. To use another policy, provide both absolute paths, including read-only mounted files if needed. File mode uses the explicitly supplied local guide instead of following the policy's S3 pointer; it never contacts AWS. Updating a mounted file requires a BFF restart, not a frontend rebuild. Updating bundled files requires rebuilding the BFF image. `SEMANTIC_MODELS_JSON` is no longer used.
+
+For S3, set these variables on the BFF workload (not the frontend):
+
+```dotenv
+SEMANTIC_MODEL_GUIDE_SOURCE=s3
+SEMANTIC_MODEL_GUIDE_S3_BUCKET=q-lib
+SEMANTIC_MODEL_POLICY_S3_KEY=CONVERSATIONAL_BI_FRONTEND_JSON_CONFIG/semantic_model_user_policy/semantic_model_user_policy.json
+SEMANTIC_MODEL_GUIDE_S3_REGION=us-west-2
+SEMANTIC_MODEL_GUIDE_ROLE_ARN=arn:aws:iam::700997598514:role/dev-team-irsa-role-nonprod
+SEMANTIC_MODEL_GUIDE_STS_REGION=us-east-1
+SEMANTIC_MODEL_GUIDE_TIMEOUT_MS=30000
+SEMANTIC_MODEL_GUIDE_EXCLUDED_IDS=
+```
+
+The Node.js AWS SDK resolves source credentials from the workload identity, calls STS `AssumeRole` once, then uses the temporary credentials for two S3 `GetObject` calls: policy first, followed by the object identified by `model_guide_s3_path`. That pointer must be an `s3://` object URI in the configured bucket; HTTP URLs and cross-bucket redirects are rejected. Both objects use the configured S3 region. `SEMANTIC_MODEL_POLICY_S3_KEY` replaces the earlier `SEMANTIC_MODEL_GUIDE_S3_KEY`; the guide key now comes from the policy.
+
+The workload must be permitted to assume the configured role, and that role must be permitted to read both objects. No AWS keys belong in frontend configuration, browser storage or the image. Kubernetes service-account configuration is managed with the deployment.
+
+The S3 reader limits each document to 1 MiB, applies one startup timeout across both reads, and closes AWS clients after loading. An unavailable object, denied access, timeout or invalid JSON prevents startup; S3 mode never silently falls back to bundled files. Logs report a safe error category, not AWS response bodies or credentials. Both sources apply `SEMANTIC_MODEL_GUIDE_EXCLUDED_IDS` (comma-separated; empty by default). Remove any earlier `cpx_metrics` exclusion when enabling CPX. A guide model can also be disabled with `"enabled":false`.
+
+No request-time reload, polling or scheduled refresh runs. Updating the S3 object requires a BFF restart to load the new snapshot; temporary AWS credentials are not needed again while that process serves the snapshot. Restarting the BFF also resets its in-memory sessions and token usage.
+
+The UI requests the catalogue once per page load before mounting the workspace, without showing a startup loading message. A failed load shows a retry screen without changing saved history. Refresh the page after restarting the BFF to pick up new models. The dropdown, guide text, section headings, tab labels and prompts all use API data. New model IDs require no frontend code change; legacy aliases remain supported for existing chats. Models removed from the catalogue stay readable in saved history, but follow-up, edit and regeneration requests are blocked rather than sent to another model.
+
+The catalogue is shared by the internal pilot. Browser UUIDs do not provide verified-user model permissions. Policy users, groups, role permissions and group token limits are not applied and are never returned to the browser. The existing `MONTHLY_TOKEN_LIMIT` remains unchanged. Registering a model does not implement user authorization; keep this pilot restricted to an approved shared audience. S3 access uses the BFF's AWS identity, independently of browser identity.
+
+#### Test model loading locally
+
+For an offline test, set these in `backend/.env` to use the bundled pair, including the current CPX guide:
+
+```dotenv
+SEMANTIC_MODEL_GUIDE_SOURCE=file
+SEMANTIC_MODEL_POLICY_PATH=
+SEMANTIC_MODEL_GUIDE_PATH=
+SEMANTIC_MODEL_GUIDE_EXCLUDED_IDS=
+```
+
+Start the BFF and frontend in separate terminals from the repository root:
+
+```powershell
+npm.cmd run dev --workspace backend
+npm.cmd run dev --workspace frontend
+```
+
+Check `http://localhost:3000/api/v1/semantic-models` or run `Invoke-RestMethod http://localhost:3000/api/v1/semantic-models`. Expect TSG, VOD and CPX Metrics, policy display names, guide descriptions and prompts, and no user/group/role data. Open the UI at `http://localhost:5173` and check the dropdown and Model Guide. Alliance is not published because it has no guide entry.
+
+To verify a new model, add the same new canonical ID to a local copy of both files, with full guide metadata. Stop and start the BFF, then refresh the UI; the model appears without changing frontend code. Use an ID accepted by MCP before testing chat. For failure handling, remove the policy entry for an enabled guide model or break the JSON in a local copy: the BFF must refuse startup. Keep originals unchanged. With `tsx watch`, JSON changes alone do not reload the catalogue; explicitly restart the BFF.
+
+These Windows paths are for `npm run dev`, not Linux containers. Compose explicitly uses the paired files bundled under `/app/backend/config`, so the same `backend/.env` can be used without passing host-only file paths to the container. To test different JSON with Compose, update the paired files in `backend/config/` and rebuild the backend image, or mount both files read-only and override the two paths with their container locations. Never bake the full user policy, including personal user/group assignments, into a shared image; the bundled policy contains catalogue metadata only. S3 mode ignores these file paths.
+
+This verifies loading and UI rendering without AWS. A real S3 test additionally needs local AWS credentials permitted to assume the role and the S3 environment values above. Do not copy workload credentials into source files or frontend variables.
 
 ### Streaming (opt-in testing)
 
@@ -93,9 +166,11 @@ For side-by-side comparison, open both URLs in separate tabs and start a new con
 
 To test streaming, set `CHAT_STREAMING_ENABLED=true` in the BFF and `VITE_CHAT_STREAMING_ENABLED=true` in the frontend. Restart both development servers. For containers, supply the frontend flag at runtime; Compose accepts it from the shell or root `.env`. Both flags default to false. `/chat` always uses normal chat, even when both flags are enabled. `/chat/stream` requires both flags and a successful capability check; otherwise it shows a streaming-unavailable error without submitting an analytical request. On `/`, a failed capability check keeps new requests on normal chat. Once a streaming request is submitted, failure never triggers an automatic `/chat` retry.
 
-The adapter consumes upstream `status`, `token`, and `done` SSE events. Tokens are forwarded as `text_delta` events and displayed progressively using the existing LLM-only Markdown/table renderer. Partial table rows and unfinished code blocks wait until they can be rendered safely. Live previews stay in memory; only a validated completion saves the final answer. Tool results and other pipeline payloads are never rendered as answer text. Session metadata is saved when `session_ready` arrives, including if the stream subsequently fails. Regeneration hides the old answer and keeps later turns in place.
+The adapter consumes upstream `status`, `token`, and `done` SSE events. Before answer text appears, the existing animated loading row shows the latest recognized processing stage: understanding the question, planning, running the query, reviewing results or preparing the response. Labels are selected from a fixed allowlist of upstream stage IDs, not raw upstream messages. Repeated stage heartbeats are deduplicated; unknown stages and pipeline `blob` events never expose query, intent or tool payloads. Once tokens arrive, late processing events cannot move the indicator back from writing. Normal chat retains its generic analyzing indicator.
 
-Preview updates are batched every 50 ms and subscribed to by the active response, not the entire workspace. Large bursts are spread over a catch-up window of up to 150 ms; completion still displays the full answer immediately. Analyzing bars and text shimmer remain until readable content arrives, then give way to small writing dots. Completed content stays still. Reduced-motion settings disable transition effects; loading bars and text shimmer remain animated.
+Tokens are forwarded as `text_delta` events and displayed progressively using the existing LLM-only Markdown/table renderer. Partial table rows and unfinished code blocks wait until they can be rendered safely. Live previews and processing labels stay in memory; only a validated completion saves the final answer. Tool results and other pipeline payloads are never rendered as answer text. Session metadata is saved when `session_ready` arrives, including if the stream subsequently fails. Regeneration hides the old answer and keeps later turns in place.
+
+Preview updates are batched every 50 ms and subscribed to by the active response, not the entire workspace. Large bursts are spread over a catch-up window of up to 150 ms; completion still displays the full answer immediately. Analyzing bars and text shimmer remain until readable content arrives, then give way to small writing dots. A processing label rolls into its fixed-height slot once when the text changes, not on each token or repeated heartbeat. Completed content stays still. Reduced-motion settings disable other transition effects; loading bars, text shimmer and a gentler 4 px status-label roll remain animated.
 
 Tables show complete rows and an actual received-row count, without guessing the final total. Search, sorting, pagination, copy and export become available after validated completion. Completed tables are reused while later text arrives. Scrolling up pauses auto-follow, including at completion; **Jump to latest** resumes it. Normal streaming follows new content with frame-based easing, without re-rendering the workspace for every token.
 
@@ -118,6 +193,8 @@ These IDs are not authentication. Any caller reaching the BFF uses the shared wo
 Refresh does not change the browser UUID while local storage is available. Clearing site data, changing browser profiles, or starting a new private-browsing session can create a new UUID. There is no verified-user history recovery.
 
 ### UI behavior
+
+Slash commands stay in the UI: `/help` opens the selected model's guide, `/tour` opens the guided walkthrough, `/new` starts a new conversation and `/settings` opens workspace settings. They do not send analytics requests or add messages to chat history.
 
 Display name and Settings preferences save automatically in the current browser. They survive backend restarts but do not carry over to another browser. Clearing site data removes them. Settings shows a warning if preferences cannot be saved.
 
@@ -163,7 +240,9 @@ docker compose up --build -d
 docker compose ps
 ```
 
-Compose reads `backend/.env`. The frontend API URL and timeout come from `docker-compose.yml`; `frontend/.env` is only needed for Vite development. Frontend port: 5173. Backend port: 3000.
+Compose reads `backend/.env` but overrides file-mode model paths with `/app/backend/config/semantic-model-user-policy.json` and `/app/backend/config/semantic-model-guide.json`. Both files are included in the backend image. Windows host paths such as `C:/Users/...` work for native Node development only unless explicitly bind-mounted to container paths. The source selector remains controlled by `SEMANTIC_MODEL_GUIDE_SOURCE`; S3 mode still loads the policy and guide from AWS.
+
+The frontend API URL and timeout come from `docker-compose.yml`; `frontend/.env` is only needed for Vite development. Frontend port: 5173. Backend port: 3000.
 
 To stop:
 

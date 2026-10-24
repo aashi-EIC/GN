@@ -22,7 +22,34 @@ const schema = z.object({
 
   CORS_ALLOWED_ORIGINS: optionalText,
 
-  SEMANTIC_MODELS_JSON: optionalText,
+  SEMANTIC_MODEL_GUIDE_SOURCE: z.enum(["file", "s3"]).default("file"),
+  SEMANTIC_MODEL_POLICY_PATH: optionalText,
+  SEMANTIC_MODEL_GUIDE_PATH: optionalText,
+  SEMANTIC_MODEL_GUIDE_S3_BUCKET: optionalText,
+  SEMANTIC_MODEL_POLICY_S3_KEY: optionalText,
+  SEMANTIC_MODEL_GUIDE_S3_REGION: z.string().min(1).default("us-west-2"),
+  SEMANTIC_MODEL_GUIDE_ROLE_ARN: optionalText,
+  SEMANTIC_MODEL_GUIDE_STS_REGION: z.string().min(1).default("us-east-1"),
+  SEMANTIC_MODEL_GUIDE_TIMEOUT_MS: integer(30_000).refine((value) => value <= 120_000),
+  SEMANTIC_MODEL_GUIDE_EXCLUDED_IDS: z
+    .string()
+    .default("")
+    .transform((value) =>
+      value
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean),
+    )
+    .pipe(
+      z
+        .array(
+          z
+            .string()
+            .max(256)
+            .regex(/^[a-zA-Z0-9][a-zA-Z0-9_.:-]*$/),
+        )
+        .max(100),
+    ),
   FEATURE_FLAGS_JSON: optionalText,
   MAX_PROMPT_LENGTH: integer(20_000),
   MAX_HISTORY_ITEMS: integer(10),

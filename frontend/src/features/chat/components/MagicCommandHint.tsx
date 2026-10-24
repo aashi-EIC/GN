@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 
 const COMMAND_HINTS = [
   "Type / to browse commands",
-  "Type /help for a guided tour",
+  "Type /help for the model guide",
+  "Type /tour for a guided walkthrough",
   "Type /new to start fresh",
 ] as const;
 
