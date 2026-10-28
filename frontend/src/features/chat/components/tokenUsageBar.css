@@ -43,7 +43,8 @@
   background: color-mix(in srgb, var(--ui-text, #082443) 10%, transparent);
 }
 
-.token-usage-input {
+.token-usage-input,
+.token-usage-total {
   background: var(--gn-pink, #ff0054);
 }
 
@@ -72,6 +73,11 @@
 
 .sidebar-settings-usage .token-usage-bar {
   margin-block: 8px 0;
+}
+
+.sidebar-settings-panel .sidebar-settings-usage > .settings-token-balance {
+  display: block;
+  min-height: 4.5rem;
 }
 
 .sidebar-settings-usage .token-usage-bar strong {

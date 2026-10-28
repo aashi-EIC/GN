@@ -16,7 +16,7 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
 
   log(
     {
-      err: appError.code === "INVALID_JSON" ? appError : error,
+      err: ["INVALID_JSON", "PAYLOAD_TOO_LARGE"].includes(appError.code) ? appError : error,
       correlationId,
       code: appError.code,
       status: appError.status,
@@ -38,6 +38,8 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
 
 function toAppError(error: unknown) {
   if (error instanceof AppError) return error;
+  if (error && typeof error === "object" && "type" in error && error.type === "entity.too.large")
+    return new AppError(413, "PAYLOAD_TOO_LARGE", "Request body exceeds the 256 KB limit");
 
   if (
     error instanceof SyntaxError &&

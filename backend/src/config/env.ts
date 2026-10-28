@@ -1,13 +1,18 @@
 import "dotenv/config";
 import { z } from "zod";
 import { ConfigurationError } from "../errors.js";
+import { parseMcpRequestConfiguration } from "./mcpRequestConfiguration.js";
 
 const optionalText = z.preprocess(
   (value) => (value === "" ? undefined : value),
   z.string().min(1).optional(),
 );
 
-const bool = z.preprocess((value) => value === true || value === "true", z.boolean());
+const bool = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  const normalized = value.trim().toLowerCase();
+  return normalized === "true" ? true : normalized === "false" ? false : value;
+}, z.boolean());
 
 const integer = (fallback: number) =>
   z.preprocess(
@@ -28,6 +33,7 @@ const schema = z.object({
   SEMANTIC_MODEL_GUIDE_S3_BUCKET: optionalText,
   SEMANTIC_MODEL_POLICY_S3_KEY: optionalText,
   SEMANTIC_MODEL_GUIDE_S3_REGION: z.string().min(1).default("us-west-2"),
+  SEMANTIC_MODEL_GUIDE_AUTH_MODE: z.enum(["auto", "pod", "assume-role"]).default("assume-role"),
   SEMANTIC_MODEL_GUIDE_ROLE_ARN: optionalText,
   SEMANTIC_MODEL_GUIDE_STS_REGION: z.string().min(1).default("us-east-1"),
   SEMANTIC_MODEL_GUIDE_TIMEOUT_MS: integer(30_000).refine((value) => value <= 120_000),
@@ -53,6 +59,10 @@ const schema = z.object({
   FEATURE_FLAGS_JSON: optionalText,
   MAX_PROMPT_LENGTH: integer(20_000),
   MAX_HISTORY_ITEMS: integer(10),
+  SESSION_CACHE_MAX_BYTES: integer(33_554_432),
+  SESSION_CACHE_MAX_SESSIONS: integer(500),
+  SESSION_CACHE_MAX_MESSAGES: integer(10_000),
+  SESSION_CACHE_TTL_MS: integer(86_400_000),
   MONTHLY_TOKEN_LIMIT: integer(1_000_000).refine(Number.isSafeInteger),
 
   RATE_LIMIT_WINDOW_MS: integer(60_000),
@@ -106,6 +116,7 @@ if (!parsed.success) {
 }
 
 export const config = parsed.data;
+export const mcpRequestConfiguration = parseMcpRequestConfiguration(config);
 
 function requireConfig<K extends keyof typeof config>(...keys: K[]): void {
   const missing = keys.filter((key) => !config[key]);
@@ -122,9 +133,43 @@ export function getRequired<K extends keyof typeof config>(key: K): string {
 
 export function assertRuntimeConfiguration() {
   requireConfig("MCP_BASE_URL", "MCP_ENDPOINT_PATH", "MCP_REQUEST_PROMPT_FIELD");
+  const requestConfiguration = parseMcpRequestConfiguration(config);
+  if (config.CHAT_STREAMING_ENABLED) {
+    const email = requestConfiguration.staticBody.email ?? config.MCP_STREAM_EMAIL;
+    const bearer = requestConfiguration.staticBody.bearer_token ?? "";
+    if (!z.string().email().safeParse(email).success || typeof bearer !== "string")
+      throw new ConfigurationError("Invalid MCP streaming metadata configuration");
+  }
+  try {
+    const base = new URL(getRequired("MCP_BASE_URL"));
+    if (!["https:", "http:"].includes(base.protocol) || base.username || base.password || base.hash)
+      throw new Error("Invalid MCP origin");
+    for (const path of [config.MCP_ENDPOINT_PATH, config.MCP_STREAM_ENDPOINT_PATH]) {
+      const endpoint = new URL(path, base);
+      if (
+        endpoint.origin !== base.origin ||
+        endpoint.username ||
+        endpoint.password ||
+        endpoint.hash
+      )
+        throw new Error("Invalid MCP endpoint");
+    }
+  } catch {
+    throw new ConfigurationError(
+      "MCP URLs must use HTTP(S) and endpoints must remain on MCP_BASE_URL origin",
+    );
+  }
 
   if (config.MCP_AUTH_MODE === "api-key") {
     requireConfig("MCP_API_KEY_HEADER", "MCP_API_KEY_VALUE");
+    const header = getRequired("MCP_API_KEY_HEADER");
+    if (/^(cookie|host|content-length)$/i.test(header))
+      throw new ConfigurationError("MCP_API_KEY_HEADER uses a prohibited header name");
+    try {
+      new Headers({ [header]: getRequired("MCP_API_KEY_VALUE") });
+    } catch {
+      throw new ConfigurationError("Invalid MCP API key header configuration");
+    }
   }
   if (config.MCP_REQUEST_USER_FIELD && !config.MCP_REQUEST_USER_VALUE_SOURCE) {
     throw new ConfigurationError(

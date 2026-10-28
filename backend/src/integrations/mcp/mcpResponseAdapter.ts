@@ -100,6 +100,13 @@ const currentMcpResponse = z
   .passthrough();
 
 export function adaptMcpResponse(input: unknown): McpHostResponse {
+  const response = adaptResponse(input);
+  if (!mcpResponse.safeParse(response).success)
+    throw new UpstreamError("MCP response exceeded the answer or visualization limits");
+  return response;
+}
+
+function adaptResponse(input: unknown): McpHostResponse {
   const normalized = normalizeGeneratedDaxField(input);
   const tokenUsage = readTokenUsage(readPath(normalized, "token_usage"));
   const normalizedInput =

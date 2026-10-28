@@ -8,10 +8,12 @@ export function TokenUsageBar({
   usage,
   label = "Tokens used",
   limit,
+  showBreakdown = true,
 }: {
   usage: TokenUsage | undefined;
   label?: string;
   limit?: number;
+  showBreakdown?: boolean;
 }) {
   const reported = reportedTokenUsage(usage);
   if (!reported) return null;
@@ -41,19 +43,27 @@ export function TokenUsageBar({
         aria-valuenow={limit ? Math.min(limit, reported.totalTokens) : undefined}
         aria-valuetext={limit ? `${reported.totalTokens} of ${limit} tokens used` : undefined}
       >
-        <span className="token-usage-input" style={{ width: `${inputShare}%` }} />
-        <span className="token-usage-output" style={{ width: `${outputShare}%` }} />
+        {showBreakdown ? (
+          <>
+            <span className="token-usage-input" style={{ width: `${inputShare}%` }} />
+            <span className="token-usage-output" style={{ width: `${outputShare}%` }} />
+          </>
+        ) : (
+          <span className="token-usage-total" style={{ width: `${filled * 100}%` }} />
+        )}
       </div>
-      <div className="token-usage-legend">
-        <span>
-          <i className="token-usage-input" aria-hidden="true" />
-          Input <strong>{numberFormat.format(reported.inputTokens)}</strong>
-        </span>
-        <span>
-          <i className="token-usage-output" aria-hidden="true" />
-          Output <strong>{numberFormat.format(reported.outputTokens)}</strong>
-        </span>
-      </div>
+      {showBreakdown && (
+        <div className="token-usage-legend">
+          <span>
+            <i className="token-usage-input" aria-hidden="true" />
+            Input <strong>{numberFormat.format(reported.inputTokens)}</strong>
+          </span>
+          <span>
+            <i className="token-usage-output" aria-hidden="true" />
+            Output <strong>{numberFormat.format(reported.outputTokens)}</strong>
+          </span>
+        </div>
+      )}
     </div>
   );
 }

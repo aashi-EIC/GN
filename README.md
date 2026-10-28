@@ -65,7 +65,7 @@ The BFF profile uses S3 mode, reads the supplied policy key, obtains the guide p
 
 Both streaming flags are enabled. The BFF MCP timeout is 600,000 ms; the browser timeout is 700,000 ms. Configure ingress read/idle timeouts accordingly and disable SSE buffering. Raw debug diagnostics are disabled in the deployment profile; enable `debugMode` only for an approved restricted audience.
 
-The deployment profiles contain no live API keys, AWS credentials or Power BI bearer token. The BFF service account must supply AWS source credentials permitted to assume the supplied role, which must read both S3 objects. The bearer token is empty under the current optional-token contract. If the Host later requires credentials, inject them into the BFF through Secrets, never frontend settings. Do not distribute populated local `.env` files: they may contain temporary credentials, obsolete auth settings and host-only file paths.
+The deployment profiles contain no live API keys, AWS credentials or Power BI bearer token. The BFF deployment profile explicitly selects `SEMANTIC_MODEL_GUIDE_AUTH_MODE=auto`: it checks the workload's current identity, reuses a session of the configured target role or explicitly assumes that role if different. The latter requires the caller's permission and target-role trust. Select `pod` for direct workload-identity access without checking or assuming a target role. The bearer token is empty under the current optional-token contract. If the Host later requires credentials, inject them into the BFF through Secrets, never frontend settings. Do not distribute populated local `.env` files: they may contain temporary credentials, obsolete auth settings and host-only file paths.
 
 Keep the ordinary `.env.example` files for native development and local Compose. Root `.env` is used for Compose interpolation only, not as a Kubernetes environment source. Compose takes BFF CORS from `backend/.env`; public frontend variables can be overridden through the shell or root `.env`. No running service needs restarting merely to prepare the handover profiles. Deploying them requires workload rollouts and a real S3 access check.
 
@@ -77,7 +77,7 @@ Keep the ordinary `.env.example` files for native development and local Compose.
 - Normal chat rejects new requests with HTTP 429 once reported usage reaches the allowance. Streaming returns an SSE error with code `MONTHLY_TOKEN_LIMIT_EXCEEDED`. Neither path submits that rejected request to MCP.
 - MCP reports tokens after completion. Requests already in flight may cross the allowance; this is an admission limit, not an upstream hard token-spend ceiling. Parallel tabs remain supported. In-process updates are synchronous and each request settles once, avoiding lost increments or duplicate settlement within the instance.
 - Every admitted attempt counts, including regeneration. Deleting, renaming, or replacing a saved response does not refund usage. Only validated MCP totals are charged; text-based estimates are never used.
-- Missing or invalid usage and interrupted submitted requests mark the balance as incomplete in Settings but do not block later requests. No tokens are estimated for those attempts, so this counter can understate actual consumption. Errors before submission release the pending entry without charging tokens.
+- Missing or invalid usage and interrupted submitted requests mark the counter as incomplete but do not block later requests. Settings shows confirmed reported usage without a missing-usage explanation below the bar. No tokens are estimated for those attempts, so this counter can understate actual consumption. Errors before submission release the pending entry without charging tokens.
 - The identity is still an anonymous browser UUID, not a verified person. Clearing or changing that ID bypasses per-person attribution. Keep the pilot restricted; the quota does not provide authentication.
 - Chat requires a UUID in `x-browser-user-id` or `browser_user_id`. If both are supplied, they must match. A session ID is never used as a quota identity, so starting a new chat cannot reset usage.
 - Counters are process-local and are not shared across BFF replicas. Use one BFF instance for the pilot. This is a best-effort usage allowance, not a durable billing or cost-control system. Old monthly records are removed after a seven-day retention window.
@@ -109,6 +109,7 @@ For S3, set these variables on the BFF workload (not the frontend):
 
 ```dotenv
 SEMANTIC_MODEL_GUIDE_SOURCE=s3
+SEMANTIC_MODEL_GUIDE_AUTH_MODE=auto
 SEMANTIC_MODEL_GUIDE_S3_BUCKET=q-lib
 SEMANTIC_MODEL_POLICY_S3_KEY=CONVERSATIONAL_BI_FRONTEND_JSON_CONFIG/semantic_model_user_policy/semantic_model_user_policy.json
 SEMANTIC_MODEL_GUIDE_S3_REGION=us-west-2
@@ -118,9 +119,15 @@ SEMANTIC_MODEL_GUIDE_TIMEOUT_MS=30000
 SEMANTIC_MODEL_GUIDE_EXCLUDED_IDS=
 ```
 
-The Node.js AWS SDK resolves source credentials from the workload identity, calls STS `AssumeRole` once, then uses the temporary credentials for two S3 `GetObject` calls: policy first, followed by the object identified by `model_guide_s3_path`. That pointer must be an `s3://` object URI in the configured bucket; HTTP URLs and cross-bucket redirects are rejected. Both objects use the configured S3 region. `SEMANTIC_MODEL_POLICY_S3_KEY` replaces the earlier `SEMANTIC_MODEL_GUIDE_S3_KEY`; the guide key now comes from the policy.
+Choose the authentication mode explicitly. `auto` calls STS `GetCallerIdentity` once, then compares its assumed-role session against `SEMANTIC_MODEL_GUIDE_ROLE_ARN` using partition, account and role name. A matching target role is reused directly; IAM paths are handled because STS session ARNs omit them. If the current identity is different, the BFF explicitly assumes the configured target role. Missing/invalid target ARNs and failed identity lookup prevent startup. The checked source credential provider is reused for direct reads, rather than independently resolving another identity.
 
-The workload must be permitted to assume the configured role, and that role must be permitted to read both objects. No AWS keys belong in frontend configuration, browser storage or the image. Kubernetes service-account configuration is managed with the deployment.
+`pod` uses the Node.js AWS SDK credential provider chain directly for S3; it does not issue an extra explicit `AssumeRole` or `GetCallerIdentity` call. The SDK may still call STS to resolve a service-account/web-identity credential provider. `SEMANTIC_MODEL_GUIDE_ROLE_ARN` is ignored in pod mode, so merely setting that ARN does not change the pod's identity. Workload identity, service-account token mounts and their configuration remain deployment responsibilities. Do not manually add static AWS keys when using service-account authentication.
+
+`assume-role` resolves the source credentials, calls STS `AssumeRole` once and passes the returned temporary credentials to S3. This is the default when the setting is omitted, preserving existing behavior. Both auto and assume-role modes require `SEMANTIC_MODEL_GUIDE_ROLE_ARN`. Invalid mode values fail startup; access denial or invalid credentials never trigger an automatic switch to another identity. Auto selects the path before S3 access; it does not use authorization failures as a fallback signal.
+
+Both modes make two S3 `GetObject` calls: policy first, followed by the object identified by `model_guide_s3_path`. That pointer must be an `s3://` object URI in the configured bucket; HTTP URLs and cross-bucket redirects are rejected. Both objects use the configured S3 region. `SEMANTIC_MODEL_POLICY_S3_KEY` replaces the earlier `SEMANTIC_MODEL_GUIDE_S3_KEY`; the guide key now comes from the policy.
+
+In pod mode the workload identity must be permitted to read both objects. In auto mode an existing target-role session must have direct read access, or a different identity must be permitted to assume that target role. In assume-role mode the workload must be permitted to assume the configured role, and the target role must be permitted to read both objects. No AWS keys belong in frontend configuration, browser storage or the image. Kubernetes service-account configuration is managed with the deployment.
 
 The S3 reader limits each document to 1 MiB, applies one startup timeout across both reads, and closes AWS clients after loading. An unavailable object, denied access, timeout or invalid JSON prevents startup; S3 mode never silently falls back to bundled files. Logs report a safe error category, not AWS response bodies or credentials. Both sources apply `SEMANTIC_MODEL_GUIDE_EXCLUDED_IDS` (comma-separated; empty by default). Remove any earlier `cpx_metrics` exclusion when enabling CPX. A guide model can also be disabled with `"enabled":false`.
 
@@ -152,9 +159,9 @@ Check `http://localhost:3000/api/v1/semantic-models` or run `Invoke-RestMethod h
 
 To verify a new model, add the same new canonical ID to a local copy of both files, with full guide metadata. Stop and start the BFF, then refresh the UI; the model appears without changing frontend code. Use an ID accepted by MCP before testing chat. For failure handling, remove the policy entry for an enabled guide model or break the JSON in a local copy: the BFF must refuse startup. Keep originals unchanged. With `tsx watch`, JSON changes alone do not reload the catalogue; explicitly restart the BFF.
 
-These Windows paths are for `npm run dev`, not Linux containers. Compose explicitly uses the paired files bundled under `/app/backend/config`, so the same `backend/.env` can be used without passing host-only file paths to the container. To test different JSON with Compose, update the paired files in `backend/config/` and rebuild the backend image, or mount both files read-only and override the two paths with their container locations. Never bake the full user policy, including personal user/group assignments, into a shared image; the bundled policy contains catalogue metadata only. S3 mode ignores these file paths.
+These Windows paths are for `npm run dev`, not Linux containers. Compose explicitly uses the paired files bundled under `/app/config`, so the same `backend/.env` can be used without passing host-only file paths to the container. To test different JSON with Compose, update the paired files in `backend/config/` and rebuild the backend image, or mount both files read-only and override the two paths with their container locations. Never bake the full user policy, including personal user/group assignments, into a shared image; the bundled policy contains catalogue metadata only. S3 mode ignores these file paths.
 
-This verifies loading and UI rendering without AWS. A real S3 test additionally needs local AWS credentials permitted to assume the role and the S3 environment values above. Do not copy workload credentials into source files or frontend variables.
+This verifies loading and UI rendering without AWS. A real S3 test additionally needs a valid AWS credential provider and the S3 environment values above. Pod mode requires direct read access; assume-role mode additionally needs permission/trust for the target role. Do not copy workload credentials into source files or frontend variables.
 
 ### Streaming (opt-in testing)
 
@@ -194,7 +201,11 @@ Refresh does not change the browser UUID while local storage is available. Clear
 
 ### UI behavior
 
+The model guide, debug drawer, Settings, walkthrough and response-reporting panels start downloading their code as soon as the app starts, alongside the model catalogue. The workspace does not wait for these downloads, and panels only mount and request their data when opened. Opening them does not show an intermediate loading dialog or replace the chat. Escape can cancel a panel that is still opening. Download failures remain visible and dismissible. Settings reserves space for the monthly token balance while it loads, without briefly showing loading text or a guessed zero balance.
+
 Slash commands stay in the UI: `/help` opens the selected model's guide, `/tour` opens the guided walkthrough, `/new` starts a new conversation and `/settings` opens workspace settings. They do not send analytics requests or add messages to chat history.
+
+Typing a character from the page background focuses the composer and appends it to the current draft on the welcome screen and saved chats. It does not submit the prompt. Other fields, focused controls, open dialogs/menus, message editing, keyboard shortcuts and response generation retain their existing keyboard behaviour. Space, Enter and navigation keys alone do not redirect focus.
 
 Display name and Settings preferences save automatically in the current browser. They survive backend restarts but do not carry over to another browser. Clearing site data removes them. Settings shows a warning if preferences cannot be saved.
 
@@ -206,7 +217,7 @@ Generated DAX and raw diagnostics are available when debug access is enabled. In
 
 The MCP response in debug mode preserves validated token totals and, when supplied, the `calls` breakdown (`call_label`, `prompt_tokens`, `completion_tokens`, `total_tokens`). Credentials and unknown usage fields are excluded. Invalid call details do not affect the reported aggregate totals or quota accounting. The per-call breakdown is not added to chat replies or the Settings bar.
 
-Token usage is shown only in Settings as a monthly quota bar, with reported input/output counts and the server allowance. Settings loads the balance on open, on focus and after chat requests in that tab. The balance comes from BFF memory, not local messages, so deleting or replacing a reply cannot lower it. Pending requests and incomplete usage are labeled explicitly. No costs are estimated and no usage bar is displayed inside chat replies.
+Settings shows total monthly token usage against the server allowance in a single quota bar, without input/output labels or the missing-usage explanation below it. Detailed counts remain available in Debug. Settings loads the balance on open, on focus and after chat requests in that tab. The balance comes from BFF memory, not local messages, so deleting or replacing a reply cannot lower it. Pending requests and quota errors remain visible; incomplete balances use the confirmed-usage heading. No costs are estimated and no usage bar is displayed inside chat replies.
 
 ## History and storage
 
@@ -214,6 +225,12 @@ Token usage is shown only in Settings as a monthly quota bar, with reported inpu
 - Display name, theme, and Settings: browser localStorage. These are local preferences, not an authenticated profile.
 - BFF sessions, messages, feedback, issue records, settings API records, and monthly token usage: backend process memory. Lost on restart and not shared across replicas; no durable database or external ticket integration.
 - MCP session context: retained by the MCP Host under its own policy. Chat and streaming send MCP session IDs for follow-up context. The UI loads conversation history from browser storage.
+
+The BFF session/message repository is a temporary, bounded cache, not a complete history archive. Defaults are 500 sessions (`SESSION_CACHE_MAX_SESSIONS`), 10,000 messages (`SESSION_CACHE_MAX_MESSAGES`), a 32 MiB serialized-message memory budget (`SESSION_CACHE_MAX_BYTES=33554432`), and 24 hours of session inactivity (`SESSION_CACHE_TTL_MS=86400000`). Each session keeps at most its latest 100 cached messages. These defaults apply when the variables are absent; both backend env examples include them.
+
+Expired or least-recently-used inactive sessions are evicted, and the oldest messages are removed when either message limit or the byte budget is reached. A response larger than the entire cache budget is returned normally but is not cached. Active session metadata is protected until its request finishes; if every session slot is active, new sessions receive a retryable server-busy error. Deleting a BFF session releases its cached messages immediately and keeps only bounded, expiring deletion metadata. Cleanup also runs once per minute, or sooner for shorter TTLs. The byte budget is not a total Node.js heap limit.
+
+These cache limits do not remove browser-saved chats, change MCP's history, or reset monthly token accounting. Monthly usage remains in its separate process-local ledger.
 
 Sidebar titles are generated locally from user prompts. Manual renames stay browser-local and are not replaced by later prompts. Opening a chat reads its cached messages; no remote history or title request is made.
 
@@ -240,7 +257,7 @@ docker compose up --build -d
 docker compose ps
 ```
 
-Compose reads `backend/.env` but overrides file-mode model paths with `/app/backend/config/semantic-model-user-policy.json` and `/app/backend/config/semantic-model-guide.json`. Both files are included in the backend image. Windows host paths such as `C:/Users/...` work for native Node development only unless explicitly bind-mounted to container paths. The source selector remains controlled by `SEMANTIC_MODEL_GUIDE_SOURCE`; S3 mode still loads the policy and guide from AWS.
+Compose reads `backend/.env` but overrides file-mode model paths with `/app/config/semantic-model-user-policy.json` and `/app/config/semantic-model-guide.json`. Both files are included in the backend image. Windows host paths such as `C:/Users/...` work for native Node development only unless explicitly bind-mounted to container paths. The source selector remains controlled by `SEMANTIC_MODEL_GUIDE_SOURCE`; S3 mode still loads the policy and guide from AWS.
 
 The frontend API URL and timeout come from `docker-compose.yml`; `frontend/.env` is only needed for Vite development. Frontend port: 5173. Backend port: 3000.
 
@@ -252,12 +269,16 @@ docker compose down
 
 ## Deployment images
 
-Build from the repository root:
+Both folders are self-contained build contexts. From the repository root:
 
 ```powershell
-docker build -f frontend/Dockerfile.frontend -t docker-registry.prod.gracenote.com/gn-bia/conv-bi-frontend-no-entra:v1.0.0 .
-docker build -f backend/Dockerfile.backend -t docker-registry.prod.gracenote.com/gn-bia/conv-bi-backend-no-entra:v1.0.0 .
+docker build -f frontend/Dockerfile.frontend -t docker-registry.prod.gracenote.com/gn-bia/conv-bi-frontend-no-entra:v1.0.0 ./frontend
+docker build -f backend/Dockerfile.backend -t docker-registry.prod.gracenote.com/gn-bia/conv-bi-backend-no-entra:v1.0.0 ./backend
 ```
+
+The backend folder is self-contained. If it is handed over separately, run `docker build -f Dockerfile.backend -t conv-bi-backend:local .` from that folder. Its own `package-lock.json` controls both build and production dependencies; no root or frontend files are required. The final image contains the AWS S3 and STS SDKs, compiled code under `/app/dist`, and the bundled catalogue under `/app/config`. Environment files and local dependencies are excluded from its build context. See [backend build instructions](backend/README.md) for standalone commands and verification.
+
+The frontend also uses its own `package.json` and `package-lock.json`, without root or backend files. From a separately handed-over frontend folder, run `docker build -f Dockerfile.frontend -t conv-bi-frontend:local .`. Its build context excludes environment files, host dependencies, and generated output. Runtime API configuration and streaming flags still come from the frontend pod's environment. See [frontend build instructions](frontend/README.md).
 
 The frontend runs unprivileged Nginx on port 8080. The backend runs as the non-root Node user on port 3000. Both images include health checks. Update the image tags to the agreed release version before pushing.
 
@@ -266,7 +287,7 @@ The frontend runs unprivileged Nginx on port 8080. The backend runs as the non-r
 Manifests and the deployed URL are managed outside this repository. Compose is for local testing; do not use its localhost API URL for remote users.
 
 - Frontend: port 8080, runtime `VITE_API_BASE_URL=/api/v1`.
-- Backend: port 3000, `NODE_ENV=production`.
+- Backend: port 3000, `NODE_ENV=production`. Use the image's default command, `node dist/index.js`, from `/app`. Update any older command or volume-mount paths under `/app/backend` to the standalone layout (`/app/dist` and `/app/config`).
 - Ingress: route `/api` to the BFF without stripping the prefix; send other paths to the frontend. Frontend Nginx does not proxy API requests.
 - Access: restrict both UI and API to the internal audience. Do not expose the BFF directly. This build cannot separate users with different data entitlements.
 - TLS and CORS: use HTTPS and set `CORS_ALLOWED_ORIGINS` to the exact UI origin.
@@ -274,7 +295,7 @@ Manifests and the deployed URL are managed outside this repository. Compose is f
 - Replicas: use one backend for this pilot. Sessions, cancellation, rate limits, and monthly token counters are process-local.
 - Probes: liveness `/api/v1/health/live`; readiness `/api/v1/health/ready`.
 - Shutdown: in-flight requests have at most 10 seconds to finish after termination. Roll out when idle.
-- Resources: set requests/limits and monitor memory, restarts, error rates, and request duration. Session/message repositories have no retention cap or cleanup policy.
+- Resources: set requests/limits and monitor memory, restarts, error rates, and request duration. Tune the temporary session/message cache limits independently of the container memory limit.
 
 This deployment does not provide durable backend history or high availability.
 
@@ -287,7 +308,7 @@ This deployment does not provide durable backend history or high availability.
 - Decide whether raw debug access is appropriate for the internal audience.
 - Resolve or assess dependency audit findings before approving the release.
 
-Readiness checks only verify that required configuration is present. They do not contact MCP or validate credentials, model permissions, or request/response contracts.
+Startup and readiness validate required MCP settings, JSON mappings, field-path conflicts, HTTP(S) endpoint origins, authentication-header syntax and streaming metadata. Upstream redirects are rejected in both chat transports. These checks do not contact MCP or verify credential validity, model permissions or live endpoint compatibility. Response limits are checked after adapting every supported response shape.
 
 ### After rollout
 
@@ -308,6 +329,6 @@ npm.cmd run check
 npm.cmd audit --omit=dev
 ```
 
-`check` runs ESLint, TypeScript, Prettier, and production builds for both applications. `audit` checks runtime dependencies. Neither command tests live MCP integration or Kubernetes.
+`check` runs ESLint, TypeScript, Prettier, backend regression tests, and production builds for both applications. Run `npm.cmd run test --workspace backend` for the backend suite alone. Tests cover redirect protection, response cleanup and limits, configuration validation, cancellation tracking, cache retention, HTTP error statuses, and normal/streaming chat against local mock services. They do not read private env files or call AWS or hosted MCP services. `audit` checks runtime dependencies. Neither command tests live MCP integration or Kubernetes.
 
-This distribution has no checked-in automated test files. Keep `frontend/index.html`, both environment examples, the lockfile, runtime-config files, and build/deployment configuration. Documents and test/scratch artifacts are excluded from Docker build contexts.
+Keep `frontend/index.html`, both environment examples, all three lockfiles, regression tests, runtime-config files, and build/deployment configuration. The root lockfile serves workspace development; each folder's lockfile serves its standalone image. When either application's dependencies change, update and verify its own lockfile and the root lockfile. Documents and test/scratch artifacts are excluded from Docker build contexts.

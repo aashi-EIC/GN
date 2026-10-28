@@ -16,6 +16,7 @@ import {
 import type { TablePageSize, VisualizationBlock } from "../../../../shared/types/app";
 import { renderInlineVisualMarkers } from "../InlineVisualMarkers";
 import { PageSizeMenu } from "./PageSizeMenu";
+import { sortTableRows, toTableNumber } from "../../utils/tableSort";
 
 export function VisualizationRenderer({
   blocks,
@@ -45,13 +46,6 @@ export function VisualizationRenderer({
       ))}
     </div>
   );
-}
-
-function toNumber(value: unknown) {
-  if (typeof value === "number") return value;
-  if (typeof value !== "string") return Number.NaN;
-  const normalized = value.trim().replace(/,/g, "").replace(/%$/, "");
-  return normalized ? Number(normalized) : Number.NaN;
 }
 
 const NOISE_COLUMNS = new Set([
@@ -195,7 +189,7 @@ export function StructuredTable({
           Object.entries(row).map(([key, value]) => [key, normalizeTableValue(value)]),
         );
       }),
-    [block.rows, columns],
+    [block.rows, block.columns],
   );
 
   const filteredRows = useMemo(() => {
@@ -211,20 +205,7 @@ export function StructuredTable({
 
   const sortedRows = useMemo(() => {
     if (incomplete || !sortKey || !sortDirection) return filteredRows;
-    return [...filteredRows].sort((a, b) => {
-      const valA = a[sortKey];
-      const valB = b[sortKey];
-      const numA = toNumber(valA);
-      const numB = toNumber(valB);
-
-      let cmp = 0;
-      if (!Number.isNaN(numA) && !Number.isNaN(numB)) {
-        cmp = numA - numB;
-      } else {
-        cmp = String(valA ?? "").localeCompare(String(valB ?? ""), undefined, { numeric: true });
-      }
-      return sortDirection === "asc" ? cmp : -cmp;
-    });
+    return sortTableRows(filteredRows, sortKey, sortDirection);
   }, [filteredRows, sortKey, sortDirection, incomplete]);
 
   const totalRows = sortedRows.length;
@@ -417,7 +398,7 @@ export function StructuredTable({
                 <tr key={rowIndex}>
                   {columns.map((column) => {
                     const rawVal = row[column.key];
-                    const numVal = toNumber(rawVal);
+                    const numVal = toTableNumber(rawVal);
                     const isNum = !Number.isNaN(numVal) && typeof rawVal !== "boolean";
                     return (
                       <td key={column.key} className={isNum ? "cell-number" : "cell-text"}>

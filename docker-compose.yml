@@ -2,16 +2,16 @@ services:
   backend:
     image: conversational-bi-backend-no-entra:local
     build:
-      context: .
-      dockerfile: backend/Dockerfile.backend
+      context: ./backend
+      dockerfile: Dockerfile.backend
     env_file:
       - backend/.env
     environment:
       NODE_ENV: production
       PORT: 3000
       # File mode uses the bundled pair; Windows development paths are not container paths.
-      SEMANTIC_MODEL_POLICY_PATH: /app/backend/config/semantic-model-user-policy.json
-      SEMANTIC_MODEL_GUIDE_PATH: /app/backend/config/semantic-model-guide.json
+      SEMANTIC_MODEL_POLICY_PATH: /app/config/semantic-model-user-policy.json
+      SEMANTIC_MODEL_GUIDE_PATH: /app/config/semantic-model-guide.json
     ports:
       - "3000:3000"
     healthcheck:
@@ -26,8 +26,8 @@ services:
   frontend:
     image: conversational-bi-frontend-no-entra:local
     build:
-      context: .
-      dockerfile: frontend/Dockerfile.frontend
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
     environment:
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000/api/v1}
       VITE_API_TIMEOUT_MS: ${VITE_API_TIMEOUT_MS:-315000}

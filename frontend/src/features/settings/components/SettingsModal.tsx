@@ -121,33 +121,32 @@ export function SettingsModal({
             </p>
           )}
 
-          <div className="sidebar-settings-usage">
+          <div className="sidebar-settings-usage" aria-busy={quotaLoading}>
             <div className="usage-title">
               <CircleGauge />
               <span>Token usage</span>
             </div>
-            {quota ? (
-              <TokenUsageBar
-                usage={quota.usage}
-                limit={quota.limit}
-                label={quota.unconfirmed ? "Confirmed monthly usage" : "Monthly token usage"}
-              />
-            ) : (
-              <p className="token-usage-description" role={quotaError ? "alert" : "status"}>
-                {quotaLoading
-                  ? "Loading monthly usage…"
-                  : "Monthly usage is unavailable. Reopen Settings to retry."}
-              </p>
-            )}
+            <div className="settings-token-balance">
+              {quota ? (
+                <TokenUsageBar
+                  usage={quota.usage}
+                  limit={quota.limit}
+                  showBreakdown={false}
+                  label={quota.unconfirmed ? "Confirmed monthly usage" : "Monthly token usage"}
+                />
+              ) : quotaError ? (
+                <p className="token-usage-description" role="alert">
+                  Monthly usage is unavailable. Reopen Settings to retry.
+                </p>
+              ) : (
+                <span className="sr-only" role="status">
+                  Loading monthly usage…
+                </span>
+              )}
+            </div>
             {quota?.pending ? (
               <p className="token-usage-description" role="status">
                 {quota.pending} request(s) awaiting final usage.
-              </p>
-            ) : null}
-            {quota?.unconfirmed ? (
-              <p className="token-usage-description" role="status">
-                Some requests did not report token usage. This balance may be incomplete; you can
-                continue chatting.
               </p>
             ) : null}
             {quota && quota.remaining === 0 ? (

@@ -7,10 +7,13 @@ import { uiActions, useAppDispatch, useAppSelector } from "./store";
 import { Composer } from "../features/chat/components/Composer";
 import { MessageBubble, PendingResponse } from "../features/chat/components/MessageBubble";
 import { WelcomePanel } from "../features/chat/components/WelcomePanel";
-import { ErrorReportModal } from "../features/debug/components/ErrorReportModal";
-import { GuideModal } from "../features/settings/components/GuideModal";
-import { SettingsModal } from "../features/settings/components/SettingsModal";
-import { TourModal } from "../shared/components/TourModal";
+import { DeferredPanel } from "../shared/components/DeferredPanel";
+import {
+  ErrorReportModal,
+  GuideModal,
+  SettingsModal,
+  TourModal,
+} from "../shared/components/panelModules";
 import { Navbar } from "../shared/components/Navbar";
 import { Sidebar } from "../shared/components/Sidebar";
 import { ToastNotification } from "../shared/components/ToastNotification";
@@ -216,29 +219,24 @@ function Workspace({
     .filter((message) => message.role === "user")
     .at(-1);
   const selectedModel = getModel(selectedModelId);
-  const sortedConversations = useMemo(
-    () =>
-      [...conversations].sort(
-        (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
-      ),
-    [conversations],
-  );
   const filteredConversations = useMemo(() => {
     const query = historyQuery.trim().toLowerCase();
     if (!query) {
-      return sortedConversations;
+      return conversations;
     }
-    return sortedConversations.filter((conversation) => {
+    return conversations.filter((conversation) => {
       const titleMatches = conversation.title.toLowerCase().includes(query);
       const model = getModel(conversation.modelId);
       const modelNameMatches = model.name.toLowerCase().includes(query);
       const modelShortMatches = model.short.toLowerCase().includes(query);
-      const messageMatches = conversation.messages.some((message) =>
-        message.text.toLowerCase().includes(query),
+      return (
+        titleMatches ||
+        modelNameMatches ||
+        modelShortMatches ||
+        conversation.messages.some((message) => message.text.toLowerCase().includes(query))
       );
-      return titleMatches || modelNameMatches || modelShortMatches || messageMatches;
     });
-  }, [sortedConversations, historyQuery]);
+  }, [conversations, historyQuery]);
 
   useEffect(() => {
     dispatch(uiActions.setDebugOpen(settings.keepDebugOpen));
@@ -1202,38 +1200,48 @@ function Workspace({
         <TeamBranding />
       </section>
 
-      {tourOpen && <TourModal close={closeTour} modelId={selectedModelId} />}
+      {tourOpen && (
+        <DeferredPanel label="Walkthrough" close={closeTour}>
+          <TourModal close={closeTour} modelId={selectedModelId} />
+        </DeferredPanel>
+      )}
       {guideOpen && (
-        <GuideModal
-          close={() => setGuideOpen(false)}
-          modelId={normalizeModelId(activeConversation?.modelId ?? selectedModelId)}
-          onSelectPrompt={submitPrompt}
-        />
+        <DeferredPanel label="Model guide" close={() => setGuideOpen(false)}>
+          <GuideModal
+            close={() => setGuideOpen(false)}
+            modelId={normalizeModelId(activeConversation?.modelId ?? selectedModelId)}
+            onSelectPrompt={submitPrompt}
+          />
+        </DeferredPanel>
       )}
       {issueOpen && (
-        <ErrorReportModal
-          close={() => setIssueOpen(false)}
-          submitIssue={submitIssue}
-          activeConversationId={
-            activeConversationId || (conversations.length > 0 ? conversations[0].id : null)
-          }
-          modelId={normalizeModelId(activeConversation?.modelId ?? selectedModelId)}
-          modelName={
-            getModel(normalizeModelId(activeConversation?.modelId ?? selectedModelId)).name
-          }
-          lastUserMessage={lastUserMessage}
-        />
+        <DeferredPanel label="Report response" close={() => setIssueOpen(false)}>
+          <ErrorReportModal
+            close={() => setIssueOpen(false)}
+            submitIssue={submitIssue}
+            activeConversationId={
+              activeConversationId || (conversations.length > 0 ? conversations[0].id : null)
+            }
+            modelId={normalizeModelId(activeConversation?.modelId ?? selectedModelId)}
+            modelName={
+              getModel(normalizeModelId(activeConversation?.modelId ?? selectedModelId)).name
+            }
+            lastUserMessage={lastUserMessage}
+          />
+        </DeferredPanel>
       )}
       {settingsOpen && (
-        <SettingsModal
-          close={() => setSettingsOpen(false)}
-          settings={settings}
-          settingsSaveError={settingsSaveError}
-          saveSettings={saveSettings}
-          toggleDebug={() => saveSettings({ ...settings, keepDebugOpen: !debugOpen })}
-          themeMode={themeMode}
-          toggleTheme={() => dispatch(uiActions.toggleThemeMode())}
-        />
+        <DeferredPanel label="Settings" close={() => setSettingsOpen(false)}>
+          <SettingsModal
+            close={() => setSettingsOpen(false)}
+            settings={settings}
+            settingsSaveError={settingsSaveError}
+            saveSettings={saveSettings}
+            toggleDebug={() => saveSettings({ ...settings, keepDebugOpen: !debugOpen })}
+            themeMode={themeMode}
+            toggleTheme={() => dispatch(uiActions.toggleThemeMode())}
+          />
+        </DeferredPanel>
       )}
       <AnimatePresence>
         {toast && (

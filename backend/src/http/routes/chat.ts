@@ -202,7 +202,7 @@ chatRouter.post("/chat/stream", async (request, res) => {
     }
   } finally {
     clearInterval(heartbeat);
-    releaseChatRequest(req.correlationId);
+    releaseChatRequest(req.correlationId, controller);
     res.end();
   }
 });
@@ -305,6 +305,6 @@ chatRouter.post("/chat", async (request, res) => {
         : response,
     );
   } finally {
-    releaseChatRequest(req.correlationId);
+    releaseChatRequest(req.correlationId, controller);
   }
 });

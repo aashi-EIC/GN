@@ -30,7 +30,8 @@ import { AssistantMark } from "../../../shared/components/AssistantMark";
 import { StructuredTable } from "./charts/VisualizationRenderer";
 import { normalizeDataLists } from "../utils/responseTables";
 import { removeChartScriptSections, streamingDisplayText } from "../utils/responseDisplay";
-import { DebugDrawer } from "../../debug/components/DebugDrawer";
+import { DeferredPanel } from "../../../shared/components/DeferredPanel";
+import { DebugDrawer } from "../../../shared/components/panelModules";
 import { renderInlineVisualMarkers } from "./InlineVisualMarkers";
 import type { StreamProgressStore } from "../services/streamProgress";
 import "./messageBubbleMarkdown.css";
@@ -70,6 +71,7 @@ function MessageBubbleComponent({
   const [copied, setCopied] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [debugDrawerOpen, setDebugDrawerOpen] = useState(false);
+  const closeDebugDrawer = useCallback(() => setDebugDrawerOpen(false), []);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -287,12 +289,10 @@ function MessageBubbleComponent({
           )}
 
           {isError && debugTrigger}
-          {debugOpen && message.debug && (
-            <DebugDrawer
-              message={message}
-              open={debugDrawerOpen}
-              onClose={() => setDebugDrawerOpen(false)}
-            />
+          {debugOpen && message.debug && debugDrawerOpen && (
+            <DeferredPanel label="Debug details" close={closeDebugDrawer}>
+              <DebugDrawer message={message} open={debugDrawerOpen} onClose={closeDebugDrawer} />
+            </DeferredPanel>
           )}
         </div>
       </article>

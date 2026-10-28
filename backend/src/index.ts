@@ -1,8 +1,9 @@
 import { createServer } from "node:http";
 import { app } from "./http/app.js";
-import { config } from "./config/env.js";
+import { assertRuntimeConfiguration, config } from "./config/env.js";
 import { logger } from "./observability/logger.js";
 
+assertRuntimeConfiguration();
 const server = createServer(app);
 server.requestTimeout = config.MCP_TIMEOUT_MS + 5_000;
 server.headersTimeout = 10_000;

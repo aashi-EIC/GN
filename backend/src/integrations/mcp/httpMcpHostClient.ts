@@ -77,6 +77,7 @@ export class HttpMcpHostClient {
       },
       body: JSON.stringify(body),
       signal,
+      redirect: "error",
     });
   }
 
@@ -86,6 +87,7 @@ export class HttpMcpHostClient {
     attempts: number,
     callerSignal: AbortSignal,
   ) {
+    await response.body?.cancel().catch(() => undefined);
     if (RETRYABLE_STATUSES.has(response.status) && attempt < attempts) {
       await delay(backoff(attempt), undefined, { signal: callerSignal });
       return;
@@ -113,16 +115,18 @@ function getMcpUrl() {
   return cachedMcpUrl;
 }
 
-const jsonDecoder = new TextDecoder();
+const jsonDecoder = new TextDecoder("utf-8", { fatal: true });
 
 export async function readJsonResponse(response: Response) {
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().includes("application/json")) {
+    await response.body?.cancel().catch(() => undefined);
     throw new UpstreamError("MCP host returned a non-JSON response");
   }
 
   const contentLength = Number(response.headers.get("content-length") ?? 0);
   if (contentLength > config.MCP_MAX_RESPONSE_BYTES) {
+    await response.body?.cancel().catch(() => undefined);
     throw new UpstreamError("MCP response exceeded the configured size limit");
   }
 
@@ -144,28 +148,32 @@ async function readLimitedBody(body: ReadableStream<Uint8Array>) {
   const chunks: Uint8Array[] = [];
   let total = 0;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    total += value.byteLength;
-    if (total > config.MCP_MAX_RESPONSE_BYTES) {
-      await reader.cancel();
-      throw new UpstreamError("MCP response exceeded the configured size limit");
+      total += value.byteLength;
+      if (total > config.MCP_MAX_RESPONSE_BYTES) {
+        throw new UpstreamError("MCP response exceeded the configured size limit");
+      }
+
+      chunks.push(value);
     }
 
-    chunks.push(value);
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+
+    return bytes;
+  } finally {
+    await reader.cancel().catch(() => undefined);
+    reader.releaseLock();
   }
-
-  const bytes = new Uint8Array(total);
-  let offset = 0;
-
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-
-  return bytes;
 }
 
 function backoff(attempt: number) {

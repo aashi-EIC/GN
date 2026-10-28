@@ -10,6 +10,7 @@ import { normalizeGeneratedDaxField } from "../../integrations/mcp/daxQueryNorma
 import { readDebugTokenUsage, readTokenUsage } from "../../integrations/mcp/tokenUsage.js";
 import {
   ensureOwnedSession,
+  releaseSessionRequest,
   saveAssistantMessage,
 } from "../../persistence/repositories/sessionRepository.js";
 import { assertSafeText } from "../../security/contentSafety.js";
@@ -92,6 +93,8 @@ export async function processChat(input: ChatInput, onStreamProgress?: StreamPro
       );
     }
     throw error;
+  } finally {
+    releaseSessionRequest(input.sessionId, input.correlationId);
   }
 }
 

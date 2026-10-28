@@ -2,6 +2,7 @@ import { useId, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { handleEnter } from "../../../shared/utils/keyboard";
 import { MagicCommandHint } from "./MagicCommandHint";
+import { useComposerTypeFocus } from "../hooks/useComposerTypeFocus";
 
 const SLASH_COMMANDS = [
   { name: "/help", description: "Open the selected model guide", available: true },
@@ -38,6 +39,7 @@ export function ChatPromptInput({
   disabled?: boolean;
 }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  useComposerTypeFocus(inputRef, disabled);
   const menuId = useId();
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);

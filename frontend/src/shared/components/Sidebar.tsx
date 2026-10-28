@@ -13,12 +13,13 @@ import {
   Settings,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Conversation, UserProfile } from "../types/app";
 import { formatRelativeDate } from "../utils/formatDate";
 import { getModel } from "../../features/chat/utils/semantic";
 import { IconButton } from "./ui/IconButton";
 import { initials } from "../utils/identity";
+import { groupHistoryByDate, groupHistoryByModel } from "../utils/conversationGroups";
 import { AskBrandMark } from "./Brand";
 import { ConversationDeleteButton } from "./ConversationDeleteButton";
 import type { ConversationDeleteStatus } from "./ConversationDeleteButton";
@@ -32,78 +33,12 @@ const clampText = (value: string, maxLength: number) => {
   return `${compact.slice(0, maxLength - 3).trim()}...`;
 };
 
-const latestUserPrompt = (conversation: Conversation) =>
-  [...conversation.messages].reverse().find((message) => message.role === "user")?.text ??
-  conversation.title;
-
-const dateBucketForConversation = (conversation: Conversation) => {
-  const updated = new Date(conversation.updatedAt);
-  const today = new Date();
-  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const startOfUpdated = new Date(updated.getFullYear(), updated.getMonth(), updated.getDate());
-  const dayDiff = Math.floor(
-    (startOfToday.getTime() - startOfUpdated.getTime()) / (24 * 60 * 60 * 1000),
-  );
-
-  if (dayDiff <= 0) return "Today";
-  if (dayDiff === 1) return "Yesterday";
-  if (dayDiff > 1 && dayDiff <= 7) return "This Week";
-  if (dayDiff > 7 && dayDiff <= 14) return "Last Week";
-  return "Past Months";
-};
-
-type DateGroup = {
-  label: string;
-  conversations: Conversation[];
-};
-
-const BUCKET_ORDER = ["Today", "Yesterday", "This Week", "Last Week", "Past Months"];
-
-const groupHistoryByDate = (conversations: Conversation[]): DateGroup[] => {
-  const dateGroups = new Map<string, Conversation[]>();
-
-  conversations.forEach((conversation) => {
-    const dateLabel = dateBucketForConversation(conversation);
-    const list = dateGroups.get(dateLabel) ?? [];
-    dateGroups.set(dateLabel, [...list, conversation]);
-  });
-
-  return BUCKET_ORDER.filter((label) => dateGroups.has(label)).map((label) => ({
-    label,
-    conversations: dateGroups.get(label)!,
-  }));
-};
-
-type ModelGroup = {
-  label: string;
-  short: string;
-  color: string;
-  conversations: Conversation[];
-};
-
-const groupHistoryByModel = (conversations: Conversation[]): ModelGroup[] => {
-  const modelGroups = new Map<string, { short: string; color: string; list: Conversation[] }>();
-
-  conversations.forEach((conversation) => {
-    const model = getModel(conversation.modelId);
-    const label = conversation.modelSelectionRequired
-      ? "Saved chats"
-      : model.nickname || model.short;
-    const existing = modelGroups.get(label) ?? { short: model.short, color: model.color, list: [] };
-    modelGroups.set(label, {
-      short: model.short,
-      color: model.color,
-      list: [...existing.list, conversation],
-    });
-  });
-
-  return [...modelGroups.entries()].map(([label, { short, color, list }]) => ({
-    label,
-    short,
-    color,
-    conversations: list,
-  }));
-};
+function latestUserPrompt(conversation: Conversation) {
+  for (let index = conversation.messages.length - 1; index >= 0; index--) {
+    if (conversation.messages[index].role === "user") return conversation.messages[index].text;
+  }
+  return conversation.title;
+}
 
 export function Sidebar({
   open,
@@ -221,8 +156,9 @@ export function Sidebar({
   };
 
   useEffect(() => {
+    if (!menuOpenId) return;
     const closePopovers = (event: PointerEvent) => {
-      if (menuOpenId && !(event.target as HTMLElement).closest(".history-item-menu-wrap")) {
+      if (event.target instanceof Element && !event.target.closest(".history-item-menu-wrap")) {
         setMenuOpenId(null);
       }
     };
@@ -248,16 +184,31 @@ export function Sidebar({
     setEditingTitle("");
   };
 
-  const displayedConversations = [
-    ...conversations,
-    ...Object.values(deletions)
-      .filter(
-        (entry) => !conversations.some((conversation) => conversation.id === entry.conversation.id),
-      )
-      .map((entry) => entry.conversation),
-  ].sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
-  const pinnedConversations = displayedConversations.filter((c) => c.pinned);
-  const unpinnedConversations = displayedConversations.filter((c) => !c.pinned);
+  const { pinnedConversations, unpinnedConversations } = useMemo(() => {
+    const displayed = [...conversations];
+    const existingIds = new Set(conversations.map((conversation) => conversation.id));
+    for (const { conversation } of Object.values(deletions)) {
+      if (!existingIds.has(conversation.id)) displayed.push(conversation);
+    }
+    displayed.sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
+    const pinnedConversations: Conversation[] = [];
+    const unpinnedConversations: Conversation[] = [];
+    for (const conversation of displayed) {
+      (conversation.pinned ? pinnedConversations : unpinnedConversations).push(conversation);
+    }
+    return { pinnedConversations, unpinnedConversations };
+  }, [conversations, deletions]);
+
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const dateGroups = useMemo(
+    () => (groupBy === "date" ? groupHistoryByDate(unpinnedConversations, startOfToday) : []),
+    [groupBy, unpinnedConversations, startOfToday],
+  );
+  const modelGroups = useMemo(
+    () => (groupBy === "topic" ? groupHistoryByModel(unpinnedConversations) : []),
+    [groupBy, unpinnedConversations],
+  );
 
   const renderHistoryItem = (conversation: Conversation) => {
     const isEditing = editingId === conversation.id;
@@ -449,7 +400,7 @@ export function Sidebar({
           )}
 
           {groupBy === "date"
-            ? groupHistoryByDate(unpinnedConversations).map((dateGroup) => {
+            ? dateGroups.map((dateGroup) => {
                 const isCollapsed = Boolean(collapsedDates[dateGroup.label]);
                 return (
                   <section
@@ -488,7 +439,7 @@ export function Sidebar({
                   </section>
                 );
               })
-            : groupHistoryByModel(unpinnedConversations).map((modelGroup) => {
+            : modelGroups.map((modelGroup) => {
                 const isCollapsed = Boolean(collapsedTopics[modelGroup.label]);
                 return (
                   <section
@@ -535,7 +486,7 @@ export function Sidebar({
                   </section>
                 );
               })}
-          {displayedConversations.length === 0 && (
+          {pinnedConversations.length === 0 && unpinnedConversations.length === 0 && (
             <p className="empty-history">No Saved Conversations</p>
           )}
         </nav>

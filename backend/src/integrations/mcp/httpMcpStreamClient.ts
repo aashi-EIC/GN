@@ -96,6 +96,7 @@ export class HttpMcpStreamClient {
         },
         body: JSON.stringify(parsed.data),
         signal: requestSignal,
+        redirect: "error",
       });
       if (
         !response.ok ||

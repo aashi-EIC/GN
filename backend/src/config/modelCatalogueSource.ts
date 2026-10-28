@@ -1,13 +1,26 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { Readable } from "node:stream";
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
+import { GetObjectCommand, S3Client, type S3ClientConfig } from "@aws-sdk/client-s3";
+import { AssumeRoleCommand, GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
 import { config } from "./env.js";
 import { ConfigurationError } from "../errors.js";
 import { parseModelPolicy } from "./modelPolicy.js";
 
 const MAX_GUIDE_BYTES = 1_048_576;
+const roleArnPattern = /^arn:([a-z0-9-]+):iam::(\d{12}):role\/(?:[^\s]+\/)?([\w+=,.@-]{1,64})$/;
+
+function isTargetRoleSession(arn: string, account: string, target: RegExpExecArray) {
+  const session = /^arn:([a-z0-9-]+):sts::(\d{12}):assumed-role\/([^/]+)\/[^/]+$/.exec(arn);
+  // IAM role names are unique within an account; STS session ARNs omit the IAM path.
+  return (
+    !!session &&
+    session[1] === target[1] &&
+    session[2] === target[2] &&
+    account === target[2] &&
+    session[3] === target[3]
+  );
+}
 
 function parseJson(bytes: Buffer): unknown {
   if (bytes.length > MAX_GUIDE_BYTES) throw new Error("Catalogue document exceeds size limit");
@@ -33,8 +46,16 @@ async function readS3Source() {
   const bucket = config.SEMANTIC_MODEL_GUIDE_S3_BUCKET;
   const key = config.SEMANTIC_MODEL_POLICY_S3_KEY;
   const roleArn = config.SEMANTIC_MODEL_GUIDE_ROLE_ARN;
-  if (!bucket || !key || !roleArn) {
-    throw new ConfigurationError("S3 catalogue requires a bucket, policy object key and role ARN");
+  if (!bucket || !key) {
+    throw new ConfigurationError("S3 catalogue requires a bucket and policy object key");
+  }
+  const authMode = config.SEMANTIC_MODEL_GUIDE_AUTH_MODE;
+  if (authMode !== "pod" && !roleArn) {
+    throw new ConfigurationError("S3 auto and assume-role authentication require a role ARN");
+  }
+  const targetRole = authMode === "auto" ? roleArnPattern.exec(roleArn!) : undefined;
+  if (authMode === "auto" && !targetRole) {
+    throw new ConfigurationError("S3 auto authentication requires a valid IAM role ARN");
   }
 
   let body: Readable | undefined;
@@ -49,31 +70,52 @@ async function readS3Source() {
     connectionTimeout: 5_000,
     requestTimeout: config.SEMANTIC_MODEL_GUIDE_TIMEOUT_MS,
   };
-  // The SDK resolves the pod's source credentials; only temporary role credentials reach S3.
-  const sts = new STSClient({
-    region: config.SEMANTIC_MODEL_GUIDE_STS_REGION,
-    maxAttempts: 2,
-    requestHandler,
-  });
+  let sts: STSClient | undefined;
   let s3: S3Client | undefined;
   try {
-    const { Credentials: credentials } = await sts.send(
-      new AssumeRoleCommand({ RoleArn: roleArn, RoleSessionName: "S3AccessSession" }),
-      requestOptions,
-    );
-    if (!credentials?.AccessKeyId || !credentials.SecretAccessKey || !credentials.SessionToken) {
-      throw new Error("AssumeRole returned incomplete credentials");
-    }
-    const client = new S3Client({
+    const clientOptions: S3ClientConfig = {
       region: config.SEMANTIC_MODEL_GUIDE_S3_REGION,
-      credentials: {
-        accessKeyId: credentials.AccessKeyId,
-        secretAccessKey: credentials.SecretAccessKey,
-        sessionToken: credentials.SessionToken,
-      },
       maxAttempts: 2,
       requestHandler,
-    });
+    };
+    if (authMode !== "pod") {
+      sts = new STSClient({
+        region: config.SEMANTIC_MODEL_GUIDE_STS_REGION,
+        maxAttempts: 2,
+        requestHandler,
+      });
+      let assumeTargetRole = true;
+      if (authMode === "auto") {
+        const identity = await sts.send(new GetCallerIdentityCommand({}), requestOptions);
+        const identityArn = /^arn:[a-z0-9-]+:(?:iam|sts)::(\d{12}):.+$/.exec(identity.Arn ?? "");
+        if (!identityArn || identity.Account !== identityArn[1]) {
+          throw new Error("AWS returned incomplete caller identity");
+        }
+        assumeTargetRole = !isTargetRoleSession(identity.Arn!, identity.Account!, targetRole!);
+        // Reuse the identity provider we just checked instead of resolving a second chain.
+        clientOptions.credentials = sts.config.credentials;
+      }
+      if (assumeTargetRole) {
+        const { Credentials: credentials } = await sts.send(
+          new AssumeRoleCommand({ RoleArn: roleArn, RoleSessionName: "S3AccessSession" }),
+          requestOptions,
+        );
+        if (
+          !credentials?.AccessKeyId ||
+          !credentials.SecretAccessKey ||
+          !credentials.SessionToken
+        ) {
+          throw new Error("AssumeRole returned incomplete credentials");
+        }
+        clientOptions.credentials = {
+          accessKeyId: credentials.AccessKeyId,
+          secretAccessKey: credentials.SecretAccessKey,
+          sessionToken: credentials.SessionToken,
+        };
+      }
+    }
+    // Pod mode leaves credentials to the SDK provider chain; failures never change modes.
+    const client = new S3Client(clientOptions);
     s3 = client;
     async function readObject(objectKey: string): Promise<unknown> {
       const response = await client.send(
@@ -109,7 +151,7 @@ async function readS3Source() {
     clearTimeout(timer);
     body?.destroy();
     s3?.destroy();
-    sts.destroy();
+    sts?.destroy();
   }
 }
 

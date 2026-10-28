@@ -1,0 +1,11 @@
+**
+!package.json
+!package-lock.json
+!tsconfig.json
+!src/
+!src/**
+!config/
+!config/semantic-model-guide.json
+!config/semantic-model-user-policy.json
+!Dockerfile.backend
+!.dockerignore

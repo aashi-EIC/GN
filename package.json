@@ -9,7 +9,7 @@
   "scripts": {
     "build": "npm run build --workspace frontend && npm run build --workspace backend",
     "typecheck": "tsc -p frontend/tsconfig.app.json --noEmit && tsc -p backend/tsconfig.json --noEmit",
-    "check": "npm run lint && npm run typecheck && npm run format:check && npm run build",
+    "check": "npm run lint && npm run typecheck && npm run format:check && npm run test --workspace backend && npm run build",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

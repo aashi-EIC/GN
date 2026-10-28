@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { loadModelCatalog } from "../features/chat/services/modelCatalog";
+import { preloadPanels } from "../shared/components/panelModules";
 
 export function ModelCatalogLoader({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -14,6 +15,7 @@ export function ModelCatalogLoader({ children }: { children: ReactNode }) {
         if (active) setStatus("error");
       },
     );
+    preloadPanels();
     return () => {
       active = false;
     };
