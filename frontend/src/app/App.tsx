@@ -14,6 +14,7 @@ import { TourModal } from "../shared/components/TourModal";
 import { Navbar } from "../shared/components/Navbar";
 import { Sidebar } from "../shared/components/Sidebar";
 import { ToastNotification } from "../shared/components/ToastNotification";
+import { TeamBranding } from "../shared/components/TeamBranding";
 import { AssistantMark } from "../shared/components/AssistantMark";
 import { storageKeys } from "../shared/config/storage";
 import { useConversationHistory } from "../features/chat/hooks/useConversationHistory";
@@ -49,7 +50,12 @@ import {
   titleFromUserMessages,
   localConversationTitle,
 } from "../shared/utils/session";
-import { getModel, normalizeCountryCode, normalizeModelId } from "../features/chat/utils/semantic";
+import {
+  getModel,
+  isModelAvailable,
+  normalizeCountryCode,
+  normalizeModelId,
+} from "../features/chat/utils/semantic";
 import {
   recordRegenerationAttempt,
   replaceAssistantResponse,
@@ -468,6 +474,7 @@ function Workspace({
   };
 
   const setActiveConversationModel = (nextModelId: ModelId) => {
+    if (!isModelAvailable(nextModelId)) return;
     if (activeConversation?.messages.length && !activeConversation.modelSelectionRequired) {
       setModelsOpen(false);
       showToast("Start a new chat to change the semantic model", "warning");
@@ -567,6 +574,10 @@ function Workspace({
     setWalkthroughDismissed(true);
 
     const currentModelId = normalizeModelId(activeConversation?.modelId ?? selectedModelId);
+    if (!isModelAvailable(currentModelId)) {
+      showToast("This model is unavailable. Start a new chat with an available model.", "warning");
+      return;
+    }
     const currentCountryCode = normalizeCountryCode(
       activeConversation?.countryCode ?? selectedCountryCode,
     );
@@ -730,6 +741,10 @@ function Workspace({
     }
 
     const currentModelId = normalizeModelId(activeConversation.modelId ?? selectedModelId);
+    if (!isModelAvailable(currentModelId)) {
+      showToast("This model is unavailable. Start a new chat with an available model.", "warning");
+      return;
+    }
     const responseTablePageSize = settings.tablePageSize;
     const createdAt = new Date().toISOString();
     const conversationId = activeConversation.id;
@@ -737,6 +752,14 @@ function Workspace({
 
     const msgIndex = activeConversation.messages.findIndex((m) => m.id === messageId);
     if (msgIndex === -1) return;
+
+    const previousResponse = responseId
+      ? activeConversation.messages.find((message) => message.id === responseId)
+      : undefined;
+    const canRestoreResponse =
+      previousResponse?.role === "assistant" &&
+      Boolean(previousResponse.text.trim()) &&
+      !previousResponse.debug?.some((event) => event.stage === "request_error");
 
     if (responseId) streamProgress.clear(responseId);
     else
@@ -831,7 +854,7 @@ function Workspace({
         ),
       );
     } catch (error) {
-      if (responseId) {
+      if (responseId && canRestoreResponse) {
         if (error instanceof Error && error.message.toLowerCase().includes("monthly token")) {
           showToast(formatUserFriendlyError(error.message).userMessage, "warning");
         }
@@ -877,14 +900,16 @@ function Workspace({
         mcpRequest: requestAudit ?? undefined,
       };
 
-      streamProgress.interrupt(conversationId, responseMessage.id);
+      streamProgress.interrupt(conversationId, responseId ?? responseMessage.id);
 
       setConversations((current) =>
         current.map((conversation) =>
           conversation.id === conversationId
             ? {
                 ...conversation,
-                messages: [...conversation.messages, responseMessage],
+                messages: responseId
+                  ? replaceAssistantResponse(conversation.messages, responseId, responseMessage)
+                  : [...conversation.messages, responseMessage],
                 updatedAt: responseMessage.createdAt,
               }
             : conversation,
@@ -1037,7 +1062,6 @@ function Workspace({
 
       <section className="workspace">
         <Navbar
-          responseMode={mode}
           modelId={selectedModelId}
           openGuide={openSelectedModelGuide}
           showWalkthroughBanner={!walkthroughDismissed && !tourOpen && !activeConversation}
@@ -1162,6 +1186,7 @@ function Workspace({
             </>
           )}
         </main>
+        <TeamBranding />
       </section>
 
       {tourOpen && <TourModal close={closeTour} modelId={selectedModelId} />}

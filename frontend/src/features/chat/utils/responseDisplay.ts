@@ -1,7 +1,6 @@
 import type { Conversation, Message, TablePageSize } from "../../../shared/types/app";
 import { collapseRegenerationMessages } from "./regeneration";
 
-/** Return renderable preview content without modifying the final answer. */
 export function streamingDisplayText(text: string) {
   let preview = text.replace(/\r\n?/g, "\n");
   // An unfinished code/array block must not flash as prose before it can be classified.
@@ -84,7 +83,6 @@ function isAsciiChartBlock(block: string) {
   return barLines.length >= 2 && barLines.length >= Math.ceil(dataLines.length / 2);
 }
 
-/** Mark missing answers in browser-cached transcripts. */
 export function savedHistoryDisplayItems(messages: Message[], pendingLastTurn = false) {
   const items: Array<{ key: string; message?: Message; unavailable?: true }> = [];
   messages.forEach((message, index) => {

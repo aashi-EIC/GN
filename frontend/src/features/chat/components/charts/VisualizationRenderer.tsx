@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import type { TablePageSize, VisualizationBlock } from "../../../../shared/types/app";
 import { renderInlineVisualMarkers } from "../InlineVisualMarkers";
+import { PageSizeMenu } from "./PageSizeMenu";
 
 export function VisualizationRenderer({
   blocks,
@@ -136,19 +137,6 @@ export function StructuredTable({
     setPageSizeDraft(String(defaultPageSize));
     setCurrentPage(1);
   }, [defaultPageSize]);
-
-  useEffect(() => {
-    if (!pageSizeMenuOpen) return;
-
-    const closeOnOutsideClick = (event: PointerEvent) => {
-      if (!pageSizeControlRef.current?.contains(event.target as Node)) {
-        setPageSizeMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("pointerdown", closeOnOutsideClick);
-    return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
-  }, [pageSizeMenuOpen]);
 
   const applyPageSize = (nextPageSize: number) => {
     setPageSize(nextPageSize);
@@ -470,7 +458,10 @@ export function StructuredTable({
                   inputMode="numeric"
                   value={pageSizeDraft}
                   onChange={(event) => setPageSizeDraft(event.target.value)}
-                  onBlur={commitPageSize}
+                  onBlur={(event) => {
+                    if (!document.getElementById(pageSizeMenuId)?.contains(event.relatedTarget))
+                      commitPageSize();
+                  }}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       event.preventDefault();
@@ -504,31 +495,14 @@ export function StructuredTable({
                 </button>
 
                 {pageSizeMenuOpen && (
-                  <div id={pageSizeMenuId} className="page-size-options" role="listbox">
-                    {pageSizeOptions.map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        role="option"
-                        aria-selected={pageSize === option}
-                        onPointerDown={(event) => event.preventDefault()}
-                        onClick={() => applyPageSize(option)}
-                      >
-                        <span>{option}</span>
-                        {pageSize === option && <Check size={12} aria-hidden="true" />}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={pageSize <= 0}
-                      onPointerDown={(event) => event.preventDefault()}
-                      onClick={() => applyPageSize(0)}
-                    >
-                      <span>All</span>
-                      {pageSize <= 0 && <Check size={12} aria-hidden="true" />}
-                    </button>
-                  </div>
+                  <PageSizeMenu
+                    id={pageSizeMenuId}
+                    anchorRef={pageSizeControlRef}
+                    options={pageSizeOptions}
+                    value={pageSize}
+                    onSelect={applyPageSize}
+                    onClose={() => setPageSizeMenuOpen(false)}
+                  />
                 )}
               </div>
             </div>

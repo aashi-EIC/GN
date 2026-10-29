@@ -22,7 +22,6 @@ const schema = z.object({
 
   CORS_ALLOWED_ORIGINS: optionalText,
 
-  SEMANTIC_MODELS_JSON: optionalText,
   FEATURE_FLAGS_JSON: optionalText,
   MAX_PROMPT_LENGTH: integer(20_000),
   MAX_HISTORY_ITEMS: integer(10),

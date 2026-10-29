@@ -130,6 +130,7 @@ export function SettingsModal({
               <TokenUsageBar
                 usage={quota.usage}
                 limit={quota.limit}
+                showBreakdown={false}
                 label={quota.unconfirmed ? "Confirmed monthly usage" : "Monthly token usage"}
               />
             ) : (
@@ -142,12 +143,6 @@ export function SettingsModal({
             {quota?.pending ? (
               <p className="token-usage-description" role="status">
                 {quota.pending} request(s) awaiting final usage.
-              </p>
-            ) : null}
-            {quota?.unconfirmed ? (
-              <p className="token-usage-description" role="status">
-                Some requests did not report token usage. This balance may be incomplete; you can
-                continue chatting.
               </p>
             ) : null}
             {quota && quota.remaining === 0 ? (

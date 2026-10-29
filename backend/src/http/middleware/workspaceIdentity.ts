@@ -1,9 +1,6 @@
 import type { RequestHandler } from "express";
 
-/*
-  This distribution intentionally has no inbound authentication. A stable
-  workspace identity keeps session and settings ownership deterministic.
- */
+// Shared pilot identity; access control belongs at the gateway.
 export const workspaceIdentity: RequestHandler = (req, _res, next) => {
   Object.assign(req, {
     user: {

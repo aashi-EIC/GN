@@ -1,7 +1,6 @@
 const MAX_DAX_QUERY_LENGTH = 500_000;
 const MAX_DAX_QUERIES = 100;
 
-/** Normalize MCP transport shapes without rewriting the DAX expression itself. */
 export function normalizeGeneratedDaxQueries(value: unknown): string[] | undefined {
   if (typeof value === "string") {
     const query = value.trim();

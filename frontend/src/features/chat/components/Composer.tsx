@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Mic, Send } from "lucide-react";
 import { getCountryLocale } from "../../../shared/constants/locales";
 import type { CountryCode, ModelId } from "../types/semantic";
-import { getModel } from "../utils/semantic";
+import { getModel, isModelAvailable } from "../utils/semantic";
 import { startVoiceInput } from "../utils/speech";
 import { ModelPicker } from "./ModelPicker";
 import { ChatPromptInput } from "./ChatPromptInput";
@@ -42,6 +42,7 @@ export function Composer({
     busyRef.current = busy;
   }, [busy]);
   const model = getModel(modelId);
+  const modelUnavailable = !modelSelectionRequired && !isModelAvailable(modelId);
   const locale = getCountryLocale(countryCode);
 
   return (
@@ -51,6 +52,12 @@ export function Composer({
           Choose the model used for this saved conversation before continuing.
         </p>
       )}
+      {modelUnavailable ? (
+        <p className="history-model-notice" role="status">
+          This model is unavailable. Saved messages are still readable; start a new chat with an
+          available model to continue.
+        </p>
+      ) : null}
       <div className="composer" aria-busy={busy} onPointerDown={dismissMagicHint}>
         <ChatPromptInput
           prompt={prompt}
@@ -87,14 +94,14 @@ export function Composer({
               }
               type="button"
               aria-label="Use voice input"
-              disabled={busy || modelSelectionRequired}
+              disabled={busy || modelSelectionRequired || modelUnavailable}
             >
               <Mic />
             </button>
             <button
               className="send-btn"
               onClick={() => submitPrompt()}
-              disabled={busy || modelSelectionRequired || !prompt.trim()}
+              disabled={busy || modelSelectionRequired || modelUnavailable || !prompt.trim()}
               type="button"
               aria-label={locale.sendLabel}
             >

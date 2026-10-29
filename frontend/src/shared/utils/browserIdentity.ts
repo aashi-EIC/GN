@@ -3,9 +3,7 @@ import { createSessionId, isSessionId } from "./session";
 
 let fallbackBrowserUserId: string | undefined;
 
-/**
- * Returns a browser-scoped correlation ID, not an authentication credential.
- */
+// Browser correlation only, not authentication.
 export function getBrowserUserId(): string {
   try {
     const storedId = localStorage.getItem(storageKeys.browserUserId);

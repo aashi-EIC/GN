@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { AppRoot } from "./App";
 import { AppProviders } from "./providers";
+import { ModelCatalogLoader } from "./ModelCatalogLoader";
 import { storageKeys } from "../shared/config/storage";
 import { getBrowserUserId } from "../shared/utils/browserIdentity";
 import "../styles/globals.css";
@@ -21,7 +22,9 @@ getBrowserUserId();
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <AppProviders>
-      <AppRoot />
+      <ModelCatalogLoader>
+        <AppRoot />
+      </ModelCatalogLoader>
     </AppProviders>
   </React.StrictMode>,
 );

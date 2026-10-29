@@ -1,7 +1,6 @@
 import { ArrowUpRight, Menu, MoonStar, Sun } from "lucide-react";
 import type { ModelId } from "../../features/chat/types/semantic";
-import type { ChatTransportMode } from "../types/app";
-import { getModel } from "../../features/chat/utils/semantic";
+import { getModel, normalizeModelId } from "../../features/chat/utils/semantic";
 import { IconButton } from "./ui/IconButton";
 
 function WalkthroughCompassMark() {
@@ -49,7 +48,6 @@ function GuideBookMark() {
 }
 
 export function Navbar({
-  responseMode,
   modelId,
   openGuide,
   showWalkthroughBanner,
@@ -59,7 +57,6 @@ export function Navbar({
   sidebarOpen = false,
   toggleSidebar,
 }: {
-  responseMode: ChatTransportMode;
   modelId?: ModelId;
   openGuide: () => void;
   showWalkthroughBanner: boolean;
@@ -71,7 +68,7 @@ export function Navbar({
   toggleSidebar?: () => void;
   onSelectPrompt?: (prompt: string) => void;
 }) {
-  const activeModel = getModel(modelId ?? "schedule_completeness_tsg");
+  const activeModel = getModel(modelId ?? normalizeModelId());
 
   return (
     <header className="topbar">
@@ -85,17 +82,6 @@ export function Navbar({
         >
           <Menu size={20} aria-hidden="true" />
         </button>
-        <span
-          className="chat-mode-badge"
-          data-mode={responseMode}
-          aria-label={`Response mode: ${responseMode === "streaming" ? "Streaming" : responseMode === "standard" ? "Non-streaming" : "Automatic"}`}
-        >
-          {responseMode === "streaming"
-            ? "Streaming"
-            : responseMode === "standard"
-              ? "Non-streaming"
-              : "Auto"}
-        </span>
       </div>
 
       <div className="header-actions">

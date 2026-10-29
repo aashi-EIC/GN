@@ -43,7 +43,8 @@
   background: color-mix(in srgb, var(--ui-text, #082443) 10%, transparent);
 }
 
-.token-usage-input {
+.token-usage-input,
+.token-usage-total {
   background: var(--gn-pink, #ff0054);
 }
 

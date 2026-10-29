@@ -94,6 +94,11 @@ function MessageBubbleComponent({
     window.setTimeout(() => setCopied(false), 1800);
   };
 
+  const cancelEdit = () => {
+    setIsEditing(false);
+    setEditText(message.text);
+  };
+
   if (message.role === "user") {
     if (isEditing) {
       return (
@@ -101,27 +106,28 @@ function MessageBubbleComponent({
           <div className="user-edit-card">
             <textarea
               className="user-edit-textarea"
+              aria-label="Edit your message"
               value={editText}
               disabled={busy}
               onChange={(e) => setEditText(e.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape" && !event.nativeEvent.isComposing) {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  cancelEdit();
+                }
+              }}
               autoFocus
-              rows={Math.max(2, editText.split("\n").length)}
+              rows={Math.min(8, Math.max(3, editText.split("\n").length))}
             />
             <div className="user-edit-footer">
-              <button
-                type="button"
-                className="user-edit-cancel"
-                onClick={() => {
-                  setIsEditing(false);
-                  setEditText(message.text);
-                }}
-              >
+              <button type="button" className="user-edit-cancel" onClick={cancelEdit}>
                 Cancel
               </button>
               <button
                 type="button"
                 className="user-edit-submit"
-                disabled={busy || !editText.trim() || editText.trim() === message.text}
+                disabled={busy || !editText.trim() || editText.trim() === message.text.trim()}
                 onClick={() => {
                   if (editText.trim() && onEditUserMessage) {
                     onEditUserMessage(message.id, editText.trim());
@@ -146,7 +152,14 @@ function MessageBubbleComponent({
               {copied ? <Check /> : <Copy />}
             </IconButton>
             {onEditUserMessage && (
-              <IconButton label="Edit message" disabled={busy} onClick={() => setIsEditing(true)}>
+              <IconButton
+                label="Edit message"
+                disabled={busy}
+                onClick={() => {
+                  setEditText(message.text);
+                  setIsEditing(true);
+                }}
+              >
                 <Pencil />
               </IconButton>
             )}
@@ -337,8 +350,9 @@ export function PendingResponse({
     () => progress.getSnapshot(conversationId),
     [progress, conversationId],
   );
-  const { text } = useSyncExternalStore(subscribe, getSnapshot);
+  const { text, status } = useSyncExternalStore(subscribe, getSnapshot);
   const preview = useMemo(() => streamingDisplayText(text), [text]);
+  const label = preview ? "Writing response…" : status;
   return (
     <div className={`pending-response ${preview ? "has-preview" : ""}`} aria-busy="true">
       {preview && <SafeResponseText text={preview} tablePageSize={tablePageSize} streaming />}
@@ -354,8 +368,10 @@ export function PendingResponse({
           <i />
           {!preview && <i />}
         </span>
-        <span className="thinking-label">
-          {preview ? "Writing response…" : "Analyzing your data"}
+        <span className="processing-step">
+          <span key={label} className="thinking-label processing-step-label">
+            {label}
+          </span>
         </span>
       </div>
     </div>

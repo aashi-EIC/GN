@@ -105,6 +105,7 @@ export async function requestStreamingChat(
         if (
           event === "status" &&
           typeof record.message === "string" &&
+          record.message.trim().length > 0 &&
           record.message.length <= 100
         ) {
           callbacks.onStatus?.(record.message);

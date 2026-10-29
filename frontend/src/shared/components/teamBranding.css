@@ -1,0 +1,42 @@
+.team-branding {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2px 10px;
+  padding: 4px 16px max(8px, env(safe-area-inset-bottom));
+  color: var(--ui-muted);
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+}
+
+.team-branding-name {
+  font-weight: 500;
+}
+
+.team-branding-separator {
+  color: var(--gn-pink);
+}
+
+.workspace > .welcome {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  overflow-y: auto;
+}
+
+@media (max-width: 600px) {
+  .team-branding {
+    column-gap: 6px;
+    padding-inline: 8px;
+  }
+
+  .team-branding-name {
+    flex-basis: 100%;
+  }
+
+  .team-branding-name + .team-branding-separator {
+    display: none;
+  }
+}

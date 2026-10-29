@@ -74,8 +74,7 @@ export function createStreamProgress() {
       notify(id);
     },
     interrupt(id: string, messageId: string, restored = false) {
-      // Preserve received text only in memory, including the last queued batch.
-      // A failed regeneration restores the original answer instead of showing two answers.
+      // Include the queued batch, but discard it when restoring a saved answer.
       const text = restored ? "" : (pending.get(id)?.text ?? store.getSnapshot(id).text);
       if (!text.trim() && !restored) return;
       snapshots.set(messageId, {

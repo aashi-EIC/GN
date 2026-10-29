@@ -1,160 +1,104 @@
-# Conversational BI
+# Conversational BI — manual models
 
-Internal pilot build. Not the final production release.
+Internal pilot with a React/Vite frontend and an Express backend-for-frontend (BFF). It supports normal chat, SSE streaming, response tables, browser history and a manually maintained Model Guide.
 
-React/Vite frontend with a Node.js Express backend-for-frontend (BFF). The BFF validates requests, manages sessions, and connects the UI to the MCP analytics service.
-
-Everyone reaching the BFF shares one workspace identity, even though conversations have separate sessions. Browser UUIDs are correlation identifiers, not authentication. Restrict both UI and API access through a company gateway, VPN, or private network.
-
-## Delivery scope
-
-| Area                | Current behaviour                                                      |
-| ------------------- | ---------------------------------------------------------------------- |
-| Chat                | Normal and SSE transports; streaming requires both feature flags.      |
-| Rendering           | LLM text and response tables; chart output is suppressed.              |
-| History and titles  | Browser-local conversations, prompt-based titles, and manual renaming. |
-| Identity and models | Shared workspace identity, browser UUIDs, and configured model IDs.    |
-
-## Repository
-
-- `frontend/`: React application, response rendering, and browser history.
-- `backend/`: Express API, session management, and MCP integration.
-- `docker-compose.yml`: Local two-container deployment.
-- `package.json`: Shared workspace scripts.
-- `docs/`: Presentation documents, images, and document-generation sources.
-
-The frontend and backend use separate container images. In Kubernetes, the Ingress routes `/api` to the BFF and everything else to the frontend. The browser uses `/api/v1`, not an internal Kubernetes service address.
+This build has no user authentication. Browser UUIDs identify a browser, not a verified person. Restrict both the website and API through an internal gateway, VPN or private network.
 
 ## Local setup
 
-Requires Node.js 22 LTS or newer, npm 10 or newer, and access to MCP. Docker Compose is optional for local container testing.
-
-Run from the repository root:
+Use Node.js 22 LTS or newer and npm 10 or newer. Run from the repository root:
 
 ```powershell
 npm.cmd ci
-Copy-Item frontend/.env.example frontend/.env
 Copy-Item backend/.env.example backend/.env
+Copy-Item frontend/.env.example frontend/.env
 ```
 
-Set `MCP_BASE_URL` in `backend/.env` to the MCP Host origin. Check the endpoint path, request-field mappings, model IDs, and authentication mode against the deployed Host's `/chat` contract. Example values are defaults, not credentials.
+Copy environment files only for a fresh checkout; keep existing local settings. Set `MCP_BASE_URL` in `backend/.env` and check the request-field mappings against the deployed MCP contract.
 
-Start the BFF:
+Start each workspace in its own terminal:
 
 ```powershell
 npm.cmd run dev --workspace backend
-```
-
-In another terminal, start the frontend:
-
-```powershell
 npm.cmd run dev --workspace frontend
 ```
 
-Open <http://localhost:5173>. The BFF runs at <http://localhost:3000>.
+Open <http://localhost:5173>. The BFF listens on <http://localhost:3000>.
 
-## Configuration
+## Models
 
-`frontend/.env.example` covers the public API URL and request timeout. `backend/.env.example` covers server settings, CORS, models, rate limits, and MCP.
+The model list is hardcoded in `backend/src/config/semanticModels.ts`. It includes TSG, VOD and CPX, with their IDs, display names and compact labels. No model-list environment variable or guide JSON file is required.
 
-`MONTHLY_TOKEN_LIMIT=1000000` sets the allowance shared by both chat modes and all models on one BFF instance. Usage is held in BFF memory, independently of browser chat history. No external usage store is required. `/api/v1/bootstrap` exposes the configured limit; `/api/v1/usage/monthly` returns the current balance using `x-browser-user-id`.
+| Model                     | Catalogue ID                | MCP ID          |
+| ------------------------- | --------------------------- | --------------- |
+| Schedule Completeness TSG | `schedule_completeness_tsg` | `tsg`           |
+| Mapping Stats VOD         | `mapping_stats_vod`         | `mapping_stats` |
+| CPX Metrics               | `cpx_metrics`               | `cpxm`          |
 
-### Monthly token quota
+To add or change a model:
 
-- Calendar months reset at 00:00 UTC on the first day. Requests are charged to the month in which they were admitted. Accounting starts when the BFF starts; older local transcripts are not backfilled. Restarting or redeploying the BFF clears usage.
-- Normal chat rejects new requests with HTTP 429 once reported usage reaches the allowance. Streaming returns an SSE error with code `MONTHLY_TOKEN_LIMIT_EXCEEDED`. Neither path submits that rejected request to MCP.
-- MCP reports tokens after completion. Requests already in flight may cross the allowance; this is an admission limit, not an upstream hard token-spend ceiling. Parallel tabs remain supported. In-process updates are synchronous and each request settles once, avoiding lost increments or duplicate settlement within the instance.
-- Every admitted attempt counts, including regeneration. Deleting, renaming, or replacing a saved response does not refund usage. Only validated MCP totals are charged; text-based estimates are never used.
-- Missing or invalid usage and interrupted submitted requests mark the balance as incomplete in Settings but do not block later requests. No tokens are estimated for those attempts, so this counter can understate actual consumption. Errors before submission release the pending entry without charging tokens.
-- The identity is still an anonymous browser UUID, not a verified person. Clearing or changing that ID bypasses per-person attribution. Keep the pilot restricted; the quota does not provide authentication.
-- Chat requires a UUID in `x-browser-user-id` or `browser_user_id`. If both are supplied, they must match. A session ID is never used as a quota identity, so starting a new chat cannot reset usage.
-- Counters are process-local and are not shared across BFF replicas. Use one BFF instance for the pilot. This is a best-effort usage allowance, not a durable billing or cost-control system. Old monthly records are removed after a seven-day retention window.
+1. Edit `backend/src/config/semanticModels.ts` to add, remove or rename a model.
+2. Update `MCP_MODEL_ID_MAP_JSON` if MCP expects a different ID.
+3. Add or update its guide content in `frontend/src/shared/constants/semanticModels.ts`.
+4. Rebuild and deploy the affected workspaces, then refresh the browser.
 
-For Rancher, set `MONTHLY_TOKEN_LIMIT` on the BFF workload and run a single replica. Restart the BFF after changing its environment; doing so also resets the usage counter.
+Descriptions, Model Guide sections, colours and suggested prompts are hardcoded in the frontend. TSG, VOD and CPX content is included. Changing that content requires a frontend rebuild only. A model without frontend content shows a guide-not-configured message. Guide content alone never enables a model that is absent from the BFF list.
 
-### MCP connection
+The BFF enforces the same manual list for chat requests and rejects unknown model IDs. Adding a model does not add its dataset or analytics implementation to MCP.
 
-- Set `MCP_BASE_URL` and `MCP_ENDPOINT_PATH` for the deployed Host.
-- Use `MCP_REQUEST_*` to map request fields. The sample mapping sends `message`, `user_id`, and `semantic_model_id`, then adds `session_id` after MCP creates one.
-- Use `MCP_MODEL_ID_MAP_JSON` if UI and MCP model IDs differ.
-- Use `MCP_REQUEST_STATIC_FIELDS_JSON` only for additional server-controlled fields. Do not put browser-supplied identity or model values there.
-- Set `MCP_AUTH_MODE=none` for an unauthenticated server-to-server endpoint. For API-key authentication, set `MCP_AUTH_MODE=api-key`, `MCP_API_KEY_HEADER`, and `MCP_API_KEY_VALUE`.
-- Keep API keys out of frontend variables and never commit a populated `.env` file.
+The UI reads IDs and display labels through `/api/v1/semantic-models`; detail and bootstrap endpoints use the same configured list. Guide text, tab labels and prompts come from frontend code, not the API. There is no automatic discovery or refresh. Removed models stay readable in saved chats but cannot receive new requests.
 
-Populate `SEMANTIC_MODELS_JSON` with approved models before deployment. Leaving it as `[]` disables the server-side model allowlist. Match these bundled UI IDs: `schedule_completeness_tsg` and `mapping_stats_vod`. Adding a model to Power BI does not add it to the UI picker.
+## Chat and streaming
 
-### Streaming (opt-in testing)
+| Browser path   | Transport                                                   |
+| -------------- | ----------------------------------------------------------- |
+| `/`            | Streaming when enabled and available; otherwise normal chat |
+| `/chat`        | Normal chat                                                 |
+| `/chat/stream` | Streaming; requires both flags                              |
 
-Normal chat uses `/api/v1/chat` and MCP `/chat`. Streaming uses `/api/v1/chat/stream` and MCP `/chat/stream`; it does not replace or replay the normal request.
+Enable streaming with `CHAT_STREAMING_ENABLED=true` on the BFF and `VITE_CHAT_STREAMING_ENABLED=true` on the frontend. Local example files default to false; deployment profiles enable both. Docker Compose enables frontend streaming by default, so no root `.env` is needed. The BFF must still enable streaming.
 
-Open `/chat` for non-streaming responses or `/chat/stream` for streaming responses. The header labels the selected mode. URL selection is tab-local, including follow-ups, edits and regeneration; it is not saved as a shared browser preference. `/` keeps the deployment-default behaviour. Existing `/chat/{conversationId}` URLs use non-streaming mode.
+Normal chat calls MCP `/chat`; streaming calls MCP `/chat/stream`. The URL selects the mode for that tab, including edits and regeneration. For independent side-by-side tests, start a different conversation in each tab. Once an analytics request is submitted, failures are never automatically retried through another transport.
 
-For side-by-side comparison, open both URLs in separate tabs and start a new conversation in each. Browser history still synchronizes across tabs, so reusing the same saved chat also reuses its MCP session context. Use separate conversations for independent requests.
+Recognized processing steps appear in the animated loading row. Incoming text is batched into previews; unfinished tables and code blocks wait until safe to render. Only a validated completion saves the answer. The upstream stream has a 5 MiB default size limit; completion metadata is not limited to 100 rows or character-array entries.
 
-To test streaming, set `CHAT_STREAMING_ENABLED=true` in the BFF and `VITE_CHAT_STREAMING_ENABLED=true` in the frontend. Restart both development servers. For containers, supply the frontend flag at runtime; Compose accepts it from the shell or root `.env`. Both flags default to false. `/chat` always uses normal chat, even when both flags are enabled. `/chat/stream` requires both flags and a successful capability check; otherwise it shows a streaming-unavailable error without submitting an analytical request. On `/`, a failed capability check keeps new requests on normal chat. Once a streaming request is submitted, failure never triggers an automatic `/chat` retry.
+Regeneration hides the previous answer while pending and keeps later turns in place. A successful regeneration replaces the selected answer. On failure, a genuine previous answer is restored; retrying an error updates that error in place. Interrupted previews stay in memory and are not saved as completed answers.
 
-The adapter consumes upstream `status`, `token`, and `done` SSE events. Tokens are forwarded as `text_delta` events and displayed progressively using the existing LLM-only Markdown/table renderer. Partial table rows and unfinished code blocks wait until they can be rendered safely. Live previews stay in memory; only a validated completion saves the final answer. Tool results and other pipeline payloads are never rendered as answer text. Session metadata is saved when `session_ready` arrives, including if the stream subsequently fails. Regeneration hides the old answer and keeps later turns in place.
+Tables support search, sorting, pagination, copy and CSV export. The rows menu matches the active theme and opens downward within the chat viewport without covering the composer; presets, typed row counts and keyboard selection are supported. Charts are suppressed. Settings shows total monthly token usage against the limit, without an input/output breakdown. Detailed token counts remain available in debug details, not in the chat body. Processing animations remain active under reduced-motion settings with smaller transitions.
 
-Preview updates are batched every 50 ms and subscribed to by the active response, not the entire workspace. Large bursts are spread over a catch-up window of up to 150 ms; completion still displays the full answer immediately. Analyzing bars and text shimmer remain until readable content arrives, then give way to small writing dots. Completed content stays still. Reduced-motion settings disable transition effects; loading bars and text shimmer remain animated.
+Typing a character from the page background focuses the chat composer and appends it to the current draft, on both the welcome screen and saved chats. It does not submit the prompt. Other text fields, focused controls, open dialogs/menus, message editing, keyboard shortcuts and response generation keep their existing keyboard behaviour. Space, Enter and navigation keys alone do not redirect focus.
 
-Tables show complete rows and an actual received-row count, without guessing the final total. Search, sorting, pagination, copy and export become available after validated completion. Completed tables are reused while later text arrives. Scrolling up pauses auto-follow, including at completion; **Jump to latest** resumes it. Normal streaming follows new content with frame-based easing, without re-rendering the workspace for every token.
+## History, sessions and limits
 
-If a stream fails after text arrives, the safe partial preview stays in memory with an explicit incomplete/not-saved notice and disabled table exports. It is never saved as the final answer and disappears on reload. A failed regeneration restores the original answer with an inline notice. No failed stream is automatically replayed through normal chat.
+- Conversations, MCP session references, names and preferences use browser localStorage. Tabs on the same origin and browser profile synchronize history. Different hostnames, ports, protocols, profiles and devices do not share it.
+- Titles start with a local prompt-based fallback. When an MCP session is available, the BFF can retrieve its generated title. Manual renames are preserved. Conversation messages are loaded from browser storage, not from cloud history.
+- BFF sessions, messages, feedback, issue records, settings API records and token counters are process-local. Restarting the BFF clears them; replicas do not share them.
+- Deleting, renaming or pinning a chat changes the browser copy, not MCP's stored history. Regeneration sends a new request within the current MCP session; it does not rewind upstream context.
+- Browser persistence is best-effort. A storage failure does not block chat, but unsaved changes may be lost on refresh or close.
+- Feedback controls update page state. The issue form currently acknowledges submission without persisting or sending a support report.
 
-Stream requests follow the Host format: `user_id`, `email`, `bearer_token`, `message`, `semantic_model_id`, and optional `session_id`. `user_id` remains the anonymous browser UUID. `MCP_STREAM_EMAIL` defaults to `test@example.com` as pilot metadata, not a verified identity. The adapter sends an empty bearer token by default. Credentials belong in server-side configuration, never frontend configuration or browser storage. Server-controlled static fields can supply optional Host fields. Model-ID mappings remain applicable.
+`MONTHLY_TOKEN_LIMIT=1000000` sets the allowance for each browser identity across models and chat modes. Calendar months reset at 00:00 UTC on the first day. Use one BFF replica for this pilot.
 
-The BFF sends heartbeat comments, disables caching, requests no proxy buffering, and aborts upstream work on browser disconnect or timeout. Verify the actual Kubernetes ingress streams immediately and has sufficient idle/read timeouts; application headers alone cannot guarantee proxy behavior. Cancellation and sessions remain process-local, as in normal chat.
+Requests are blocked once reported usage reaches the limit. Already-running requests may exceed it because MCP reports tokens after completion. Regeneration also counts. Missing usage marks accounting as incomplete without blocking later requests; no usage is estimated. Restarting the BFF resets the counter, and clearing the browser ID bypasses per-person attribution. This is not durable billing or a strict spending ceiling.
 
-Before enabling for internal users, verify real analytics prompts, follow-ups, both semantic models, interrupted streams, regeneration, tables, mobile layout, and ingress behavior in the target environment. Rollback: disable either flag for new requests and keep `/chat` deployed. Reload existing UI tabs after rollout.
+## Environment configuration
 
-### Browser identity and sessions
+| File                               | Use                                    |
+| ---------------------------------- | -------------------------------------- |
+| `backend/.env.example`             | Native development and local Compose   |
+| `frontend/.env.example`            | Vite development                       |
+| `backend/.env.deployment.example`  | BFF workload environment               |
+| `frontend/.env.deployment.example` | Frontend container runtime environment |
 
-The frontend creates an anonymous UUID per browser profile and sends it with each chat request. The BFF forwards it as MCP `user_id`. Each conversation also has its own local UUID.
+The deployment profiles target `https://conv-bi.k8s-np.cloud.gracenote.com`, enable streaming and configure the model-ID mappings. They contain no live credentials. Apply their key/value pairs to the workloads in Kubernetes/Rancher; storing the files in the repository does not configure a pod.
 
-The first prompt omits MCP `session_id`. MCP creates the session, the BFF returns `mcp_session_id`, and the frontend saves it for follow-up prompts. MCP session status and message count are returned as validated metadata. A terminal status (`expired`, `closed`, `terminated`, `invalid`, or `inactive`) clears the saved MCP session reference so the next prompt starts a new session. Requests are not replayed automatically.
+Keep credentials in backend Secrets, never in frontend variables or images. Frontend runtime configuration is public. The current optional-token profile sends an empty Power BI bearer token. If MCP requires authentication, configure the approved backend authentication mode and credentials.
 
-These IDs are not authentication. Any caller reaching the BFF uses the shared workspace identity and can access its backend session history. The browser UUID only separates anonymous rate-limit buckets; older clients fall back to their network address. Health checks are not rate-limited.
+The deployment profile allows 600 seconds for MCP and 700 seconds in the browser. Local examples use 300 and 315 seconds respectively. Configure ingress timeouts to match the deployed values and disable SSE buffering. Set `CORS_ALLOWED_ORIGINS` to the exact HTTPS UI origin without a trailing slash.
 
-Refresh does not change the browser UUID while local storage is available. Clearing site data, changing browser profiles, or starting a new private-browsing session can create a new UUID. There is no verified-user history recovery.
+Raw debug output is disabled in the deployment profile. Enable it only for a restricted internal audience.
 
-### UI behavior
-
-Display name and Settings preferences save automatically in the current browser. They survive backend restarts but do not carry over to another browser. Clearing site data removes them. Settings shows a warning if preferences cannot be saved.
-
-The loading indicator stays visible while analysis is pending. Reduced-motion behaviour is described in the streaming section. Failed requests are not retried automatically; use **Try again**.
-
-Answers render from LLM text only. Markdown tables and narrowly recognized uniform data lists become tables; raw tool-result tables are not appended. Chart directives and named chart-array sections are suppressed for this release. Keep the visualization module: response tables still use it.
-
-Generated DAX and raw diagnostics are available when debug access is enabled. In production, set `"debugMode":true` in `FEATURE_FLAGS_JSON` to return diagnostics. The browser setting controls visibility only, not access.
-
-The MCP response in debug mode preserves validated token totals and, when supplied, the `calls` breakdown (`call_label`, `prompt_tokens`, `completion_tokens`, `total_tokens`). Credentials and unknown usage fields are excluded. Invalid call details do not affect the reported aggregate totals or quota accounting. The per-call breakdown is not added to chat replies or the Settings bar.
-
-Token usage is shown only in Settings as a monthly quota bar, with reported input/output counts and the server allowance. Settings loads the balance on open, on focus and after chat requests in that tab. The balance comes from BFF memory, not local messages, so deleting or replacing a reply cannot lower it. Pending requests and incomplete usage are labeled explicitly. No costs are estimated and no usage bar is displayed inside chat replies.
-
-## History and storage
-
-- Conversations and MCP session references: browser localStorage. Survive refresh, but not cleared site data or a different browser profile.
-- Display name, theme, and Settings: browser localStorage. These are local preferences, not an authenticated profile.
-- BFF sessions, messages, feedback, issue records, settings API records, and monthly token usage: backend process memory. Lost on restart and not shared across replicas; no durable database or external ticket integration.
-- MCP session context: retained by the MCP Host under its own policy. Chat and streaming send MCP session IDs for follow-up context. The UI loads conversation history from browser storage.
-
-Sidebar titles are generated locally from user prompts. Manual renames stay browser-local and are not replaced by later prompts. Opening a chat reads its cached messages; no remote history or title request is made.
-
-Regeneration replaces the selected local answer and keeps later turns in place. Compatibility handling still groups previously cached empty regeneration copies and identifies missing cached answers. If an older cached conversation has no model metadata, choose its model before continuing. These safeguards read browser data only; they do not fetch or update cloud history.
-
-Tabs using the same origin and browser profile synchronize history through storage events and refresh it on focus. Different hostnames, ports, protocols, profiles, or devices do not share storage. Use the same exact URL in every tab.
-
-Existing history is kept as a read-only baseline. New conversations and field/message changes use versioned localStorage keys, avoiding whole-history overwrites. Independent changes are preserved. Concurrent edits to the same field or message use the last stored value. Deletion markers stop stale tabs and late responses from restoring removed chats or messages.
-
-The selected chat, draft, and generation indicator remain local to each tab. Close older application tabs after deploying this change; older builds still save whole-list snapshots.
-
-Sidebar deletion and renaming affect the browser copy only, not BFF or MCP history. Regeneration replaces the selected answer and preserves later messages, but sends another prompt to the current MCP session; it does not rewind the Host's context.
-
-Storage writes are best-effort. Blocked or full storage does not stop chat or show a chat-storage warning. The current tab keeps its in-memory state, but unsaved history may disappear on refresh or close. Copy important answers before clearing site data.
-
-Feedback buttons update page state only. **Save issue** acknowledges the form without saving it or calling the BFF issue endpoint. Do not use either as a reporting or support channel during the pilot.
-
-## Docker Compose
+## Docker
 
 Configure `backend/.env`, then run:
 
@@ -163,72 +107,57 @@ docker compose up --build -d
 docker compose ps
 ```
 
-Compose reads `backend/.env`. The frontend API URL and timeout come from `docker-compose.yml`; `frontend/.env` is only needed for Vite development. Frontend port: 5173. Backend port: 3000.
+The manual-version image tags are `conversational-bi-backend-manual:local` and `conversational-bi-frontend-manual:local`. Host ports 3000 and 5173 must be free. Model-list changes require rebuilding the backend image; guide content changes require rebuilding the frontend image.
 
-To stop:
+The frontend container reads public settings from its runtime environment and generates `runtime-config.js`. Its `frontend/.env` file is for Vite, not container runtime configuration.
+
+Compose includes defaults for the frontend API URL, timeout and streaming flag. To override them, edit the frontend `environment` section in `docker-compose.yml` or set shell environment variables before running Compose.
+
+To stop this copy:
 
 ```powershell
 docker compose down
 ```
 
-## Deployment images
+Do not include `node_modules`, generated output, private environment files or scratch files in a source handover. Dependencies are restored with `npm ci`. Each backend build clears only its own `backend/dist` directory before compiling, so removed modules cannot survive as stale JavaScript or source maps.
 
-Build from the repository root:
+## Kubernetes deployment
+
+Manifests are managed outside this repository.
+
+- Frontend: unprivileged Nginx on port 8080, with `VITE_API_BASE_URL=/api/v1`.
+- Backend: non-root Node process on port 3000, with `NODE_ENV=production`.
+- Ingress: route `/api` to the BFF without stripping the prefix; route other paths to the frontend. Frontend Nginx does not proxy API requests.
+- Access: restrict both UI and API. This shared-workspace build does not enforce separate user entitlements.
+- Replicas: one BFF instance; sessions, cancellation, rate limits and usage counters are process-local.
+- Probes: `/api/v1/health/live` and `/api/v1/health/ready`.
+- Rollout: allow for the 10-second shutdown window and prefer an idle period. Backend restarts clear in-memory state.
+
+Build release images with separate manual-version tags:
 
 ```powershell
-docker build -f frontend/Dockerfile.frontend -t docker-registry.prod.gracenote.com/gn-bia/conv-bi-frontend-no-entra:v1.0.0 .
-docker build -f backend/Dockerfile.backend -t docker-registry.prod.gracenote.com/gn-bia/conv-bi-backend-no-entra:v1.0.0 .
+docker build -f frontend/Dockerfile.frontend -t conversational-bi-frontend-manual:v1.0.0 .
+docker build -f backend/Dockerfile.backend -t conversational-bi-backend-manual:v1.0.0 .
 ```
 
-The frontend runs unprivileged Nginx on port 8080. The backend runs as the non-root Node user on port 3000. Both images include health checks. Update the image tags to the agreed release version before pushing.
+Use the agreed release tag instead of `v1.0.0` and add the registry path before pushing.
 
-## Internal Kubernetes deployment
+Before rollout, verify access restrictions, MCP connectivity, model IDs, timeouts and dependency findings. Readiness checks validate required configuration only; they do not test MCP connectivity or permissions.
 
-Manifests and the deployed URL are managed outside this repository. Compose is for local testing; do not use its localhost API URL for remote users.
+After rollout, test both chat modes, each model, a follow-up, regeneration, table export, title lookup, reopening history and cross-tab synchronization. Check mobile layout and confirm logs contain no credentials or answer payloads.
 
-- Frontend: port 8080, runtime `VITE_API_BASE_URL=/api/v1`.
-- Backend: port 3000, `NODE_ENV=production`.
-- Ingress: route `/api` to the BFF without stripping the prefix; send other paths to the frontend. Frontend Nginx does not proxy API requests.
-- Access: restrict both UI and API to the internal audience. Do not expose the BFF directly. This build cannot separate users with different data entitlements.
-- TLS and CORS: use HTTPS and set `CORS_ALLOWED_ORIGINS` to the exact UI origin.
-- Timeouts: allow the 300-second MCP request plus overhead. The default browser timeout is 315 seconds.
-- Replicas: use one backend for this pilot. Sessions, cancellation, rate limits, and monthly token counters are process-local.
-- Probes: liveness `/api/v1/health/live`; readiness `/api/v1/health/ready`.
-- Shutdown: in-flight requests have at most 10 seconds to finish after termination. Roll out when idle.
-- Resources: set requests/limits and monitor memory, restarts, error rates, and request duration. Session/message repositories have no retention cap or cleanup policy.
-
-This deployment does not provide durable backend history or high availability.
-
-### Before rollout
-
-- Verify access restrictions cover both UI and API.
-- Check MCP origin, path, request mappings, authentication, and approved model IDs. Populate the server model allowlist.
-- Store credentials in deployment Secrets. Browser runtime configuration is public.
-- Keep automatic analytical retries disabled unless MCP guarantees safe replay.
-- Decide whether raw debug access is appropriate for the internal audience.
-- Resolve or assess dependency audit findings before approving the release.
-
-Readiness checks only verify that required configuration is present. They do not contact MCP or validate credentials, model permissions, or request/response contracts.
-
-### After rollout
-
-Use the actual internal URL from a remote user machine:
-
-1. Check both health probes and confirm chat requests reach `/api/v1/chat`, not localhost.
-2. Ask a question in each approved model, then a follow-up in the same chat.
-3. Check tables, Findings & Insights, and generated DAX if enabled. Tool results must not appear as extra answer tables.
-4. Regenerate an earlier answer. Later messages must remain, the loading row must align and animate, and the composer must stay blocked until completion.
-5. Check recoverable errors and confirm failed requests are not replayed automatically.
-6. Refresh and reopen a chat. Confirm browser UUID and MCP session references remain available. Check history synchronization across two tabs, including deletion.
-7. Check logs for failures and accidental collection of prompts, results, or credentials. Confirm rollback image tags before switching traffic.
-
-## Quality checks
+## Checks
 
 ```powershell
 npm.cmd run check
 npm.cmd audit --omit=dev
 ```
 
-`check` runs ESLint, TypeScript, Prettier, and production builds for both applications. `audit` checks runtime dependencies. Neither command tests live MCP integration or Kubernetes.
+`check` runs ESLint, TypeScript, Prettier and both production builds. It does not exercise live MCP or Kubernetes. This distribution has no checked-in automated test suite.
 
-This distribution has no checked-in automated test files. Keep `frontend/index.html`, both environment examples, the lockfile, runtime-config files, and build/deployment configuration. Documents and test/scratch artifacts are excluded from Docker build contexts.
+## Repository
+
+- `frontend/`: UI, hardcoded model content, rendering and browser persistence.
+- `backend/`: API, MCP integration, hardcoded model list and build scripts.
+- `docs/`: Supporting documents and their source assets; excluded from images.
+- `docker-compose.yml`: Local two-container deployment.
