@@ -65,7 +65,7 @@ The BFF profile uses S3 mode, reads the supplied policy key, obtains the guide p
 
 Both streaming flags are enabled. The BFF MCP timeout is 600,000 ms; the browser timeout is 700,000 ms. Configure ingress read/idle timeouts accordingly and disable SSE buffering. Raw debug diagnostics are disabled in the deployment profile; enable `debugMode` only for an approved restricted audience.
 
-The deployment profiles contain no live API keys, AWS credentials or Power BI bearer token. The BFF deployment profile explicitly selects `SEMANTIC_MODEL_GUIDE_AUTH_MODE=auto`: it checks the workload's current identity, reuses a session of the configured target role or explicitly assumes that role if different. The latter requires the caller's permission and target-role trust. Select `pod` for direct workload-identity access without checking or assuming a target role. The bearer token is empty under the current optional-token contract. If the Host later requires credentials, inject them into the BFF through Secrets, never frontend settings. Do not distribute populated local `.env` files: they may contain temporary credentials, obsolete auth settings and host-only file paths.
+The deployment profiles contain no live API keys, AWS credentials or Power BI bearer token. The BFF follows MCP Server: resolve source credentials from workload identity, explicitly assume the configured target role, then use its temporary session for S3. The bearer token is empty under the current optional-token contract. If the Host later requires credentials, inject them into the BFF through Secrets, never frontend settings. Do not distribute populated local `.env` files.
 
 Keep the ordinary `.env.example` files for native development and local Compose. Root `.env` is used for Compose interpolation only, not as a Kubernetes environment source. Compose takes BFF CORS from `backend/.env`; public frontend variables can be overridden through the shell or root `.env`. No running service needs restarting merely to prepare the handover profiles. Deploying them requires workload rollouts and a real S3 access check.
 
@@ -109,7 +109,6 @@ For S3, set these variables on the BFF workload (not the frontend):
 
 ```dotenv
 SEMANTIC_MODEL_GUIDE_SOURCE=s3
-SEMANTIC_MODEL_GUIDE_AUTH_MODE=auto
 SEMANTIC_MODEL_GUIDE_S3_BUCKET=q-lib
 SEMANTIC_MODEL_POLICY_S3_KEY=CONVERSATIONAL_BI_FRONTEND_JSON_CONFIG/semantic_model_user_policy/semantic_model_user_policy.json
 SEMANTIC_MODEL_GUIDE_S3_REGION=us-west-2
@@ -119,15 +118,11 @@ SEMANTIC_MODEL_GUIDE_TIMEOUT_MS=30000
 SEMANTIC_MODEL_GUIDE_EXCLUDED_IDS=
 ```
 
-Choose the authentication mode explicitly. `auto` calls STS `GetCallerIdentity` once, then compares its assumed-role session against `SEMANTIC_MODEL_GUIDE_ROLE_ARN` using partition, account and role name. A matching target role is reused directly; IAM paths are handled because STS session ARNs omit them. If the current identity is different, the BFF explicitly assumes the configured target role. Missing/invalid target ARNs and failed identity lookup prevent startup. The checked source credential provider is reused for direct reads, rather than independently resolving another identity.
+S3 fetching follows MCP Server: resolve source credentials with the SDK, call STS `AssumeRole` once with the configured target and `RoleSessionName=S3AccessSession`, then create S3 with all three returned temporary credential fields. The deployment profile uses STS in `us-east-1` and S3 in `us-west-2`. No explicit caller-identity lookup or direct-read branch runs.
 
-`pod` uses the Node.js AWS SDK credential provider chain directly for S3; it does not issue an extra explicit `AssumeRole` or `GetCallerIdentity` call. The SDK may still call STS to resolve a service-account/web-identity credential provider. `SEMANTIC_MODEL_GUIDE_ROLE_ARN` is ignored in pod mode, so merely setting that ARN does not change the pod's identity. Workload identity, service-account token mounts and their configuration remain deployment responsibilities. Do not manually add static AWS keys when using service-account authentication.
+S3 mode always assumes `SEMANTIC_MODEL_GUIDE_ROLE_ARN` using the pod's workload identity.
 
-`assume-role` resolves the source credentials, calls STS `AssumeRole` once and passes the returned temporary credentials to S3. This is the default when the setting is omitted, preserving existing behavior. Both auto and assume-role modes require `SEMANTIC_MODEL_GUIDE_ROLE_ARN`. Invalid mode values fail startup; access denial or invalid credentials never trigger an automatic switch to another identity. Auto selects the path before S3 access; it does not use authorization failures as a fallback signal.
-
-Both modes make two S3 `GetObject` calls: policy first, followed by the object identified by `model_guide_s3_path`. That pointer must be an `s3://` object URI in the configured bucket; HTTP URLs and cross-bucket redirects are rejected. Both objects use the configured S3 region. `SEMANTIC_MODEL_POLICY_S3_KEY` replaces the earlier `SEMANTIC_MODEL_GUIDE_S3_KEY`; the guide key now comes from the policy.
-
-In pod mode the workload identity must be permitted to read both objects. In auto mode an existing target-role session must have direct read access, or a different identity must be permitted to assume that target role. In assume-role mode the workload must be permitted to assume the configured role, and the target role must be permitted to read both objects. No AWS keys belong in frontend configuration, browser storage or the image. Kubernetes service-account configuration is managed with the deployment.
+The target session makes two S3 `GetObject` calls: policy first, followed by the object identified by `model_guide_s3_path`. That pointer must be an `s3://` object URI in the configured bucket; HTTP URLs and cross-bucket redirects are rejected. `SEMANTIC_MODEL_POLICY_S3_KEY` replaces the earlier `SEMANTIC_MODEL_GUIDE_S3_KEY`; the guide key comes from the policy. The workload needs the intended target-role trust relationship, and the target session reads both objects.
 
 The S3 reader limits each document to 1 MiB, applies one startup timeout across both reads, and closes AWS clients after loading. An unavailable object, denied access, timeout or invalid JSON prevents startup; S3 mode never silently falls back to bundled files. Logs report a safe error category, not AWS response bodies or credentials. Both sources apply `SEMANTIC_MODEL_GUIDE_EXCLUDED_IDS` (comma-separated; empty by default). Remove any earlier `cpx_metrics` exclusion when enabling CPX. A guide model can also be disabled with `"enabled":false`.
 
@@ -161,7 +156,7 @@ To verify a new model, add the same new canonical ID to a local copy of both fil
 
 These Windows paths are for `npm run dev`, not Linux containers. Compose explicitly uses the paired files bundled under `/app/config`, so the same `backend/.env` can be used without passing host-only file paths to the container. To test different JSON with Compose, update the paired files in `backend/config/` and rebuild the backend image, or mount both files read-only and override the two paths with their container locations. Never bake the full user policy, including personal user/group assignments, into a shared image; the bundled policy contains catalogue metadata only. S3 mode ignores these file paths.
 
-This verifies loading and UI rendering without AWS. A real S3 test additionally needs a valid AWS credential provider and the S3 environment values above. Pod mode requires direct read access; assume-role mode additionally needs permission/trust for the target role. Do not copy workload credentials into source files or frontend variables.
+This verifies loading and UI rendering without AWS. A real S3 test additionally needs a valid AWS credential provider and the S3 environment values above. S3 mode uses the MCP-style target-role assumption before reading both objects. Do not copy workload credentials into source files or frontend variables.
 
 ### Streaming (opt-in testing)
 

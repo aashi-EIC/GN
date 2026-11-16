@@ -33,7 +33,6 @@ const schema = z.object({
   SEMANTIC_MODEL_GUIDE_S3_BUCKET: optionalText,
   SEMANTIC_MODEL_POLICY_S3_KEY: optionalText,
   SEMANTIC_MODEL_GUIDE_S3_REGION: z.string().min(1).default("us-west-2"),
-  SEMANTIC_MODEL_GUIDE_AUTH_MODE: z.enum(["auto", "pod", "assume-role"]).default("assume-role"),
   SEMANTIC_MODEL_GUIDE_ROLE_ARN: optionalText,
   SEMANTIC_MODEL_GUIDE_STS_REGION: z.string().min(1).default("us-east-1"),
   SEMANTIC_MODEL_GUIDE_TIMEOUT_MS: integer(30_000).refine((value) => value <= 120_000),

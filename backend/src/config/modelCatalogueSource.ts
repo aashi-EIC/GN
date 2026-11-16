@@ -1,25 +1,49 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { Readable } from "node:stream";
-import { GetObjectCommand, S3Client, type S3ClientConfig } from "@aws-sdk/client-s3";
-import { AssumeRoleCommand, GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 import { config } from "./env.js";
 import { ConfigurationError } from "../errors.js";
 import { parseModelPolicy } from "./modelPolicy.js";
+import { logger } from "../observability/logger.js";
 
 const MAX_GUIDE_BYTES = 1_048_576;
-const roleArnPattern = /^arn:([a-z0-9-]+):iam::(\d{12}):role\/(?:[^\s]+\/)?([\w+=,.@-]{1,64})$/;
+type CatalogueStage = "assume_role" | "policy_read" | "guide_read";
 
-function isTargetRoleSession(arn: string, account: string, target: RegExpExecArray) {
-  const session = /^arn:([a-z0-9-]+):sts::(\d{12}):assumed-role\/([^/]+)\/[^/]+$/.exec(arn);
-  // IAM role names are unique within an account; STS session ARNs omit the IAM path.
-  return (
-    !!session &&
-    session[1] === target[1] &&
-    session[2] === target[2] &&
-    account === target[2] &&
-    session[3] === target[3]
-  );
+function errorCategory(error: unknown) {
+  const category = error instanceof Error ? error.name : "UnknownError";
+  return /^[a-zA-Z][a-zA-Z0-9]{0,79}$/.test(category) ? category : "UnknownError";
+}
+
+async function catalogueStep<T>(stage: CatalogueStage, operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    const metadata = (error as { $metadata?: unknown } | null)?.$metadata;
+    const details =
+      metadata && typeof metadata === "object"
+        ? (metadata as { requestId?: unknown; httpStatusCode?: unknown })
+        : undefined;
+    const requestId = details?.requestId;
+    const status = details?.httpStatusCode;
+    logger.error(
+      {
+        event_type: "model_catalogue_load_failed",
+        stage,
+        auth_mode: "assume-role",
+        aws_error_code: errorCategory(error),
+        ...(typeof requestId === "string" && /^[a-zA-Z0-9+=/_:.-]{1,256}$/.test(requestId)
+          ? { aws_request_id: requestId }
+          : {}),
+        ...(typeof status === "number" && Number.isInteger(status) && status >= 100 && status <= 599
+          ? { http_status: status }
+          : {}),
+      },
+      "Semantic model catalogue operation failed",
+    );
+    throw error;
+  }
 }
 
 function parseJson(bytes: Buffer): unknown {
@@ -49,13 +73,8 @@ async function readS3Source() {
   if (!bucket || !key) {
     throw new ConfigurationError("S3 catalogue requires a bucket and policy object key");
   }
-  const authMode = config.SEMANTIC_MODEL_GUIDE_AUTH_MODE;
-  if (authMode !== "pod" && !roleArn) {
-    throw new ConfigurationError("S3 auto and assume-role authentication require a role ARN");
-  }
-  const targetRole = authMode === "auto" ? roleArnPattern.exec(roleArn!) : undefined;
-  if (authMode === "auto" && !targetRole) {
-    throw new ConfigurationError("S3 auto authentication requires a valid IAM role ARN");
+  if (!roleArn) {
+    throw new ConfigurationError("S3 authentication requires SEMANTIC_MODEL_GUIDE_ROLE_ARN");
   }
 
   let body: Readable | undefined;
@@ -73,49 +92,32 @@ async function readS3Source() {
   let sts: STSClient | undefined;
   let s3: S3Client | undefined;
   try {
-    const clientOptions: S3ClientConfig = {
-      region: config.SEMANTIC_MODEL_GUIDE_S3_REGION,
+    const stsClient = new STSClient({
+      region: config.SEMANTIC_MODEL_GUIDE_STS_REGION,
       maxAttempts: 2,
       requestHandler,
-    };
-    if (authMode !== "pod") {
-      sts = new STSClient({
-        region: config.SEMANTIC_MODEL_GUIDE_STS_REGION,
-        maxAttempts: 2,
-        requestHandler,
-      });
-      let assumeTargetRole = true;
-      if (authMode === "auto") {
-        const identity = await sts.send(new GetCallerIdentityCommand({}), requestOptions);
-        const identityArn = /^arn:[a-z0-9-]+:(?:iam|sts)::(\d{12}):.+$/.exec(identity.Arn ?? "");
-        if (!identityArn || identity.Account !== identityArn[1]) {
-          throw new Error("AWS returned incomplete caller identity");
-        }
-        assumeTargetRole = !isTargetRoleSession(identity.Arn!, identity.Account!, targetRole!);
-        // Reuse the identity provider we just checked instead of resolving a second chain.
-        clientOptions.credentials = sts.config.credentials;
+    });
+    sts = stsClient;
+    const credentials = await catalogueStep("assume_role", async () => {
+      const { Credentials: session } = await stsClient.send(
+        new AssumeRoleCommand({ RoleArn: roleArn, RoleSessionName: "S3AccessSession" }),
+        requestOptions,
+      );
+      if (!session?.AccessKeyId || !session.SecretAccessKey || !session.SessionToken) {
+        throw new Error("AssumeRole returned incomplete credentials");
       }
-      if (assumeTargetRole) {
-        const { Credentials: credentials } = await sts.send(
-          new AssumeRoleCommand({ RoleArn: roleArn, RoleSessionName: "S3AccessSession" }),
-          requestOptions,
-        );
-        if (
-          !credentials?.AccessKeyId ||
-          !credentials.SecretAccessKey ||
-          !credentials.SessionToken
-        ) {
-          throw new Error("AssumeRole returned incomplete credentials");
-        }
-        clientOptions.credentials = {
-          accessKeyId: credentials.AccessKeyId,
-          secretAccessKey: credentials.SecretAccessKey,
-          sessionToken: credentials.SessionToken,
-        };
-      }
-    }
-    // Pod mode leaves credentials to the SDK provider chain; failures never change modes.
-    const client = new S3Client(clientOptions);
+      return {
+        accessKeyId: session.AccessKeyId,
+        secretAccessKey: session.SecretAccessKey,
+        sessionToken: session.SessionToken,
+      };
+    });
+    const client = new S3Client({
+      region: config.SEMANTIC_MODEL_GUIDE_S3_REGION,
+      credentials,
+      maxAttempts: 2,
+      requestHandler,
+    });
     s3 = client;
     async function readObject(objectKey: string): Promise<unknown> {
       const response = await client.send(
@@ -142,11 +144,12 @@ async function readS3Source() {
         body = undefined;
       }
     }
-    const policy = parseModelPolicy(await readObject(key));
+    const policy = parseModelPolicy(await catalogueStep("policy_read", () => readObject(key)));
     if (policy.guideLocation.bucket !== bucket) {
       throw new ConfigurationError("Model guide must use the configured catalogue S3 bucket");
     }
-    return { policy, guide: await readObject(policy.guideLocation.key) };
+    const guide = await catalogueStep("guide_read", () => readObject(policy.guideLocation.key));
+    return { policy, guide };
   } finally {
     clearTimeout(timer);
     body?.destroy();
@@ -162,10 +165,8 @@ export async function readModelCatalogueSource() {
   } catch (error) {
     if (error instanceof ConfigurationError) throw error;
     // AWS errors can include request details. Expose only a safe diagnostic category.
-    const category = error instanceof Error ? error.name : "UnknownError";
-    const safeCategory = /^[a-zA-Z][a-zA-Z0-9]{0,79}$/.test(category) ? category : "UnknownError";
     throw new ConfigurationError(
-      `Unable to load semantic model catalogue from ${config.SEMANTIC_MODEL_GUIDE_SOURCE} (${safeCategory})`,
+      `Unable to load semantic model catalogue from ${config.SEMANTIC_MODEL_GUIDE_SOURCE} (${errorCategory(error)})`,
     );
   }
 }

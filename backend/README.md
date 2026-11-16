@@ -22,11 +22,15 @@ Verify the SDKs without starting the server or contacting AWS:
 docker run --rm --entrypoint node conv-bi-backend:local --input-type=module -e 'await import("@aws-sdk/client-sts"); await import("@aws-sdk/client-s3"); console.log("AWS SDK packages found");'
 ```
 
-This verifies packaging, not S3 permissions. In S3 mode, startup reads the policy and its referenced guide before accepting requests. Set `SEMANTIC_MODEL_GUIDE_AUTH_MODE=pod` when the pod's existing AWS identity can read both objects. This uses the SDK credential provider chain without an additional explicit `AssumeRole` call. `SEMANTIC_MODEL_GUIDE_ROLE_ARN` is ignored in this mode; workload identity and token mounts remain deployment responsibilities.
+This verifies packaging, not S3 permissions. In S3 mode the backend follows MCP Server's fetch sequence: obtain source credentials through the SDK workload identity chain, call STS `AssumeRole` with `RoleSessionName=S3AccessSession`, create the S3 client with the returned access key, secret key and session token, then read the policy and its referenced guide before accepting requests. The deployment example uses STS in `us-east-1` and S3 in `us-west-2`.
 
-Use `SEMANTIC_MODEL_GUIDE_AUTH_MODE=assume-role` when the workload must assume the configured target role first. This requires `SEMANTIC_MODEL_GUIDE_ROLE_ARN` and permission/trust for that extra STS call. The default remains `assume-role` for compatibility. Invalid mode values fail configuration validation. No mode falls back to another identity or to local files after an AWS failure. All require appropriate S3 permissions and network access.
+S3 mode always assumes `SEMANTIC_MODEL_GUIDE_ROLE_ARN` using the pod's workload identity.
 
-The deployment example selects `SEMANTIC_MODEL_GUIDE_AUTH_MODE=auto`. This also requires a valid target role ARN. It first calls STS `GetCallerIdentity`: an assumed-role session matching the target partition, account and role name is reused directly; any other identity must explicitly assume the configured target. Identity lookup, role-assumption and S3 errors stop startup without trying another identity. An arbitrary assumed role is not sufficient to skip the configured target. Pod mode remains available when the pod has direct S3 access but does not need that target role. No setting repairs invalid source credentials or missing read permissions.
+### Catalogue startup diagnostics
+
+Failed AWS operations produce a structured `model_catalogue_load_failed` log before the existing configuration error. The `stage` identifies `assume_role`, `policy_read`, or `guide_read`; `auth_mode` is `assume-role`. `aws_error_code`, `aws_request_id`, and `http_status` retain their existing meanings and allowlisted formatting. Credential discovery and incomplete STS responses are diagnosed at `assume_role`; an SDK credential-provider failure may have no AWS request ID. Logs do not contain credential values, raw AWS messages, request/response bodies, or catalogue contents.
+
+A role-assumption or S3 failure stops startup without changing identities or falling back to local files. Both documents keep their size limit and shared startup timeout, and the AWS clients and response streams are closed after loading.
 
 For file mode, use the bundled defaults or set paths under `/app/config`; Windows host paths do not exist in the container. Liveness is `/api/v1/health/live`; readiness is `/api/v1/health/ready`.
 

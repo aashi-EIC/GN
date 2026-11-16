@@ -21,6 +21,8 @@ RUN npm ci --omit=dev --no-audit --no-fund \
     && npm cache clean --force
 
 COPY --from=build --chown=node:node /app/dist ./dist
+COPY --chown=node:node config/ ./config/
+COPY --chown=node:node scripts/check-s3-sdk.mjs ./scripts/check-s3-sdk.mjs
 
 USER node
 

@@ -7,5 +7,7 @@
 !config/
 !config/semantic-model-guide.json
 !config/semantic-model-user-policy.json
+!scripts/
+!scripts/check-s3-sdk.mjs
 !Dockerfile.backend
 !.dockerignore
